@@ -1,0 +1,212 @@
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
+                               QLabel, QStackedWidget, QGraphicsDropShadowEffect, QPushButton)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+
+from ui.components.custom_widgets import ModernButton
+from ui.views.crm_view import CRMView
+from ui.views.task_view import TaskView
+from ui.views.dashboard_view import DashboardView
+
+class MarketingHubApp(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.Window)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.resize(1200, 800)
+        self.current_lang = "en" 
+        self.init_ui()
+
+    def init_ui(self):
+        self.central_widget = QWidget()
+        self.central_widget.setObjectName("CentralWidget")
+        # ثيم فاتح بالكامل للنافذة الرئيسية
+        self.central_widget.setStyleSheet("""
+            #CentralWidget {
+                background-color: #F0F4F8; /* رمادي فاتح مريح للعين */
+                border-radius: 15px;
+                border: 1px solid #CBD5E0;
+            }
+        """)
+        self.setCentralWidget(self.central_widget)
+
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 40)) # ظل خفيف للثيم الفاتح
+        shadow.setOffset(0, 5)
+        self.central_widget.setGraphicsEffect(shadow)
+
+        self.main_layout = QHBoxLayout(self.central_widget)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+
+        self.create_sidebar()
+        self.create_content_area()
+        self.apply_layout_direction()
+
+    def create_sidebar(self):
+        self.sidebar = QWidget()
+        self.sidebar.setFixedWidth(250)
+        
+        sidebar_layout = QVBoxLayout(self.sidebar)
+        sidebar_layout.setContentsMargins(15, 30, 15, 30)
+
+        self.logo_label = QLabel("Fratelanza Hub")
+        self.logo_label.setStyleSheet("color: #2B6CB0; font-size: 22px; font-weight: bold; margin-bottom: 30px;")
+        self.logo_label.setAlignment(Qt.AlignCenter)
+        sidebar_layout.addWidget(self.logo_label)
+
+        self.btn_dashboard = ModernButton("Dashboard")
+        self.btn_tasks = ModernButton("Task Manager")
+        self.btn_crm = ModernButton("CRM System")
+        self.btn_finance = ModernButton("Financial System")
+        
+        sidebar_layout.addWidget(self.btn_dashboard)
+        sidebar_layout.addWidget(self.btn_tasks)
+        sidebar_layout.addWidget(self.btn_crm)
+        sidebar_layout.addWidget(self.btn_finance)
+        sidebar_layout.addStretch()
+
+        self.btn_lang = QPushButton("عربي / English")
+        self.btn_lang.setFixedHeight(40)
+        self.btn_lang.setStyleSheet("background-color: #2D3748; color: white; border-radius: 8px; font-weight: bold;")
+        self.btn_lang.setCursor(Qt.PointingHandCursor)
+        self.btn_lang.clicked.connect(self.toggle_language)
+        sidebar_layout.addWidget(self.btn_lang)
+
+        self.main_layout.addWidget(self.sidebar)
+
+    def create_content_area(self):
+        self.content_area = QWidget()
+        content_layout = QVBoxLayout(self.content_area)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Title Bar مع أزرار التكبير والتصغير
+        title_bar = QWidget()
+        title_layout = QHBoxLayout(title_bar)
+        title_layout.setContentsMargins(0, 0, 0, 10)
+        
+        self.page_title = QLabel("Dashboard Overview")
+        self.page_title.setStyleSheet("color: #2D3748; font-size: 24px; font-weight: bold;")
+        
+        # أزرار التحكم بالنافذة
+        window_controls = QHBoxLayout()
+        window_controls.setSpacing(5)
+
+        self.btn_min = QPushButton("−")
+        self.btn_max = QPushButton("□")
+        self.btn_close = QPushButton("✕")
+
+        for btn in [self.btn_min, self.btn_max, self.btn_close]:
+            btn.setFixedSize(30, 30)
+            btn.setStyleSheet("""
+                QPushButton {background-color: transparent; color: #4A5568; border-radius: 15px; font-weight: bold; font-size: 14px;}
+                QPushButton:hover {background-color: #CBD5E0; color: #1A202C;}
+            """)
+
+        self.btn_close.setStyleSheet(self.btn_close.styleSheet() + "QPushButton:hover {background-color: #E53E3E; color: white;}")
+
+        self.btn_min.clicked.connect(self.showMinimized)
+        self.btn_max.clicked.connect(self.toggle_maximize)
+        self.btn_close.clicked.connect(self.close)
+
+        window_controls.addWidget(self.btn_min)
+        window_controls.addWidget(self.btn_max)
+        window_controls.addWidget(self.btn_close)
+
+        title_layout.addWidget(self.page_title)
+        title_layout.addStretch()
+        title_layout.addLayout(window_controls)
+        content_layout.addWidget(title_bar)
+
+        # مدير الصفحات
+        self.stacked_widget = QStackedWidget()
+        
+        # 0: الداشبورد (الجديدة الحقيقية المربوطة بقاعدة البيانات والرسم البياني)
+        self.dashboard_page = DashboardView()
+        
+        # 1: المهام, 2: العملاء
+        self.task_page = TaskView()
+        self.crm_page = CRMView()
+        
+        self.stacked_widget.addWidget(self.dashboard_page)
+        self.stacked_widget.addWidget(self.task_page)
+        self.stacked_widget.addWidget(self.crm_page)
+        
+        content_layout.addWidget(self.stacked_widget)
+        self.main_layout.addWidget(self.content_area)
+
+        # ربط الأزرار بالصفحات
+        self.btn_dashboard.clicked.connect(lambda: self.switch_page(0, "Dashboard Overview", "نظرة عامة"))
+        self.btn_tasks.clicked.connect(lambda: self.switch_page(1, "Task Manager", "إدارة المهام"))
+        self.btn_crm.clicked.connect(lambda: self.switch_page(2, "CRM System - Clients", "إدارة العملاء"))
+
+    def toggle_maximize(self):
+        if self.isMaximized():
+            self.showNormal()
+            self.btn_max.setText("□")
+            # استعادة الحواف الدائرية
+            self.central_widget.setStyleSheet("#CentralWidget {background-color: #F0F4F8; border-radius: 15px; border: 1px solid #CBD5E0;}")
+        else:
+            self.showMaximized()
+            self.btn_max.setText("❐")
+            # إزالة الحواف الدائرية عند التكبير الكامل
+            self.central_widget.setStyleSheet("#CentralWidget {background-color: #F0F4F8; border-radius: 0px; border: none;}")
+
+    def switch_page(self, index, title_en, title_ar):
+        self.stacked_widget.setCurrentIndex(index)
+        if self.current_lang == "ar":
+            self.page_title.setText(title_ar)
+        else:
+            self.page_title.setText(title_en)
+
+    def toggle_language(self):
+        if self.current_lang == "en":
+            self.current_lang = "ar"
+            self.logo_label.setText("مركز فراتيلانزا")
+            self.btn_dashboard.setText("لوحة القيادة")
+            self.btn_tasks.setText("إدارة المهام")
+            self.btn_crm.setText("العملاء")
+            self.btn_finance.setText("النظام المالي")
+            self.switch_page(self.stacked_widget.currentIndex(), self.page_title.text(), self.get_arabic_title())
+        else:
+            self.current_lang = "en"
+            self.logo_label.setText("Fratelanza Hub")
+            self.btn_dashboard.setText("Dashboard")
+            self.btn_tasks.setText("Task Manager")
+            self.btn_crm.setText("CRM System")
+            self.btn_finance.setText("Financial System")
+            self.switch_page(self.stacked_widget.currentIndex(), self.get_english_title(), self.page_title.text())
+        self.apply_layout_direction()
+
+    def get_arabic_title(self):
+        titles = {0: "نظرة عامة", 1: "إدارة المهام", 2: "إدارة العملاء"}
+        return titles.get(self.stacked_widget.currentIndex(), "")
+
+    def get_english_title(self):
+        titles = {0: "Dashboard Overview", 1: "Task Manager", 2: "CRM System - Clients"}
+        return titles.get(self.stacked_widget.currentIndex(), "")
+
+    def apply_layout_direction(self):
+        if self.current_lang == "ar":
+            self.setLayoutDirection(Qt.RightToLeft)
+            self.sidebar.setStyleSheet("background-color: #FFFFFF; border-top-right-radius: 15px; border-bottom-right-radius: 15px; border-left: 1px solid #E2E8F0;")
+        else:
+            self.setLayoutDirection(Qt.LeftToRight)
+            self.sidebar.setStyleSheet("background-color: #FFFFFF; border-top-left-radius: 15px; border-bottom-left-radius: 15px; border-right: 1px solid #E2E8F0;")
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.drag_pos = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event):
+        if event.buttons() == Qt.LeftButton and not self.isMaximized():
+            self.move(event.globalPosition().toPoint() - self.drag_pos)
+            event.accept()
+    
+    # دبل كليك على التايتل بار لتكبير الشاشة
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.toggle_maximize()
+            event.accept()

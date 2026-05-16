@@ -1,0 +1,145 @@
+import { Router, type IRouter } from "express";
+import { eq, sql } from "drizzle-orm";
+import { db, transactionsTable, activityTable } from "@workspace/db";
+import {
+  ListTransactionsQueryParams,
+  ListTransactionsResponse,
+  CreateTransactionBody,
+  GetTransactionParams,
+  GetTransactionResponse,
+  UpdateTransactionParams,
+  UpdateTransactionBody,
+  UpdateTransactionResponse,
+  DeleteTransactionParams,
+  GetFinancialSummaryResponse,
+} from "@workspace/api-zod";
+
+const router: IRouter = Router();
+
+router.get("/transactions/summary", async (req, res): Promise<void> => {
+  const rows = await db
+    .select({
+      type: transactionsTable.type,
+      category: transactionsTable.category,
+      total: sql<number>`cast(sum(amount) as float)`,
+    })
+    .from(transactionsTable)
+    .groupBy(transactionsTable.type, transactionsTable.category);
+
+  let totalIncome = 0;
+  let totalExpenses = 0;
+  const byCategory: { category: string; total: number; type: "income" | "expense" }[] = [];
+
+  for (const row of rows) {
+    if (row.type === "income") totalIncome += row.total;
+    else totalExpenses += row.total;
+    byCategory.push({ category: row.category, total: row.total, type: row.type as "income" | "expense" });
+  }
+
+  res.json(GetFinancialSummaryResponse.parse({
+    totalIncome,
+    totalExpenses,
+    netBalance: totalIncome - totalExpenses,
+    byCategory,
+  }));
+});
+
+router.get("/transactions", async (req, res): Promise<void> => {
+  const params = ListTransactionsQueryParams.safeParse(req.query);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  let query = db.select().from(transactionsTable).$dynamic();
+  if (params.data.type) {
+    query = query.where(eq(transactionsTable.type, params.data.type));
+  }
+  if (params.data.category) {
+    query = query.where(eq(transactionsTable.category, params.data.category));
+  }
+
+  const transactions = await query.orderBy(transactionsTable.createdAt);
+  res.json(ListTransactionsResponse.parse(transactions));
+});
+
+router.post("/transactions", async (req, res): Promise<void> => {
+  const parsed = CreateTransactionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [transaction] = await db.insert(transactionsTable).values(parsed.data).returning();
+
+  await db.insert(activityTable).values({
+    type: "transaction_recorded",
+    description: `Transaction recorded: ${transaction.title} (${transaction.type === "income" ? "+" : "-"}${transaction.amount})`,
+    descriptionAr: transaction.titleAr
+      ? `تم تسجيل معاملة: ${transaction.titleAr} (${transaction.type === "income" ? "+" : "-"}${transaction.amount})`
+      : null,
+  });
+
+  res.status(201).json(GetTransactionResponse.parse(transaction));
+});
+
+router.get("/transactions/:id", async (req, res): Promise<void> => {
+  const params = GetTransactionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [transaction] = await db.select().from(transactionsTable).where(eq(transactionsTable.id, params.data.id));
+  if (!transaction) {
+    res.status(404).json({ error: "Transaction not found" });
+    return;
+  }
+
+  res.json(GetTransactionResponse.parse(transaction));
+});
+
+router.patch("/transactions/:id", async (req, res): Promise<void> => {
+  const params = UpdateTransactionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = UpdateTransactionBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [transaction] = await db
+    .update(transactionsTable)
+    .set(parsed.data)
+    .where(eq(transactionsTable.id, params.data.id))
+    .returning();
+
+  if (!transaction) {
+    res.status(404).json({ error: "Transaction not found" });
+    return;
+  }
+
+  res.json(UpdateTransactionResponse.parse(transaction));
+});
+
+router.delete("/transactions/:id", async (req, res): Promise<void> => {
+  const params = DeleteTransactionParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const [tx] = await db.delete(transactionsTable).where(eq(transactionsTable.id, params.data.id)).returning();
+  if (!tx) {
+    res.status(404).json({ error: "Transaction not found" });
+    return;
+  }
+
+  res.sendStatus(204);
+});
+
+export default router;
