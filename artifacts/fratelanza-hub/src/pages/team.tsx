@@ -4,14 +4,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Edit2, Users, UserCheck, UserMinus, Coffee } from "lucide-react";
+import { Plus, Trash2, Edit2, Users, UserCheck, Coffee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Employee = {
@@ -30,7 +29,7 @@ const emptyForm = {
 };
 
 export default function Team() {
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, language } = useLanguage();
   const qc = useQueryClient();
   const { toast } = useToast();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -78,23 +77,50 @@ export default function Team() {
     on_leave: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400",
   };
 
+  const isAr = language === "ar";
+
   const FormFields = () => (
     <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Name (EN)", "الاسم (بالإنجليزية)")}</Label><Input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Name (AR)", "الاسم (بالعربية)")}</Label><Input dir="rtl" value={form.nameAr} onChange={e => setForm({ ...form, nameAr: e.target.value })} /></div>
+      <div className="space-y-2">
+        <Label>{isAr ? "الاسم *" : "Name *"}</Label>
+        <Input
+          required
+          dir={isAr ? "rtl" : "ltr"}
+          value={isAr ? form.nameAr : form.name}
+          onChange={e => isAr
+            ? setForm({ ...form, nameAr: e.target.value })
+            : setForm({ ...form, name: e.target.value })}
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Email", "البريد الإلكتروني")}</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Phone", "الهاتف")}</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+        <div className="space-y-2">
+          <Label>{t("Email", "البريد الإلكتروني")}</Label>
+          <Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label>{t("Phone", "الهاتف")}</Label>
+          <Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} />
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Department (EN)", "القسم (بالإنجليزية)")}</Label><Input value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Department (AR)", "القسم (بالعربية)")}</Label><Input dir="rtl" value={form.departmentAr} onChange={e => setForm({ ...form, departmentAr: e.target.value })} /></div>
+      <div className="space-y-2">
+        <Label>{isAr ? "القسم" : "Department"}</Label>
+        <Input
+          dir={isAr ? "rtl" : "ltr"}
+          value={isAr ? form.departmentAr : form.department}
+          onChange={e => isAr
+            ? setForm({ ...form, departmentAr: e.target.value })
+            : setForm({ ...form, department: e.target.value })}
+        />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Role (EN)", "الدور (بالإنجليزية)")}</Label><Input value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Role (AR)", "الدور (بالعربية)")}</Label><Input dir="rtl" value={form.roleAr} onChange={e => setForm({ ...form, roleAr: e.target.value })} /></div>
+      <div className="space-y-2">
+        <Label>{isAr ? "الدور الوظيفي" : "Role"}</Label>
+        <Input
+          dir={isAr ? "rtl" : "ltr"}
+          value={isAr ? form.roleAr : form.role}
+          onChange={e => isAr
+            ? setForm({ ...form, roleAr: e.target.value })
+            : setForm({ ...form, role: e.target.value })}
+        />
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -108,10 +134,19 @@ export default function Team() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2"><Label>{t("Salary", "الراتب")}</Label><Input value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} /></div>
+        <div className="space-y-2">
+          <Label>{t("Salary", "الراتب")} ({t("EGP", "ج.م")})</Label>
+          <Input value={form.salary} onChange={e => setForm({ ...form, salary: e.target.value })} />
+        </div>
       </div>
-      <div className="space-y-2"><Label>{t("Join Date", "تاريخ الانضمام")}</Label><Input type="date" value={form.joinDate} onChange={e => setForm({ ...form, joinDate: e.target.value })} /></div>
-      <div className="space-y-2"><Label>{t("Notes", "ملاحظات")}</Label><Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} /></div>
+      <div className="space-y-2">
+        <Label>{t("Join Date", "تاريخ الانضمام")}</Label>
+        <Input type="date" value={form.joinDate} onChange={e => setForm({ ...form, joinDate: e.target.value })} />
+      </div>
+      <div className="space-y-2">
+        <Label>{t("Notes", "ملاحظات")}</Label>
+        <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} dir={isAr ? "rtl" : "ltr"} />
+      </div>
     </div>
   );
 
@@ -189,7 +224,11 @@ export default function Team() {
                     <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => { if (confirm(t("Remove this employee?", "حذف هذا الموظف؟"))) deleteEmp.mutate(emp.id); }}><Trash2 size={15} /></Button>
                   </div>
                 </div>
-                {emp.salary && <div className="mt-3 pt-3 border-t border-border text-sm font-medium">{t("Salary:", "الراتب:")} {emp.salary}</div>}
+                {emp.salary && (
+                  <div className="mt-3 pt-3 border-t border-border text-sm font-medium">
+                    {t("Salary:", "الراتب:")} {emp.salary} {t("EGP", "ج.م")}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

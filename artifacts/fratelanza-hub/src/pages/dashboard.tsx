@@ -3,8 +3,8 @@ import { useLanguage } from "../components/LanguageProvider";
 import { useGetDashboardSummary, useGetRecentActivity } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Users, CheckSquare, DollarSign } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { Activity, Users, CheckSquare, Banknote } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 export default function Dashboard() {
   const { t, isRtl } = useLanguage();
@@ -28,7 +28,7 @@ export default function Dashboard() {
     {
       title: t("Total Revenue", "إجمالي الإيرادات"),
       value: `${(summary?.totalRevenue || 0).toLocaleString()} ${t("EGP", "ج.م")}`,
-      icon: DollarSign,
+      icon: Banknote,
       color: "text-emerald-500"
     },
     {
@@ -52,9 +52,9 @@ export default function Dashboard() {
   ];
 
   const chartData = [
-    { name: t("Income", "الدخل"), value: summary?.totalRevenue || 0 },
-    { name: t("Expenses", "المصروفات"), value: summary?.totalExpenses || 0 },
-    { name: t("Net", "الصافي"), value: summary?.netBalance || 0 }
+    { name: t("Income", "الدخل"), value: summary?.totalRevenue || 0, color: "#10b981" },
+    { name: t("Expenses", "المصروفات"), value: summary?.totalExpenses || 0, color: "#ef4444" },
+    { name: t("Net", "الصافي"), value: summary?.netBalance || 0, color: "#3b82f6" }
   ];
 
   return (
@@ -84,24 +84,34 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis 
-                  dataKey="name" 
+                <XAxis
+                  dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: 'var(--muted-foreground)' }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 13 }}
                   reversed={isRtl}
                 />
-                <YAxis 
+                <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: 'var(--muted-foreground)' }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
                   orientation={isRtl ? "right" : "left"}
                 />
-                <Tooltip 
+                <Tooltip
                   cursor={{ fill: 'var(--secondary)' }}
-                  contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)' }}
+                  contentStyle={{
+                    backgroundColor: 'var(--card)',
+                    borderColor: 'var(--border)',
+                    borderRadius: '8px',
+                    color: 'var(--foreground)',
+                  }}
+                  formatter={(value: number) => [`${value.toLocaleString()} ${t("EGP", "ج.م")}`, ""]}
                 />
-                <Bar dataKey="value" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {chartData.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

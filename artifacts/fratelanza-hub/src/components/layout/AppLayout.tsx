@@ -15,22 +15,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
-const navItems = [
-  { href: "/", icon: LayoutDashboard, labelEn: "Dashboard", labelAr: "لوحة القيادة" },
-  { href: "/tasks", icon: CheckSquare, labelEn: "Tasks", labelAr: "المهام" },
-  { href: "/crm", icon: Users, labelEn: "Clients", labelAr: "العملاء" },
-  { href: "/finance", icon: CreditCard, labelEn: "Finance", labelAr: "المالية" },
-  { href: "/team", icon: UserSquare2, labelEn: "Team", labelAr: "الفريق" },
-  { href: "/products", icon: Package, labelEn: "Products", labelAr: "المنتجات" },
-  { href: "/rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
-  { href: "/reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
+const ALL_NAV_ITEMS = [
+  { href: "/", key: "dashboard", icon: LayoutDashboard, labelEn: "Dashboard", labelAr: "لوحة القيادة" },
+  { href: "/tasks", key: "tasks", icon: CheckSquare, labelEn: "Tasks", labelAr: "المهام" },
+  { href: "/crm", key: "crm", icon: Users, labelEn: "Clients", labelAr: "العملاء" },
+  { href: "/finance", key: "finance", icon: CreditCard, labelEn: "Finance", labelAr: "المالية" },
+  { href: "/team", key: "team", icon: UserSquare2, labelEn: "Team", labelAr: "الفريق" },
+  { href: "/products", key: "products", icon: Package, labelEn: "Products", labelAr: "المنتجات" },
+  { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
+  { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
 ];
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { language, setLanguage, t, isRtl } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [changePwOpen, setChangePwOpen] = useState(false);
@@ -43,6 +43,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     refetchInterval: 15000,
   });
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  const isAdmin = user?.role === "admin";
+  const userPerms = user?.permissions ?? [];
+
+  const navItems = ALL_NAV_ITEMS.filter(item => isAdmin || userPerms.includes(item.key));
 
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location === href || location.startsWith(href + "/");
@@ -68,7 +73,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     } finally { setPwLoading(false); }
   };
 
-  const NavLink = ({ item, onClick }: { item: typeof navItems[0]; onClick?: () => void }) => {
+  const NavLink = ({ item, onClick }: { item: typeof ALL_NAV_ITEMS[0]; onClick?: () => void }) => {
     const active = isActive(item.href);
     const Icon = item.icon;
     return (
@@ -82,6 +87,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const showNotifications = isAdmin || userPerms.includes("notifications");
+  const showSettings = isAdmin;
+
   const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => (
     <>
       <div className="p-5 pb-3">
@@ -91,6 +99,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <span className="font-bold text-base tracking-tight">{t("Fratelanza", "فراتيلانزا")}</span>
         </div>
+        {user?.displayName && (
+          <p className="text-xs text-muted-foreground mt-2 truncate">{user.displayName}</p>
+        )}
       </div>
 
       <nav className="flex-1 px-3 py-1 space-y-0.5 overflow-y-auto">
@@ -98,26 +109,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div className="p-3 border-t border-border space-y-0.5">
-        <Link href="/notifications" onClick={onNavClick}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${location.startsWith("/notifications") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
-          data-testid="nav-notifications"
-        >
-          <div className="relative">
-            <Bell size={17} />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>
-            )}
-          </div>
-          {t("Notifications", "الإشعارات")}
-          {unreadCount > 0 && <span className="ml-auto text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
-        </Link>
-        <Link href="/settings" onClick={onNavClick}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${location.startsWith("/settings") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
-          data-testid="nav-settings"
-        >
-          <Settings size={17} />
-          {t("Settings", "الإعدادات")}
-        </Link>
+        {showNotifications && (
+          <Link href="/notifications" onClick={onNavClick}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${location.startsWith("/notifications") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+            data-testid="nav-notifications"
+          >
+            <div className="relative">
+              <Bell size={17} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>
+              )}
+            </div>
+            {t("Notifications", "الإشعارات")}
+            {unreadCount > 0 && <span className="ml-auto text-xs bg-red-500 text-white font-bold px-1.5 py-0.5 rounded-full">{unreadCount}</span>}
+          </Link>
+        )}
+        {showSettings && (
+          <Link href="/settings" onClick={onNavClick}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium ${location.startsWith("/settings") ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}
+            data-testid="nav-settings"
+          >
+            <Settings size={17} />
+            {t("Settings", "الإعدادات")}
+          </Link>
+        )}
         <button onClick={() => setChangePwOpen(true)}
           className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">
           <KeyRound size={17} />
@@ -132,9 +147,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     </>
   );
 
-  const allNavForHeader = [...navItems,
-    { href: "/notifications", labelEn: "Notifications", labelAr: "الإشعارات" },
-    { href: "/settings", labelEn: "Settings", labelAr: "الإعدادات" },
+  const allNavForHeader = [...ALL_NAV_ITEMS,
+    { href: "/notifications", key: "notifications", labelEn: "Notifications", labelAr: "الإشعارات" },
+    { href: "/settings", key: "settings", labelEn: "Settings", labelAr: "الإعدادات" },
   ];
   const currentNavItem = allNavForHeader.find(i => isActive(i.href));
   const headerTitle = currentNavItem ? t(currentNavItem.labelEn, currentNavItem.labelAr) : t("Overview", "نظرة عامة");
@@ -168,7 +183,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Button variant="outline" size="sm" onClick={() => setLanguage(language === "en" ? "ar" : "en")} data-testid="toggle-language" className="font-medium text-xs px-2">
               {language === "en" ? "عربي" : "English"}
             </Button>
-            {unreadCount > 0 && (
+            {unreadCount > 0 && showNotifications && (
               <Link href="/notifications">
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell size={17} />

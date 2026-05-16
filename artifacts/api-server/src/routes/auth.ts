@@ -5,11 +5,21 @@ import bcrypt from "bcryptjs";
 
 const router: IRouter = Router();
 
+const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","reports","notifications","settings"];
+
 async function ensureAdminExists() {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.username, "admin"));
   if (!existing) {
     const passwordHash = await bcrypt.hash(process.env.ADMIN_PASSWORD || "admin123", 10);
-    await db.insert(usersTable).values({ username: "admin", passwordHash, role: "admin", displayName: "Administrator" });
+    await db.insert(usersTable).values({
+      username: "admin",
+      passwordHash,
+      role: "admin",
+      displayName: "Administrator",
+      permissions: JSON.stringify(ALL_PERMISSIONS),
+    });
+  } else if (existing.role !== "admin") {
+    await db.update(usersTable).set({ role: "admin", permissions: JSON.stringify(ALL_PERMISSIONS) }).where(eq(usersTable.username, "admin"));
   }
 }
 ensureAdminExists().catch(() => {});
@@ -21,10 +31,12 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     res.status(401).json({ error: "Invalid credentials" }); return;
   }
+  const permissions: string[] = user.role === "admin" ? ALL_PERMISSIONS : (JSON.parse(user.permissions || "[]") as string[]);
   (req.session as any).userId = user.id;
   (req.session as any).username = user.username;
   (req.session as any).role = user.role;
-  res.json({ id: user.id, username: user.username, displayName: user.displayName, role: user.role });
+  (req.session as any).permissions = permissions;
+  res.json({ id: user.id, username: user.username, displayName: user.displayName, role: user.role, permissions });
 });
 
 router.post("/auth/logout", (req: Request, res: Response): void => {
@@ -35,7 +47,8 @@ router.post("/auth/logout", (req: Request, res: Response): void => {
 router.get("/auth/me", (req: Request, res: Response): void => {
   const s = req.session as any;
   if (!s.userId) { res.status(401).json({ error: "Not authenticated" }); return; }
-  res.json({ id: s.userId, username: s.username, role: s.role });
+  const permissions: string[] = s.role === "admin" ? ALL_PERMISSIONS : (s.permissions || []);
+  res.json({ id: s.userId, username: s.username, role: s.role, permissions });
 });
 
 router.post("/auth/change-password", async (req: Request, res: Response): Promise<void> => {
@@ -47,7 +60,7 @@ router.post("/auth/change-password", async (req: Request, res: Response): Promis
     res.status(401).json({ error: "Current password is incorrect" }); return;
   }
   const passwordHash = await bcrypt.hash(newPassword, 10);
-  await db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, s.userId));
+  await db.update(usersTable).set({ passwordHash, updatedAt: new Date() }).where(eq(usersTable.id, s.userId));
   res.json({ ok: true });
 });
 

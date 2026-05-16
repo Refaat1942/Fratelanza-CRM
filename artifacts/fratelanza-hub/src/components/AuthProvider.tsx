@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-type AuthUser = { id: number; username: string; role: string } | null;
+export type AuthUser = { id: number; username: string; role: string; permissions: string[]; displayName?: string } | null;
 type AuthCtx = { user: AuthUser; loading: boolean; login: (u: string, p: string) => Promise<void>; logout: () => Promise<void> };
 
 const AuthContext = createContext<AuthCtx>({ user: null, loading: true, login: async () => {}, logout: async () => {} });
