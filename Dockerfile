@@ -1,7 +1,7 @@
 FROM node:24-alpine
 WORKDIR /app
 
-RUN corepack enable
+RUN npm install -g pnpm
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY lib/ lib/
@@ -10,7 +10,7 @@ COPY artifacts/fratelanza-hub/ artifacts/fratelanza-hub/
 COPY scripts/ scripts/
 COPY tsconfig.json tsconfig.base.json ./
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 RUN PORT=3000 BASE_PATH=/ pnpm --filter @workspace/fratelanza-hub run build
 
