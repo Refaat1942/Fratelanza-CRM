@@ -56,7 +56,11 @@ router.post("/tasks", async (req, res): Promise<void> => {
     return;
   }
 
-  const [task] = await db.insert(tasksTable).values(parsed.data).returning();
+  const { dueDate, ...rest } = parsed.data;
+  const [task] = await db.insert(tasksTable).values({
+    ...rest,
+    ...(dueDate ? { dueDate: dueDate.toISOString().slice(0, 10) } : {}),
+  }).returning();
 
   await db.insert(activityTable).values({
     type: "task_created",
@@ -96,9 +100,15 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const { dueDate: updateDueDate, ...updateRest } = parsed.data;
   const [task] = await db
     .update(tasksTable)
-    .set(parsed.data)
+    .set({
+      ...updateRest,
+      ...(updateDueDate !== undefined
+        ? { dueDate: updateDueDate ? updateDueDate.toISOString().slice(0, 10) : null }
+        : {}),
+    })
     .where(eq(tasksTable.id, params.data.id))
     .returning();
 

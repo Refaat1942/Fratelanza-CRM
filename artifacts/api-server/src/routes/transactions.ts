@@ -70,7 +70,11 @@ router.post("/transactions", async (req, res): Promise<void> => {
     return;
   }
 
-  const [transaction] = await db.insert(transactionsTable).values(parsed.data).returning();
+  const { date, ...txRest } = parsed.data;
+  const [transaction] = await db.insert(transactionsTable).values({
+    ...txRest,
+    date: date.toISOString().slice(0, 10),
+  }).returning();
 
   await db.insert(activityTable).values({
     type: "transaction_recorded",
@@ -112,9 +116,15 @@ router.patch("/transactions/:id", async (req, res): Promise<void> => {
     return;
   }
 
+  const { date: updateDate, ...updateTxRest } = parsed.data;
   const [transaction] = await db
     .update(transactionsTable)
-    .set(parsed.data)
+    .set({
+      ...updateTxRest,
+      ...(updateDate !== undefined
+        ? { date: updateDate.toISOString().slice(0, 10) }
+        : {}),
+    })
     .where(eq(transactionsTable.id, params.data.id))
     .returning();
 
