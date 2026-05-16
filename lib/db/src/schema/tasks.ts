@@ -12,6 +12,7 @@ export const tasksTable = pgTable("tasks", {
   priority: text("priority").notNull().default("medium"),
   dueDate: text("due_date"),
   assignee: text("assignee"),
+  recurrence: text("recurrence").notNull().default("none"),
   clientId: integer("client_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

@@ -27,7 +27,7 @@ export default function Dashboard() {
   const statCards = [
     {
       title: t("Total Revenue", "إجمالي الإيرادات"),
-      value: `$${summary?.totalRevenue.toLocaleString() || 0}`,
+      value: `${(summary?.totalRevenue || 0).toLocaleString()} ${t("EGP", "ج.م")}`,
       icon: DollarSign,
       color: "text-emerald-500"
     },
@@ -45,7 +45,7 @@ export default function Dashboard() {
     },
     {
       title: t("Net Balance", "الرصيد الصافي"),
-      value: `$${summary?.netBalance.toLocaleString() || 0}`,
+      value: `${(summary?.netBalance || 0).toLocaleString()} ${t("EGP", "ج.م")}`,
       icon: Activity,
       color: "text-amber-500"
     }

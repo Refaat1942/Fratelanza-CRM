@@ -1,6 +1,6 @@
-# [Project name]
+# Fratelanza Hub
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A bilingual (English/Arabic, RTL-aware) business operations web app for managing tasks, clients, finance, team, products, rentals, and reports.
 
 ## Run & Operate
 
@@ -9,36 +9,69 @@ _Replace the heading above with the project's name, and this line with one sente
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- Required env: `DATABASE_URL` — Postgres connection string, `SESSION_SECRET` — session encryption
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
+- API: Express 5 + express-session (cookie-based auth)
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
+- File upload: multer (to `./uploads/`)
+- Password hashing: bcryptjs
 - Build: esbuild (CJS bundle)
+- Frontend: React + Vite + Tailwind CSS + shadcn/ui + Recharts
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- DB schema: `lib/db/src/schema/` — tasks, clients, transactions, activity, employees, notifications, users, products, rentals
+- API routes: `artifacts/api-server/src/routes/` — auth, tasks, clients, transactions, employees, notifications, reports, products, rentals, dashboard
+- Frontend pages: `artifacts/fratelanza-hub/src/pages/`
+- Shared API client: `lib/api-client-react/` (generated from OpenAPI)
+- Manual apiFetch: `artifacts/fratelanza-hub/src/lib/api.ts`
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Session-based auth using express-session; all API routes except `/api/auth/login` and `/api/healthz` require a valid session.
+- Bilingual data model: both English and Arabic fields stored in DB (e.g., `title` + `title_ar`); forms show only one language at a time based on current language setting.
+- `customFetch` in `lib/api-client-react/src/custom-fetch.ts` always sends `credentials: "include"` for session cookies.
+- File uploads stored in `./uploads/` directory on the server (configured via `UPLOAD_DIR` env var in production).
+- Notifications auto-created when tasks are assigned or completed.
+- Default admin user auto-seeded on first server start: username=`admin`, password=`admin123` (change via `ADMIN_PASSWORD` env var).
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Dashboard**: Revenue/client/task summary, charts, recent activity
+- **Tasks**: Kanban + list view, assignee dropdown from employees, recurrence (daily/weekly/monthly), deadline, auto-notification on assign
+- **Clients (CRM)**: Client management, pipeline stages
+- **Finance**: Income/expense tracking in EGP (ج.م), category breakdown, charts
+- **Team/HR**: Employee management
+- **Products**: Inventory/store with stock and pricing in EGP
+- **Rentals**: Rental contracts with document upload, status workflow, daily rates in EGP
+- **Reports**: Analytics and charts
+- **Notifications**: Bell icon with unread count, auto-notified on task assignment
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Currency: Egyptian Pound (EGP / ج.م) — never USD
+- Bilingual forms: Show only the active language fields (EN or AR), not both simultaneously
+- All UI must be consistent per language (all Arabic or all English, no mixing)
+
+## VPS Deployment
+
+- VPS: 187.124.15.14, port 1025
+- Docker Compose: app + PostgreSQL container (yes, there IS a database on the VPS inside Docker)
+- Manual deploy: `cd ~/Fratelanza-HUB && git pull origin main && docker compose up -d --build`
+- GitHub repo: https://github.com/Refaat1942/Fratelanza-HUB
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Use `pnpm --filter @workspace/db run push` after schema changes
+- Run codegen after OpenAPI spec changes: `pnpm --filter @workspace/api-spec run codegen`
+- New API routes that use features not in the codegen spec use plain `zod` (not `zod/v4`) in route files
+- express-session MemoryStore is used (single server); sufficient for VPS deployment
+- `UPLOAD_DIR` env var sets upload directory in production Docker environment
 
 ## Pointers
 

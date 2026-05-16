@@ -4,3 +4,6 @@ export * from "./transactions";
 export * from "./activity";
 export * from "./employees";
 export * from "./notifications";
+export * from "./users";
+export * from "./products";
+export * from "./rentals";

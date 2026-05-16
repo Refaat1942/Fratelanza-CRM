@@ -32,6 +32,7 @@ export default function Finance() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
 
+  const { language } = useLanguage();
   const [formData, setFormData] = useState({
     title: "",
     titleAr: "",
@@ -120,7 +121,7 @@ export default function Finance() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat(isRtl ? 'ar-EG' : 'en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    return `${amount.toLocaleString(isRtl ? 'ar-EG' : 'en-US', { maximumFractionDigits: 2 })} ${isRtl ? 'ج.م' : 'EGP'}`;
   };
 
   const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
@@ -161,15 +162,18 @@ export default function Finance() {
                     </Select>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t("Title (EN)", "العنوان (بالإنجليزية)")}</Label>
-                    <Input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t("Title (AR)", "العنوان (بالعربية)")}</Label>
-                    <Input dir="rtl" value={formData.titleAr} onChange={e => setFormData({...formData, titleAr: e.target.value})} />
-                  </div>
+                <div className="space-y-2">
+                  <Label>{language === "ar" ? "العنوان *" : "Title *"}</Label>
+                  <Input
+                    required
+                    dir={language === "ar" ? "rtl" : "ltr"}
+                    value={language === "ar" ? formData.titleAr : formData.title}
+                    onChange={e => language === "ar"
+                      ? setFormData({ ...formData, titleAr: e.target.value, title: e.target.value })
+                      : setFormData({ ...formData, title: e.target.value, titleAr: formData.titleAr || e.target.value })
+                    }
+                    placeholder={language === "ar" ? "أدخل العنوان..." : "Enter title..."}
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

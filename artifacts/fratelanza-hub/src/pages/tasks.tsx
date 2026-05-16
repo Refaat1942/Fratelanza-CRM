@@ -1,17 +1,13 @@
 import React, { useState } from "react";
 import { useLanguage } from "../components/LanguageProvider";
 import {
-  useListTasks,
-  useGetTaskStats,
-  useCreateTask,
-  useUpdateTask,
-  useDeleteTask,
-  getListTasksQueryKey,
-  getGetTaskStatsQueryKey
+  useListTasks, useGetTaskStats, useCreateTask, useUpdateTask, useDeleteTask,
+  getListTasksQueryKey, getGetTaskStatsQueryKey
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -19,36 +15,44 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Clock, CheckCircle2, AlertCircle, PlayCircle, Trash2, Edit2, Activity, LayoutList, Columns } from "lucide-react";
+import { Plus, Clock, CheckCircle2, AlertCircle, PlayCircle, Trash2, Edit2, Activity, LayoutList, Columns, RepeatIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type Task = {
   id: number; title: string; titleAr?: string | null; description?: string | null;
   descriptionAr?: string | null; status: string; priority: string;
-  dueDate?: string | null; assignee?: string | null; clientId?: number | null;
-  createdAt: string; updatedAt: string;
+  dueDate?: string | null; assignee?: string | null; recurrence?: string | null;
+  clientId?: number | null; createdAt: string; updatedAt: string;
 };
+type Employee = { id: number; name: string; nameAr?: string };
 
 const statusConfig: Record<string, { labelEn: string; labelAr: string; color: string; icon: any }> = {
-  pending: { labelEn: "Pending", labelAr: "قيد الانتظار", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-500", icon: Clock },
-  in_progress: { labelEn: "In Progress", labelAr: "قيد التنفيذ", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500", icon: PlayCircle },
-  completed: { labelEn: "Completed", labelAr: "مكتمل", color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-500", icon: CheckCircle2 },
-  cancelled: { labelEn: "Cancelled", labelAr: "ملغى", color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400", icon: AlertCircle },
+  pending:     { labelEn: "Pending",     labelAr: "قيد الانتظار", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-500",   icon: Clock },
+  in_progress: { labelEn: "In Progress", labelAr: "قيد التنفيذ",  color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500",       icon: PlayCircle },
+  completed:   { labelEn: "Completed",   labelAr: "مكتمل",         color: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-500", icon: CheckCircle2 },
+  cancelled:   { labelEn: "Cancelled",   labelAr: "ملغى",          color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400",          icon: AlertCircle },
 };
 
 const priorityConfig: Record<string, { labelEn: string; labelAr: string; color: string }> = {
-  high: { labelEn: "High", labelAr: "عالي", color: "border-red-200 text-red-700 dark:border-red-900/50 dark:text-red-400" },
-  medium: { labelEn: "Medium", labelAr: "متوسط", color: "border-blue-200 text-blue-700 dark:border-blue-900/50 dark:text-blue-400" },
-  low: { labelEn: "Low", labelAr: "منخفض", color: "border-gray-200 text-gray-700 dark:border-gray-800 dark:text-gray-400" },
+  high:   { labelEn: "High",   labelAr: "عالي",    color: "border-red-200 text-red-700 dark:border-red-900/50 dark:text-red-400" },
+  medium: { labelEn: "Medium", labelAr: "متوسط",   color: "border-blue-200 text-blue-700 dark:border-blue-900/50 dark:text-blue-400" },
+  low:    { labelEn: "Low",    labelAr: "منخفض",   color: "border-gray-200 text-gray-700 dark:border-gray-800 dark:text-gray-400" },
 };
+
+const recurrenceOptions = [
+  { value: "none",    labelEn: "One-time",  labelAr: "مرة واحدة" },
+  { value: "daily",   labelEn: "Daily",     labelAr: "يومي" },
+  { value: "weekly",  labelEn: "Weekly",    labelAr: "أسبوعي" },
+  { value: "monthly", labelEn: "Monthly",   labelAr: "شهري" },
+];
 
 const emptyForm = {
   title: "", titleAr: "", description: "", descriptionAr: "",
-  status: "pending", priority: "medium", dueDate: "", assignee: "",
+  status: "pending", priority: "medium", dueDate: "", assignee: "", recurrence: "none",
 };
 
 export default function Tasks() {
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, language } = useLanguage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -63,6 +67,7 @@ export default function Tasks() {
   const { data: tasks, isLoading: isTasksLoading } = useListTasks(
     statusFilter !== "all" ? { status: statusFilter as any } : {}
   );
+  const { data: employees } = useQuery<Employee[]>({ queryKey: ["employees"], queryFn: () => apiFetch("/employees") });
 
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
@@ -71,12 +76,24 @@ export default function Tasks() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListTasksQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetTaskStatsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+  };
+
+  const buildPayload = () => {
+    const d = { ...formData };
+    if (language === "ar") {
+      if (!d.name) d.title = d.titleAr || "Untitled";
+    } else {
+      if (!d.titleAr) d.titleAr = d.title;
+    }
+    return d;
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createTask.mutateAsync({ data: formData as any });
+      const payload = buildPayload();
+      await createTask.mutateAsync({ data: payload as any });
       invalidate();
       setIsCreateOpen(false);
       setFormData({ ...emptyForm });
@@ -88,7 +105,8 @@ export default function Tasks() {
     e.preventDefault();
     if (!selectedTask) return;
     try {
-      await updateTask.mutateAsync({ id: selectedTask.id, data: formData as any });
+      const payload = buildPayload();
+      await updateTask.mutateAsync({ id: selectedTask.id, data: payload as any });
       invalidate();
       setIsEditOpen(false);
       setFormData({ ...emptyForm });
@@ -119,55 +137,113 @@ export default function Tasks() {
       description: task.description || "", descriptionAr: task.descriptionAr || "",
       status: task.status || "pending", priority: task.priority || "medium",
       dueDate: task.dueDate || "", assignee: task.assignee || "",
+      recurrence: task.recurrence || "none",
     });
     setIsEditOpen(true);
   };
 
   const FormFields = () => (
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Title (EN)", "العنوان (بالإنجليزية)")}</Label><Input required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Title (AR)", "العنوان (بالعربية)")}</Label><Input dir="rtl" value={formData.titleAr} onChange={e => setFormData({ ...formData, titleAr: e.target.value })} /></div>
+    <div className="grid gap-4 py-4 max-h-[65vh] overflow-y-auto pr-1">
+      <div className="space-y-2">
+        <Label className="text-base font-semibold">
+          {language === "ar" ? "عنوان المهمة *" : "Task Title *"}
+        </Label>
+        <Input
+          required
+          dir={language === "ar" ? "rtl" : "ltr"}
+          value={language === "ar" ? formData.titleAr : formData.title}
+          onChange={e => language === "ar"
+            ? setFormData({ ...formData, titleAr: e.target.value, title: e.target.value })
+            : setFormData({ ...formData, title: e.target.value, titleAr: formData.titleAr || e.target.value })
+          }
+          placeholder={language === "ar" ? "أدخل عنوان المهمة..." : "Enter task title..."}
+        />
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Description (EN)", "الوصف (بالإنجليزية)")}</Label><Textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Description (AR)", "الوصف (بالعربية)")}</Label><Textarea dir="rtl" value={formData.descriptionAr} onChange={e => setFormData({ ...formData, descriptionAr: e.target.value })} /></div>
+
+      <div className="space-y-2">
+        <Label>{language === "ar" ? "الوصف" : "Description"}</Label>
+        <Textarea
+          dir={language === "ar" ? "rtl" : "ltr"}
+          value={language === "ar" ? formData.descriptionAr : formData.description}
+          onChange={e => language === "ar"
+            ? setFormData({ ...formData, descriptionAr: e.target.value })
+            : setFormData({ ...formData, description: e.target.value })
+          }
+          placeholder={language === "ar" ? "وصف اختياري..." : "Optional description..."}
+          rows={2}
+        />
       </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>{t("Status", "الحالة")}</Label>
           <Select value={formData.status} onValueChange={v => setFormData({ ...formData, status: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(statusConfig).map(([k, c]) => <SelectItem key={k} value={k}>{t(c.labelEn, c.labelAr)}</SelectItem>)}
-            </SelectContent>
+            <SelectContent>{Object.entries(statusConfig).map(([k, c]) => <SelectItem key={k} value={k}>{t(c.labelEn, c.labelAr)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           <Label>{t("Priority", "الأولوية")}</Label>
           <Select value={formData.priority} onValueChange={v => setFormData({ ...formData, priority: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {Object.entries(priorityConfig).map(([k, c]) => <SelectItem key={k} value={k}>{t(c.labelEn, c.labelAr)}</SelectItem>)}
-            </SelectContent>
+            <SelectContent>{Object.entries(priorityConfig).map(([k, c]) => <SelectItem key={k} value={k}>{t(c.labelEn, c.labelAr)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
       </div>
+
+      <div className="space-y-2">
+        <Label className="flex items-center gap-1.5">📅 {t("Deadline (Required)", "الموعد النهائي (مطلوب)")}</Label>
+        <Input type="date" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} required />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2"><Label>{t("Due Date", "تاريخ الاستحقاق")}</Label><Input type="date" value={formData.dueDate} onChange={e => setFormData({ ...formData, dueDate: e.target.value })} /></div>
-        <div className="space-y-2"><Label>{t("Assignee", "المسؤول")}</Label><Input value={formData.assignee} onChange={e => setFormData({ ...formData, assignee: e.target.value })} /></div>
+        <div className="space-y-2">
+          <Label>{t("Assign To", "تعيين إلى")}</Label>
+          <Select value={formData.assignee} onValueChange={v => setFormData({ ...formData, assignee: v })}>
+            <SelectTrigger><SelectValue placeholder={t("Select employee", "اختر موظفاً")} /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">{t("— Unassigned —", "— غير مُعيَّن —")}</SelectItem>
+              {employees?.map(emp => (
+                <SelectItem key={emp.id} value={isRtl ? (emp.nameAr || emp.name) : emp.name}>
+                  {isRtl ? (emp.nameAr || emp.name) : emp.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            value={formData.assignee}
+            onChange={e => setFormData({ ...formData, assignee: e.target.value })}
+            placeholder={t("Or type a name", "أو اكتب اسماً")}
+            dir={language === "ar" ? "rtl" : "ltr"}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1.5"><RepeatIcon size={13} />{t("Recurrence", "التكرار")}</Label>
+          <Select value={formData.recurrence} onValueChange={v => setFormData({ ...formData, recurrence: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{recurrenceOptions.map(r => <SelectItem key={r.value} value={r.value}>{t(r.labelEn, r.labelAr)}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );
 
+  const recurrenceBadge = (r?: string | null) => {
+    if (!r || r === "none") return null;
+    const rec = recurrenceOptions.find(x => x.value === r);
+    if (!rec) return null;
+    return <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 flex items-center gap-0.5"><RepeatIcon size={8} />{t(rec.labelEn, rec.labelAr)}</span>;
+  };
+
   const TaskCard = ({ task }: { task: Task }) => {
     const StatusIcon = statusConfig[task.status]?.icon || Clock;
+    const isOverdue = task.dueDate && task.status !== "completed" && new Date(task.dueDate) < new Date();
     return (
       <Card className="hover:border-primary/50 transition-colors" data-testid={`task-${task.id}`}>
         <CardContent className="p-4 flex flex-col sm:flex-row gap-4 justify-between sm:items-center">
           <div className="flex gap-3 items-start">
-            <div className={`mt-1 rounded-full p-1.5 shrink-0 ${statusConfig[task.status]?.color || 'bg-gray-100 text-gray-500'}`}>
-              <StatusIcon size={15} />
+            <div className={`mt-1 rounded-full p-1.5 shrink-0 ${statusConfig[task.status]?.color || "bg-gray-100 text-gray-500"}`}>
+              <StatusIcon size={14} />
             </div>
             <div>
               <h4 className="font-semibold flex items-center gap-2 flex-wrap">
@@ -175,19 +251,26 @@ export default function Tasks() {
                 <Badge variant="outline" className={`text-xs ${priorityConfig[task.priority]?.color}`}>
                   {t(priorityConfig[task.priority]?.labelEn, priorityConfig[task.priority]?.labelAr)}
                 </Badge>
+                {recurrenceBadge(task.recurrence)}
               </h4>
               {(isRtl ? (task.descriptionAr || task.description) : task.description) && (
                 <p className="text-muted-foreground mt-1 line-clamp-2 text-sm">
                   {isRtl ? (task.descriptionAr || task.description) : task.description}
                 </p>
               )}
-              {task.assignee && <p className="text-xs text-muted-foreground mt-1">{t("Assignee:", "المسؤول:")} {task.assignee}</p>}
-              {task.dueDate && <p className="text-xs text-muted-foreground">{t("Due:", "الاستحقاق:")} {task.dueDate}</p>}
+              <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
+                {task.assignee && <span>👤 {task.assignee}</span>}
+                {task.dueDate && (
+                  <span className={isOverdue ? "text-red-500 font-semibold" : ""}>
+                    📅 {isOverdue ? t("OVERDUE:", "متأخر:") : ""} {task.dueDate}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0 sm:self-center">
-            <Button variant="ghost" size="icon" onClick={() => openEdit(task)} data-testid={`btn-edit-task-${task.id}`}><Edit2 size={15} /></Button>
-            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(task.id)} data-testid={`btn-delete-task-${task.id}`}><Trash2 size={15} /></Button>
+            <Button variant="ghost" size="icon" onClick={() => openEdit(task)} data-testid={`btn-edit-task-${task.id}`}><Edit2 size={14} /></Button>
+            <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete(task.id)} data-testid={`btn-delete-task-${task.id}`}><Trash2 size={14} /></Button>
           </div>
         </CardContent>
       </Card>
@@ -197,43 +280,47 @@ export default function Tasks() {
   const KanbanBoard = ({ tasks }: { tasks: Task[] }) => (
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 min-h-[500px]">
       {Object.entries(statusConfig).map(([status, cfg]) => {
-        const col = tasks.filter(t => t.status === status);
+        const col = tasks.filter(tk => tk.status === status);
         const Icon = cfg.icon;
         return (
           <div key={status} className="flex flex-col gap-2">
             <div className={`flex items-center gap-2 px-3 py-2 rounded-md ${cfg.color}`}>
-              <Icon size={14} />
-              <span className="text-sm font-semibold">{t(cfg.labelEn, cfg.labelAr)}</span>
+              <Icon size={14} /><span className="text-sm font-semibold">{t(cfg.labelEn, cfg.labelAr)}</span>
               <span className="ml-auto text-xs font-bold opacity-70">{col.length}</span>
             </div>
             <div className="flex flex-col gap-2 min-h-[200px] p-1">
-              {col.map(task => (
-                <Card key={task.id} className="hover:border-primary/50 transition-colors cursor-pointer group">
-                  <CardContent className="p-3">
-                    <div className="flex justify-between items-start gap-2">
-                      <h4 className="font-medium text-sm leading-tight">{isRtl ? (task.titleAr || task.title) : task.title}</h4>
-                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(task)}><Edit2 size={11} /></Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(task.id)}><Trash2 size={11} /></Button>
+              {col.map(task => {
+                const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+                return (
+                  <Card key={task.id} className="hover:border-primary/50 transition-colors cursor-pointer group">
+                    <CardContent className="p-3">
+                      <div className="flex justify-between items-start gap-2">
+                        <h4 className="font-medium text-sm leading-tight">{isRtl ? (task.titleAr || task.title) : task.title}</h4>
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => openEdit(task)}><Edit2 size={11} /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => handleDelete(task.id)}><Trash2 size={11} /></Button>
+                        </div>
                       </div>
-                    </div>
-                    <Badge variant="outline" className={`text-xs mt-2 ${priorityConfig[task.priority]?.color}`}>
-                      {t(priorityConfig[task.priority]?.labelEn, priorityConfig[task.priority]?.labelAr)}
-                    </Badge>
-                    {task.assignee && <p className="text-xs text-muted-foreground mt-1">{task.assignee}</p>}
-                    {task.dueDate && <p className="text-xs text-muted-foreground">{task.dueDate}</p>}
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {Object.keys(statusConfig).filter(s => s !== status).map(s => (
-                        <button
-                          key={s}
-                          onClick={() => handleQuickStatus(task, s)}
-                          className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors hover:opacity-80 ${statusConfig[s].color}`}
-                        >→ {t(statusConfig[s].labelEn, statusConfig[s].labelAr)}</button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex items-center gap-1 mt-2 flex-wrap">
+                        <Badge variant="outline" className={`text-xs ${priorityConfig[task.priority]?.color}`}>
+                          {t(priorityConfig[task.priority]?.labelEn, priorityConfig[task.priority]?.labelAr)}
+                        </Badge>
+                        {recurrenceBadge(task.recurrence)}
+                      </div>
+                      {task.assignee && <p className="text-xs text-muted-foreground mt-1">👤 {task.assignee}</p>}
+                      {task.dueDate && <p className={`text-xs mt-0.5 ${isOverdue ? "text-red-500 font-semibold" : "text-muted-foreground"}`}>📅 {task.dueDate}</p>}
+                      <div className="flex gap-1 mt-2 flex-wrap">
+                        {Object.keys(statusConfig).filter(s => s !== status).map(s => (
+                          <button key={s} onClick={() => handleQuickStatus(task, s)}
+                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors hover:opacity-80 ${statusConfig[s].color}`}>
+                            → {t(statusConfig[s].labelEn, statusConfig[s].labelAr)}
+                          </button>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
               {col.length === 0 && (
                 <div className="flex-1 border-2 border-dashed border-border/50 rounded-lg flex items-center justify-center text-xs text-muted-foreground/50 min-h-[80px]">
                   {t("No tasks", "لا توجد مهام")}
@@ -278,7 +365,7 @@ export default function Tasks() {
       </div>
 
       {isStatsLoading ? (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-24" />)}</div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}</div>
       ) : stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-900/30">
@@ -299,10 +386,10 @@ export default function Tasks() {
               <CheckCircle2 className="w-8 h-8 text-emerald-500/50" />
             </CardContent>
           </Card>
-          <Card className="bg-gray-50/50 dark:bg-gray-800/20 border-gray-200 dark:border-gray-800">
+          <Card>
             <CardContent className="p-4 flex items-center justify-between">
-              <div><p className="text-sm font-medium text-gray-600 dark:text-gray-400">{t("Total", "الإجمالي")}</p><h3 className="text-2xl font-bold mt-1">{stats.pending + stats.in_progress + stats.completed + stats.cancelled}</h3></div>
-              <Activity className="w-8 h-8 text-gray-400/50" />
+              <div><p className="text-sm font-medium text-muted-foreground">{t("Total", "الإجمالي")}</p><h3 className="text-2xl font-bold mt-1">{stats.pending + stats.in_progress + stats.completed + stats.cancelled}</h3></div>
+              <Activity className="w-8 h-8 text-muted-foreground/30" />
             </CardContent>
           </Card>
         </div>
@@ -318,7 +405,7 @@ export default function Tasks() {
       )}
 
       {isTasksLoading ? (
-        <div className="space-y-4">{[1, 2, 3].map(i => <Skeleton key={i} className="h-24" />)}</div>
+        <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-24" />)}</div>
       ) : viewMode === "board" ? (
         <KanbanBoard tasks={tasks || []} />
       ) : tasks?.length === 0 ? (
