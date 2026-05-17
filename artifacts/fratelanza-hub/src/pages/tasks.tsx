@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Clock, CheckCircle2, AlertCircle, PlayCircle, Trash2, Edit2, Activity, LayoutList, Columns, RepeatIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
 type Task = {
   id: number; title: string; titleAr?: string | null; description?: string | null;
@@ -55,6 +56,7 @@ export default function Tasks() {
   const { t, isRtl, language } = useLanguage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
 
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"list" | "board">("list");
@@ -116,7 +118,19 @@ export default function Tasks() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t("Are you sure?", "هل أنت متأكد؟"))) return;
+    confirmDelete({
+      title: t("Delete task?", "حذف المهمة؟"),
+      onConfirm: async () => {
+        try {
+          await deleteTask.mutateAsync({ id });
+          invalidate();
+          toast({ title: t("Task deleted", "تم حذف المهمة") });
+        } catch { toast({ title: t("Error", "خطأ"), variant: "destructive" }); }
+      },
+    });
+  };
+
+  const _unusedDelete = async (id: number) => {
     try {
       await deleteTask.mutateAsync({ id });
       invalidate();

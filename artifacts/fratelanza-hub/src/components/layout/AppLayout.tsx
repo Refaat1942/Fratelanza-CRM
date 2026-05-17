@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
-  Bell, UserSquare2, Sun, Moon, X, Package, Home as HomeIcon, LogOut, KeyRound
+  Bell, UserSquare2, Sun, Moon, X, Package, Home as HomeIcon, LogOut, KeyRound,
+  Truck, FileText
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { useTheme } from "../ThemeProvider";
@@ -22,6 +23,8 @@ const ALL_NAV_ITEMS = [
   { href: "/finance", key: "finance", icon: CreditCard, labelEn: "Finance", labelAr: "المالية" },
   { href: "/team", key: "team", icon: UserSquare2, labelEn: "Team", labelAr: "الفريق" },
   { href: "/products", key: "products", icon: Package, labelEn: "Products", labelAr: "المنتجات" },
+  { href: "/suppliers", key: "suppliers", icon: Truck, labelEn: "Suppliers", labelAr: "الموردون" },
+  { href: "/purchase-orders", key: "purchase_orders", icon: FileText, labelEn: "Purchase Orders", labelAr: "أوامر الشراء" },
   { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
   { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
 ];

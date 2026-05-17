@@ -11,8 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Trash2, Edit2, ShieldCheck, User as UserIcon, Lock } from "lucide-react";
+import { Plus, Trash2, Edit2, ShieldCheck, User as UserIcon, Lock, Ban, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { Switch } from "@/components/ui/switch";
 
 type AppUser = {
   id: number;
@@ -20,6 +22,7 @@ type AppUser = {
   displayName?: string;
   role: string;
   permissions: string;
+  isActive: boolean;
   createdAt: string;
 };
 
@@ -30,6 +33,8 @@ const ALL_MODULES = [
   { key: "finance", labelEn: "Finance", labelAr: "المالية" },
   { key: "team", labelEn: "Team", labelAr: "الفريق" },
   { key: "products", labelEn: "Products", labelAr: "المنتجات" },
+  { key: "suppliers", labelEn: "Suppliers", labelAr: "الموردون" },
+  { key: "purchase_orders", labelEn: "Purchase Orders", labelAr: "أوامر الشراء" },
   { key: "rentals", labelEn: "Rentals", labelAr: "الإيجارات" },
   { key: "reports", labelEn: "Reports", labelAr: "التقارير" },
   { key: "notifications", labelEn: "Notifications", labelAr: "الإشعارات" },
@@ -40,6 +45,7 @@ export default function Settings() {
   const { user: me } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const confirmDelete = useDeleteConfirm();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<AppUser | null>(null);
@@ -64,6 +70,12 @@ export default function Settings() {
   const updateUser = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apiFetch(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); setEditUser(null); toast({ title: t("User updated", "تم تحديث المستخدم") }); },
+    onError: () => toast({ title: t("Error", "خطأ"), variant: "destructive" }),
+  });
+
+  const toggleActive = useMutation({
+    mutationFn: ({ id, isActive }: { id: number; isActive: boolean }) => apiFetch(`/users/${id}`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
+    onSuccess: (_d, vars) => { qc.invalidateQueries({ queryKey: ["users"] }); toast({ title: vars.isActive ? t("User activated", "تم تفعيل المستخدم") : t("User blocked", "تم حظر المستخدم") }); },
     onError: () => toast({ title: t("Error", "خطأ"), variant: "destructive" }),
   });
 
@@ -136,26 +148,34 @@ export default function Settings() {
                 try { perms = JSON.parse(u.permissions); } catch {}
                 const isAdmin = u.role === "admin";
                 const isSelf = u.id === me?.id;
+                const blocked = u.isActive === false;
                 return (
-                  <div key={u.id} className="flex items-center justify-between p-4 bg-card hover:bg-secondary/30 transition-colors">
+                  <div key={u.id} className={`flex items-center justify-between p-4 bg-card hover:bg-secondary/30 transition-colors ${blocked ? "opacity-60" : ""}`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${isAdmin ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
                         {isAdmin ? <ShieldCheck size={18} /> : <UserIcon size={16} />}
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-sm">{u.displayName || u.username}</span>
                           <Badge variant={isAdmin ? "default" : "secondary"} className="text-[10px] h-4 px-1.5">
                             {isAdmin ? t("Admin", "مدير") : t("User", "مستخدم")}
                           </Badge>
                           {isSelf && <Badge variant="outline" className="text-[10px] h-4 px-1.5">{t("You", "أنت")}</Badge>}
+                          {blocked && <Badge variant="destructive" className="text-[10px] h-4 px-1.5 gap-0.5"><Ban size={9} />{t("Blocked", "محظور")}</Badge>}
                         </div>
                         <p className="text-xs text-muted-foreground">
                           @{u.username} · {isAdmin ? t("Full access", "وصول كامل") : `${perms.length} ${t("modules", "وحدات")}`}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
+                      {!isSelf && (
+                        <div className="flex items-center gap-1.5 px-2" title={blocked ? t("Click to activate", "اضغط للتفعيل") : t("Click to block", "اضغط للحظر")}>
+                          <Switch checked={!blocked} onCheckedChange={(v) => toggleActive.mutate({ id: u.id, isActive: v })} />
+                          {blocked ? <Ban size={13} className="text-destructive" /> : <CheckCircle2 size={13} className="text-green-600" />}
+                        </div>
+                      )}
                       {!isAdmin && (
                         <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => openPerms(u)}>
                           <ShieldCheck size={13} />{t("Permissions", "الصلاحيات")}
@@ -164,7 +184,11 @@ export default function Settings() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(u)}><Edit2 size={14} /></Button>
                       {!isSelf && (
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                          onClick={() => { if (confirm(t("Delete this user?", "حذف هذا المستخدم؟"))) deleteUser.mutate(u.id); }}>
+                          onClick={() => confirmDelete({
+                            title: t("Delete this user?", "حذف هذا المستخدم؟"),
+                            description: t(`Permanently delete @${u.username}?`, `حذف @${u.username} نهائياً؟`),
+                            onConfirm: () => deleteUser.mutate(u.id),
+                          })}>
                           <Trash2 size={14} />
                         </Button>
                       )}

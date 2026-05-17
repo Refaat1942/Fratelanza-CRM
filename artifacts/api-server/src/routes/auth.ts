@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 
 const router: IRouter = Router();
 
-const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","reports","notifications","settings"];
+const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","suppliers","purchase_orders","reports","notifications","settings"];
 
 async function ensureAdminExists() {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.username, "admin"));
@@ -31,6 +31,9 @@ router.post("/auth/login", async (req: Request, res: Response): Promise<void> =>
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     res.status(401).json({ error: "Invalid credentials" }); return;
   }
+  if (user.isActive === false) {
+    res.status(403).json({ error: "Account is blocked. Contact your administrator." }); return;
+  }
   const permissions: string[] = user.role === "admin" ? ALL_PERMISSIONS : (JSON.parse(user.permissions || "[]") as string[]);
   (req.session as any).userId = user.id;
   (req.session as any).username = user.username;
@@ -49,6 +52,18 @@ router.get("/auth/me", (req: Request, res: Response): void => {
   if (!s.userId) { res.status(401).json({ error: "Not authenticated" }); return; }
   const permissions: string[] = s.role === "admin" ? ALL_PERMISSIONS : (s.permissions || []);
   res.json({ id: s.userId, username: s.username, role: s.role, permissions });
+});
+
+router.post("/auth/verify-password", async (req: Request, res: Response): Promise<void> => {
+  const s = req.session as any;
+  if (!s.userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { password } = req.body;
+  if (!password) { res.status(400).json({ error: "Password required" }); return; }
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, s.userId));
+  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    res.status(401).json({ error: "Incorrect password" }); return;
+  }
+  res.json({ ok: true });
 });
 
 router.post("/auth/change-password", async (req: Request, res: Response): Promise<void> => {

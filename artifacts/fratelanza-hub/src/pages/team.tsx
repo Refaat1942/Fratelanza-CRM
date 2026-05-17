@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, Users, UserCheck, Coffee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
 type Employee = {
   id: number; name: string; nameAr?: string; email?: string; phone?: string;
@@ -32,6 +33,7 @@ export default function Team() {
   const { t, isRtl, language } = useLanguage();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selected, setSelected] = useState<Employee | null>(null);
@@ -221,7 +223,7 @@ export default function Team() {
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" onClick={() => openEdit(emp)}><Edit2 size={15} /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => { if (confirm(t("Remove this employee?", "حذف هذا الموظف؟"))) deleteEmp.mutate(emp.id); }}><Trash2 size={15} /></Button>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => confirmDelete({ title: t("Remove this employee?", "حذف هذا الموظف؟"), onConfirm: () => deleteEmp.mutate(emp.id) })}><Trash2 size={15} /></Button>
                   </div>
                 </div>
                 {emp.salary && (

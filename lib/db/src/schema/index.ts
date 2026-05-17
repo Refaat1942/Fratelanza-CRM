@@ -7,3 +7,6 @@ export * from "./notifications";
 export * from "./users";
 export * from "./products";
 export * from "./rentals";
+export * from "./suppliers";
+export * from "./stockMovements";
+export * from "./purchaseOrders";

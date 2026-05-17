@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -7,6 +7,7 @@ export const usersTable = pgTable("users", {
   role: text("role").notNull().default("user"),
   displayName: text("display_name"),
   permissions: text("permissions").notNull().default("[]"),
+  isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

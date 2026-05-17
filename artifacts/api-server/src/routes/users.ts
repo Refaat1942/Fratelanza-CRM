@@ -22,6 +22,7 @@ router.get("/users", async (req: Request, res: Response): Promise<void> => {
     displayName: usersTable.displayName,
     role: usersTable.role,
     permissions: usersTable.permissions,
+    isActive: usersTable.isActive,
     createdAt: usersTable.createdAt,
   }).from(usersTable);
   res.json(users);
@@ -55,11 +56,12 @@ const updateSchema = z.object({
   role: z.enum(["admin", "user"]).optional(),
   permissions: z.array(z.string()).optional(),
   password: z.string().min(4).optional(),
+  isActive: z.boolean().optional(),
 });
 
 router.patch("/users/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
@@ -68,17 +70,18 @@ router.patch("/users/:id", async (req: Request, res: Response): Promise<void> =>
   if (parsed.data.role !== undefined) updates.role = parsed.data.role;
   if (parsed.data.permissions !== undefined) updates.permissions = JSON.stringify(parsed.data.permissions);
   if (parsed.data.password) updates.passwordHash = await bcrypt.hash(parsed.data.password, 10);
+  if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
   await db.update(usersTable).set(updates).where(eq(usersTable.id, id));
   const [user] = await db.select({
     id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName,
-    role: usersTable.role, permissions: usersTable.permissions,
+    role: usersTable.role, permissions: usersTable.permissions, isActive: usersTable.isActive,
   }).from(usersTable).where(eq(usersTable.id, id));
   res.json(user);
 });
 
 router.delete("/users/:id", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
-  const id = parseInt(req.params.id);
+  const id = parseInt(String(req.params.id));
   const selfId = (req.session as any).userId;
   if (id === selfId) { res.status(400).json({ error: "Cannot delete your own account" }); return; }
   await db.delete(usersTable).where(eq(usersTable.id, id));

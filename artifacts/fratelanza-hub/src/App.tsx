@@ -16,8 +16,11 @@ import Reports from "@/pages/reports";
 import Settings from "@/pages/settings";
 import Products from "@/pages/products";
 import Rentals from "@/pages/rentals";
+import Suppliers from "@/pages/suppliers";
+import PurchaseOrders from "@/pages/purchase-orders";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import { DeleteConfirmProvider } from "@/components/DeleteConfirmProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },
@@ -52,6 +55,8 @@ function AppRouter() {
               <Route path="/reports" component={Reports} />
               <Route path="/products" component={Products} />
               <Route path="/rentals" component={Rentals} />
+              <Route path="/suppliers" component={Suppliers} />
+              <Route path="/purchase-orders" component={PurchaseOrders} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>
@@ -69,10 +74,12 @@ function App() {
         <ThemeProvider>
           <LanguageProvider>
             <AuthProvider>
-              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                <AppRouter />
-              </WouterRouter>
-              <Toaster />
+              <DeleteConfirmProvider>
+                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                  <AppRouter />
+                </WouterRouter>
+                <Toaster />
+              </DeleteConfirmProvider>
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>

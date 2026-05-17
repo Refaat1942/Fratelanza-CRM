@@ -11,6 +11,9 @@ import reportsRouter from "./reports";
 import productsRouter from "./products";
 import rentalsRouter from "./rentals";
 import usersRouter from "./users";
+import suppliersRouter from "./suppliers";
+import stockMovementsRouter from "./stockMovements";
+import purchaseOrdersRouter from "./purchaseOrders";
 
 const router: IRouter = Router();
 
@@ -23,8 +26,11 @@ router.use(transactionsRouter);
 router.use(employeesRouter);
 router.use(notificationsRouter);
 router.use(reportsRouter);
+router.use(stockMovementsRouter);
 router.use(productsRouter);
 router.use(rentalsRouter);
 router.use(usersRouter);
+router.use(suppliersRouter);
+router.use(purchaseOrdersRouter);
 
 export default router;

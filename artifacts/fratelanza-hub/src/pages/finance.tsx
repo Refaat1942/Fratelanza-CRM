@@ -20,12 +20,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendingUp, TrendingDown, Plus, Trash2, Edit2, Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 export default function Finance() {
   const { t, isRtl } = useLanguage();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
   
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -82,7 +84,20 @@ export default function Finance() {
   };
 
   const handleDeleteTransaction = async (id: number) => {
-    if (!confirm(t("Are you sure?", "هل أنت متأكد؟"))) return;
+    confirmDelete({
+      title: t("Delete transaction?", "حذف المعاملة؟"),
+      onConfirm: async () => {
+        try {
+          await deleteTransaction.mutateAsync({ id });
+          queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetFinancialSummaryQueryKey() });
+          toast({ title: t("Transaction deleted", "تم حذف المعاملة") });
+        } catch { toast({ title: t("Error", "خطأ"), variant: "destructive" }); }
+      },
+    });
+  };
+
+  const _unusedDelete = async (id: number) => {
     try {
       await deleteTransaction.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() });

@@ -21,12 +21,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Building2, User, Phone, Mail, Trash2, Edit2, Star, Target, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
 export default function CRM() {
   const { t, isRtl, language } = useLanguage();
   const isAr = language === "ar";
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
   
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,7 +88,20 @@ export default function CRM() {
   };
 
   const handleDeleteClient = async (id: number) => {
-    if (!confirm(t("Are you sure you want to delete this client?", "هل أنت متأكد من حذف هذا العميل؟"))) return;
+    confirmDelete({
+      title: t("Delete client?", "حذف العميل؟"),
+      onConfirm: async () => {
+        try {
+          await deleteClient.mutateAsync({ id });
+          queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetClientStatsQueryKey() });
+          toast({ title: t("Client deleted", "تم حذف العميل") });
+        } catch { toast({ title: t("Error", "خطأ"), variant: "destructive" }); }
+      },
+    });
+  };
+
+  const _unusedDelete = async (id: number) => {
     try {
       await deleteClient.mutateAsync({ id });
       queryClient.invalidateQueries({ queryKey: getListClientsQueryKey() });

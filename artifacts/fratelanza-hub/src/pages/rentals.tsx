@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, FileText, Upload, CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
 type Rental = {
   id: number; clientName?: string; employeeName?: string; productName?: string;
@@ -39,6 +40,7 @@ export default function Rentals() {
   const { t, isRtl, language } = useLanguage();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selected, setSelected] = useState<Rental | null>(null);
@@ -211,7 +213,7 @@ export default function Rentals() {
                     <div className="flex items-center gap-3 shrink-0">
                       {(r.totalAmount ?? 0) > 0 && <span className="font-bold text-primary">{r.totalAmount?.toLocaleString()} {t("EGP", "ج.م")}</span>}
                       <Button variant="ghost" size="icon" onClick={() => openEdit(r)}><Edit2 size={14} /></Button>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => { if (confirm(t("Delete?", "حذف؟"))) deleteR.mutate(r.id); }}><Trash2 size={14} /></Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => confirmDelete({ title: t("Delete rental?", "حذف الإيجار؟"), onConfirm: () => deleteR.mutate(r.id) })}><Trash2 size={14} /></Button>
                     </div>
                   </div>
                 </CardContent>

@@ -57,7 +57,7 @@ router.post("/rentals", upload.single("document"), async (req, res): Promise<voi
 });
 
 router.get("/rentals/:id", async (req, res): Promise<void> => {
-  const [r] = await db.select().from(rentalsTable).where(eq(rentalsTable.id, parseInt(req.params.id)));
+  const [r] = await db.select().from(rentalsTable).where(eq(rentalsTable.id, parseInt(String(req.params.id))));
   if (!r) { res.status(404).json({ error: "Not found" }); return; }
   res.json(r);
 });
@@ -67,13 +67,13 @@ router.patch("/rentals/:id", upload.single("document"), async (req, res): Promis
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data: any = { ...parsed.data };
   if (req.file) { data.documentPath = req.file.path; data.documentName = req.file.originalname; }
-  const [r] = await db.update(rentalsTable).set(data).where(eq(rentalsTable.id, parseInt(req.params.id))).returning();
+  const [r] = await db.update(rentalsTable).set(data).where(eq(rentalsTable.id, parseInt(String(req.params.id)))).returning();
   if (!r) { res.status(404).json({ error: "Not found" }); return; }
   res.json(r);
 });
 
 router.delete("/rentals/:id", async (req, res): Promise<void> => {
-  await db.delete(rentalsTable).where(eq(rentalsTable.id, parseInt(req.params.id)));
+  await db.delete(rentalsTable).where(eq(rentalsTable.id, parseInt(String(req.params.id))));
   res.status(204).send();
 });
 
