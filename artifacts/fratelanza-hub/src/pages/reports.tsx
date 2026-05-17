@@ -151,9 +151,9 @@ export default function Reports() {
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={data.charts.monthlyFinance}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                   <Tooltip {...tooltipStyle} formatter={(v: number) => fmtEGP(v)} />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Bar dataKey="income" name={t("Income", "دخل")} fill="#10b981" radius={[4, 4, 0, 0]} />

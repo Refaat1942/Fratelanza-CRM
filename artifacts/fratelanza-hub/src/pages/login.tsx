@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/components/LanguageProvider";
-import { useTheme } from "@/components/ThemeProvider";
-import { Sun, Moon, Eye, EyeOff, Building2 } from "lucide-react";
+import { Eye, EyeOff, Building2 } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
   const [, navigate] = useLocation();
   const { language, setLanguage, t, isRtl } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -68,9 +66,6 @@ export default function Login() {
       {/* Right login panel */}
       <div className="flex-1 flex flex-col bg-background">
         <div className="flex justify-end items-center gap-2 p-4">
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-          </Button>
           <Button variant="outline" size="sm" onClick={() => setLanguage(language === "en" ? "ar" : "en")} className="text-xs">
             {language === "en" ? "عربي" : "English"}
           </Button>

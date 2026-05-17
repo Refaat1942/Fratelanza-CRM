@@ -139,7 +139,7 @@ export default function Finance() {
     return `${amount.toLocaleString(isRtl ? 'ar-EG' : 'en-US', { maximumFractionDigits: 2 })} ${isRtl ? 'ج.م' : 'EGP'}`;
   };
 
-  const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+  const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
   const incomeCategories = summary?.byCategory.filter(c => c.type === 'income') || [];
   const expenseCategories = summary?.byCategory.filter(c => c.type === 'expense') || [];
@@ -288,7 +288,7 @@ export default function Finance() {
                   </Pie>
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
                   />
                   <Legend />
                 </PieChart>

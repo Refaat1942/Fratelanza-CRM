@@ -83,27 +83,27 @@ export default function Dashboard() {
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                 <XAxis
                   dataKey="name"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 13 }}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 13 }}
                   reversed={isRtl}
                 />
                 <YAxis
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: 'var(--muted-foreground)', fontSize: 12 }}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                   orientation={isRtl ? "right" : "left"}
                 />
                 <Tooltip
-                  cursor={{ fill: 'var(--secondary)' }}
+                  cursor={{ fill: 'hsl(var(--secondary))' }}
                   contentStyle={{
-                    backgroundColor: 'var(--card)',
-                    borderColor: 'var(--border)',
+                    backgroundColor: 'hsl(var(--card))',
+                    borderColor: 'hsl(var(--border))',
                     borderRadius: '8px',
-                    color: 'var(--foreground)',
+                    color: 'hsl(var(--foreground))',
                   }}
                   formatter={(value: number) => [`${value.toLocaleString()} ${t("EGP", "ج.م")}`, ""]}
                 />

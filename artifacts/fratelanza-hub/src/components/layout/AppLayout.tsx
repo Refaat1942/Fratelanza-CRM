@@ -2,11 +2,10 @@ import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
-  Bell, UserSquare2, Sun, Moon, X, Package, Home as HomeIcon, LogOut, KeyRound,
+  Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
-import { useTheme } from "../ThemeProvider";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -32,7 +31,6 @@ const ALL_NAV_ITEMS = [
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { language, setLanguage, t, isRtl } = useLanguage();
-  const { theme, toggleTheme } = useTheme();
   const { logout, user } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -180,9 +178,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <h1 className="text-lg font-semibold">{headerTitle}</h1>
           </div>
           <div className="flex items-center gap-1.5">
-            <Button variant="ghost" size="icon" onClick={toggleTheme}>
-              {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
-            </Button>
             <Button variant="outline" size="sm" onClick={() => setLanguage(language === "en" ? "ar" : "en")} data-testid="toggle-language" className="font-medium text-xs px-2">
               {language === "en" ? "عربي" : "English"}
             </Button>
