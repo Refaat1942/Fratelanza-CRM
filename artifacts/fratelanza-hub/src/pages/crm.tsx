@@ -23,7 +23,8 @@ import { Plus, Building2, User, Phone, Mail, Trash2, Edit2, Star, Target, CheckC
 import { useToast } from "@/hooks/use-toast";
 
 export default function CRM() {
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, language } = useLanguage();
+  const isAr = language === "ar";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -155,25 +156,28 @@ export default function CRM() {
                 <DialogTitle>{t("Add Client", "إضافة عميل")}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t("Name (EN)", "الاسم (بالإنجليزية)")}</Label>
-                    <Input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t("Name (AR)", "الاسم (بالعربية)")}</Label>
-                    <Input dir="rtl" value={formData.nameAr} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
-                  </div>
+                <div className="space-y-2">
+                  <Label>{isAr ? "الاسم *" : "Name *"}</Label>
+                  <Input
+                    required
+                    dir={isAr ? "rtl" : "ltr"}
+                    value={isAr ? formData.nameAr : formData.name}
+                    onChange={e => isAr
+                      ? setFormData({ ...formData, nameAr: e.target.value, name: e.target.value })
+                      : setFormData({ ...formData, name: e.target.value, nameAr: formData.nameAr || e.target.value })
+                    }
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>{t("Company (EN)", "الشركة (بالإنجليزية)")}</Label>
-                    <Input value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{t("Company (AR)", "الشركة (بالعربية)")}</Label>
-                    <Input dir="rtl" value={formData.companyAr} onChange={e => setFormData({...formData, companyAr: e.target.value})} />
-                  </div>
+                <div className="space-y-2">
+                  <Label>{isAr ? "الشركة" : "Company"}</Label>
+                  <Input
+                    dir={isAr ? "rtl" : "ltr"}
+                    value={isAr ? formData.companyAr : formData.company}
+                    onChange={e => isAr
+                      ? setFormData({ ...formData, companyAr: e.target.value })
+                      : setFormData({ ...formData, company: e.target.value })
+                    }
+                  />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -353,25 +357,28 @@ export default function CRM() {
               <DialogTitle>{t("Edit Client", "تعديل بيانات العميل")}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("Name (EN)", "الاسم (بالإنجليزية)")}</Label>
-                  <Input required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("Name (AR)", "الاسم (بالعربية)")}</Label>
-                  <Input dir="rtl" value={formData.nameAr} onChange={e => setFormData({...formData, nameAr: e.target.value})} />
-                </div>
+              <div className="space-y-2">
+                <Label>{isAr ? "الاسم *" : "Name *"}</Label>
+                <Input
+                  required
+                  dir={isAr ? "rtl" : "ltr"}
+                  value={isAr ? formData.nameAr : formData.name}
+                  onChange={e => isAr
+                    ? setFormData({ ...formData, nameAr: e.target.value, name: e.target.value })
+                    : setFormData({ ...formData, name: e.target.value, nameAr: formData.nameAr || e.target.value })
+                  }
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("Company (EN)", "الشركة (بالإنجليزية)")}</Label>
-                  <Input value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("Company (AR)", "الشركة (بالعربية)")}</Label>
-                  <Input dir="rtl" value={formData.companyAr} onChange={e => setFormData({...formData, companyAr: e.target.value})} />
-                </div>
+              <div className="space-y-2">
+                <Label>{isAr ? "الشركة" : "Company"}</Label>
+                <Input
+                  dir={isAr ? "rtl" : "ltr"}
+                  value={isAr ? formData.companyAr : formData.company}
+                  onChange={e => isAr
+                    ? setFormData({ ...formData, companyAr: e.target.value })
+                    : setFormData({ ...formData, company: e.target.value })
+                  }
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

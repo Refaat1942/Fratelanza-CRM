@@ -386,15 +386,17 @@ export default function Finance() {
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t("Title (EN)", "العنوان (بالإنجليزية)")}</Label>
-                  <Input required value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t("Title (AR)", "العنوان (بالعربية)")}</Label>
-                  <Input dir="rtl" value={formData.titleAr} onChange={e => setFormData({...formData, titleAr: e.target.value})} />
-                </div>
+              <div className="space-y-2">
+                <Label>{language === "ar" ? "العنوان *" : "Title *"}</Label>
+                <Input
+                  required
+                  dir={language === "ar" ? "rtl" : "ltr"}
+                  value={language === "ar" ? formData.titleAr : formData.title}
+                  onChange={e => language === "ar"
+                    ? setFormData({ ...formData, titleAr: e.target.value, title: e.target.value })
+                    : setFormData({ ...formData, title: e.target.value, titleAr: formData.titleAr || e.target.value })
+                  }
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

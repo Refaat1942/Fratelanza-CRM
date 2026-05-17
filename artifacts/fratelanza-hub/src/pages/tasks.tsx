@@ -22,7 +22,7 @@ type Task = {
   id: number; title: string; titleAr?: string | null; description?: string | null;
   descriptionAr?: string | null; status: string; priority: string;
   dueDate?: string | null; assignee?: string | null; recurrence?: string | null;
-  clientId?: number | null; createdAt: string; updatedAt: string;
+  clientId?: number | null; createdAt: string; updatedAt?: string;
 };
 type Employee = { id: number; name: string; nameAr?: string };
 
@@ -80,12 +80,13 @@ export default function Tasks() {
   };
 
   const buildPayload = () => {
-    const d = { ...formData };
+    const d: any = { ...formData };
     if (language === "ar") {
-      if (!d.name) d.title = d.titleAr || "Untitled";
+      if (!d.title) d.title = d.titleAr || "Untitled";
     } else {
       if (!d.titleAr) d.titleAr = d.title;
     }
+    if (d.assignee === "" || d.assignee === "__none__") d.assignee = null;
     return d;
   };
 
@@ -199,10 +200,10 @@ export default function Tasks() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>{t("Assign To", "تعيين إلى")}</Label>
-          <Select value={formData.assignee} onValueChange={v => setFormData({ ...formData, assignee: v })}>
+          <Select value={formData.assignee || "__none__"} onValueChange={v => setFormData({ ...formData, assignee: v === "__none__" ? "" : v })}>
             <SelectTrigger><SelectValue placeholder={t("Select employee", "اختر موظفاً")} /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t("— Unassigned —", "— غير مُعيَّن —")}</SelectItem>
+              <SelectItem value="__none__">{t("— Unassigned —", "— غير مُعيَّن —")}</SelectItem>
               {employees?.map(emp => (
                 <SelectItem key={emp.id} value={isRtl ? (emp.nameAr || emp.name) : emp.name}>
                   {isRtl ? (emp.nameAr || emp.name) : emp.name}
