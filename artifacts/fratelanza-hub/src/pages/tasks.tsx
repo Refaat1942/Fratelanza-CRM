@@ -143,7 +143,7 @@ export default function Tasks() {
     setIsEditOpen(true);
   };
 
-  const FormFields = () => (
+  const renderFormFields = () => (
     <div className="grid gap-4 py-4 max-h-[65vh] overflow-y-auto pr-1">
       <div className="space-y-2">
         <Label className="text-base font-semibold">
@@ -357,7 +357,7 @@ export default function Tasks() {
             <DialogContent className={isRtl ? "rtl" : "ltr"}>
               <form onSubmit={handleCreate}>
                 <DialogHeader><DialogTitle>{t("Create Task", "إنشاء مهمة")}</DialogTitle></DialogHeader>
-                <FormFields />
+                {renderFormFields()}
                 <DialogFooter><Button type="submit" disabled={createTask.isPending}>{t("Save", "حفظ")}</Button></DialogFooter>
               </form>
             </DialogContent>
@@ -421,7 +421,7 @@ export default function Tasks() {
         <DialogContent className={isRtl ? "rtl" : "ltr"}>
           <form onSubmit={handleUpdate}>
             <DialogHeader><DialogTitle>{t("Edit Task", "تعديل المهمة")}</DialogTitle></DialogHeader>
-            <FormFields />
+            {renderFormFields()}
             <DialogFooter><Button type="submit" disabled={updateTask.isPending}>{t("Save Changes", "حفظ التغييرات")}</Button></DialogFooter>
           </form>
         </DialogContent>

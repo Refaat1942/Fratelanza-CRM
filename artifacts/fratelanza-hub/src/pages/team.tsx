@@ -79,7 +79,7 @@ export default function Team() {
 
   const isAr = language === "ar";
 
-  const FormFields = () => (
+  const renderFormFields = () => (
     <div className="grid gap-4 py-4">
       <div className="space-y-2">
         <Label>{isAr ? "الاسم *" : "Name *"}</Label>
@@ -164,7 +164,7 @@ export default function Team() {
           <DialogContent className={isRtl ? "rtl" : "ltr"}>
             <form onSubmit={e => { e.preventDefault(); createEmp.mutate(form); }}>
               <DialogHeader><DialogTitle>{t("Add Employee", "إضافة موظف")}</DialogTitle></DialogHeader>
-              <FormFields />
+              {renderFormFields()}
               <DialogFooter><Button type="submit" disabled={createEmp.isPending}>{t("Save", "حفظ")}</Button></DialogFooter>
             </form>
           </DialogContent>
@@ -239,7 +239,7 @@ export default function Team() {
         <DialogContent className={isRtl ? "rtl" : "ltr"}>
           <form onSubmit={e => { e.preventDefault(); if (selected) updateEmp.mutate({ id: selected.id, data: form }); }}>
             <DialogHeader><DialogTitle>{t("Edit Employee", "تعديل الموظف")}</DialogTitle></DialogHeader>
-            <FormFields />
+            {renderFormFields()}
             <DialogFooter><Button type="submit" disabled={updateEmp.isPending}>{t("Save Changes", "حفظ التغييرات")}</Button></DialogFooter>
           </form>
         </DialogContent>

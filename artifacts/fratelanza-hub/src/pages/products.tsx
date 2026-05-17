@@ -66,7 +66,7 @@ export default function Products() {
     low_stock: { label: "Low Stock", labelAr: "مخزون منخفض", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", icon: AlertTriangle },
   };
 
-  const F = () => (
+  const renderF = () => (
     <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-1">
       <div className="space-y-2"><Label>{language === "ar" ? "الاسم" : "Name"}</Label>
         <Input required value={language === "ar" ? form.nameAr : form.name} onChange={e => setForm(language === "ar" ? { ...form, nameAr: e.target.value } : { ...form, name: e.target.value })} dir={language === "ar" ? "rtl" : "ltr"} />
@@ -108,7 +108,7 @@ export default function Products() {
           <DialogContent className={isRtl ? "rtl" : "ltr"}>
             <form onSubmit={e => { e.preventDefault(); createP.mutate({ ...form, name: form.name || form.nameAr }); }}>
               <DialogHeader><DialogTitle>{t("Add Product", "إضافة منتج")}</DialogTitle></DialogHeader>
-              <F />
+              {renderF()}
               <DialogFooter><Button type="submit" disabled={createP.isPending}>{t("Save", "حفظ")}</Button></DialogFooter>
             </form>
           </DialogContent>
@@ -166,7 +166,7 @@ export default function Products() {
         <DialogContent className={isRtl ? "rtl" : "ltr"}>
           <form onSubmit={e => { e.preventDefault(); if (selected) updateP.mutate({ id: selected.id, d: { ...form, name: form.name || form.nameAr } }); }}>
             <DialogHeader><DialogTitle>{t("Edit Product", "تعديل المنتج")}</DialogTitle></DialogHeader>
-            <F />
+            {renderF()}
             <DialogFooter><Button type="submit" disabled={updateP.isPending}>{t("Save Changes", "حفظ التغييرات")}</Button></DialogFooter>
           </form>
         </DialogContent>
