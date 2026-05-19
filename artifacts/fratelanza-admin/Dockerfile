@@ -9,8 +9,11 @@ RUN corepack enable
 # lockfile of its own. pnpm will resolve fresh from package.json.
 COPY package.json ./
 
-# Install all deps (tsx is a runtime dep effectively via dev; promote if needed)
-RUN pnpm install --prod=false
+# Install all deps. --ignore-scripts avoids pnpm v10's strict ERR_PNPM_IGNORED_BUILDS
+# policy (it refuses to silently skip postinstall scripts). We then explicitly
+# rebuild esbuild so its native binary gets installed — tsx needs it at runtime.
+RUN pnpm install --prod=false --ignore-scripts && \
+    pnpm rebuild esbuild
 
 # Copy source
 COPY tsconfig.json ./
