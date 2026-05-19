@@ -17,6 +17,7 @@
           <th class="text-left px-5 py-3">Subdomain</th>
           <th class="text-left px-5 py-3">Database</th>
           <th class="text-left px-5 py-3">Status</th>
+          <th class="text-left px-5 py-3">DB</th>
           <th class="text-left px-5 py-3">Features</th>
           <th class="text-right px-5 py-3">Actions</th>
         </tr>
@@ -33,9 +34,22 @@
             <td class="px-5 py-3">
               <span class="text-xs px-2 py-1 rounded-full <%= c.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' %>"><%= c.status %></span>
             </td>
+            <td class="px-5 py-3">
+              <% const ps = c.provision_status || 'pending';
+                 const psClass = ps === 'ready' ? 'bg-emerald-100 text-emerald-700'
+                               : ps === 'failed' ? 'bg-red-100 text-red-700'
+                               : ps === 'provisioning' ? 'bg-amber-100 text-amber-700'
+                               : 'bg-slate-100 text-slate-600'; %>
+              <span class="text-xs px-2 py-1 rounded-full <%= psClass %>" <%= c.provision_error ? `title="${c.provision_error.replace(/"/g,'&quot;')}"` : '' %>><%= ps %></span>
+            </td>
             <td class="px-5 py-3 text-xs text-slate-600"><%= enabledCount %> / <%= totalCount %> enabled</td>
             <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
               <a href="/customers/<%= c.id %>/edit" class="inline-block text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100">Edit</a>
+              <% if (ps !== 'ready') { %>
+                <form action="/customers/<%= c.id %>/reprovision" method="post" class="inline">
+                  <button class="text-xs px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white">Provision DB</button>
+                </form>
+              <% } %>
               <% if (c.status === 'active') { %>
                 <form action="/customers/<%= c.id %>/block" method="post" class="inline" onsubmit="return confirm('Block this customer? Their CRM will show a paused page.');">
                   <button class="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white">Block</button>

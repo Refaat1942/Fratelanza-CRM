@@ -13,6 +13,7 @@ import {
   defaultFeatures,
   type FeatureKey,
 } from "./db.js";
+import { provisionInBackground } from "./provision.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -121,7 +122,7 @@ async function main() {
       where = `WHERE LOWER(name) LIKE $1 OR LOWER(subdomain) LIKE $1`;
     }
     const { rows } = await pool.query(
-      `SELECT id, name, subdomain, db_name, status, features, created_at
+      `SELECT id, name, subdomain, db_name, status, features, provision_status, provision_error, created_at
        FROM admin_customers ${where}
        ORDER BY created_at DESC`,
       params,
@@ -156,8 +157,9 @@ async function main() {
     if (!/^[a-z0-9-]{2,40}$/.test(subdomain))
       errors.push("Subdomain must be 2-40 chars: lowercase letters, digits, dashes.");
     const dbName = dbNameInput || `fratelanza_${subdomain.replace(/-/g, "_")}`;
-    if (!/^[a-z0-9_]{2,60}$/.test(dbName))
-      errors.push("DB name must be 2-60 chars: lowercase letters, digits, underscores.");
+    // Must match provision.ts assertSafeDbName exactly.
+    if (!/^[a-z][a-z0-9_]{1,59}$/.test(dbName))
+      errors.push("DB name must start with a letter and be 2-60 chars: lowercase letters, digits, underscores.");
 
     if (errors.length) {
       return res.status(400).render("customers/form", {
@@ -170,12 +172,15 @@ async function main() {
       });
     }
 
+    let newCustomerId: number;
     try {
-      await pool.query(
-        `INSERT INTO admin_customers (name, subdomain, db_name, features, notes)
-         VALUES ($1, $2, $3, $4::jsonb, $5)`,
+      const inserted = await pool.query<{ id: number }>(
+        `INSERT INTO admin_customers (name, subdomain, db_name, features, notes, provision_status)
+         VALUES ($1, $2, $3, $4::jsonb, $5, 'pending')
+         RETURNING id`,
         [name, subdomain, dbName, JSON.stringify(features), notes || null],
       );
+      newCustomerId = inserted.rows[0]!.id;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to create customer.";
       return res.status(400).render("customers/form", {
@@ -187,6 +192,25 @@ async function main() {
         error: msg.includes("duplicate") ? "Subdomain or DB name already in use." : msg,
       });
     }
+    // Fire-and-forget DB provisioning. Status is tracked on admin_customers
+    // and surfaced in the list so the operator can see progress / retry.
+    provisionInBackground(newCustomerId, dbName);
+    res.redirect("/customers");
+  });
+
+  // Manual re-provision (for customers stuck in 'failed' or created before
+  // auto-provisioning existed).
+  app.post("/customers/:id/reprovision", requireAuth, async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    const { rows } = await pool.query<{ db_name: string }>(
+      "SELECT db_name FROM admin_customers WHERE id=$1",
+      [id],
+    );
+    if (!rows[0]) {
+      res.status(404).send("Customer not found");
+      return;
+    }
+    provisionInBackground(id, rows[0].db_name);
     res.redirect("/customers");
   });
 

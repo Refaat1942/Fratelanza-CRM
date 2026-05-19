@@ -58,9 +58,13 @@ export async function initSchema() {
       status TEXT NOT NULL DEFAULT 'active',
       features JSONB NOT NULL DEFAULT '{}'::jsonb,
       notes TEXT,
+      provision_status TEXT NOT NULL DEFAULT 'pending',
+      provision_error TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS provision_status TEXT NOT NULL DEFAULT 'pending';
+    ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS provision_error TEXT;
     CREATE TABLE IF NOT EXISTS admin_session (
       sid VARCHAR NOT NULL PRIMARY KEY,
       sess JSON NOT NULL,
