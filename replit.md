@@ -66,7 +66,19 @@ Self-contained Express + EJS multi-tenant control plane for selling the CRM as S
 - Tables (auto-created on first run): `admin_users`, `admin_customers`, `admin_session`. Lives in its OWN database — never shares a DB with the CRM.
 - Default admin login: `admin` / `admin123` (override via `ADMIN_USERNAME` / `ADMIN_PASSWORD`).
 - Public endpoint `GET /api/tenants/:subdomain` returns `{ name, subdomain, db_name, status, features }` — the CRM will use this in Phase 2 to look up tenant config by subdomain.
-- Phase status: Phase 1 done (login, customers CRUD, feature flags, block/unblock). Phase 2 = CRM tenant-awareness, Phase 3 = auto-provisioning of per-customer DBs, Phase 4 = nginx wildcard subdomain.
+- Phase status: Phase 1 + 2 done. Phase 3 = auto-provisioning of per-customer DBs on customer create, Phase 4 = nginx wildcard subdomain + SSL on VPS.
+
+## Multi-tenancy (Phase 2 — CRM tenant-awareness)
+
+- `lib/db/src/tenant.ts`: `AsyncLocalStorage` (`tenantAls`) + per-tenant `pg.Pool` + drizzle instance cache keyed by `db_name`.
+- `lib/db/src/index.ts`: `db` and `pool` exports are now **Proxies** that resolve to the ALS-bound tenant DB per request, falling back to the default `DATABASE_URL` pool when no tenant is bound. This means all 14 route files keep working unchanged.
+- `artifacts/api-server/src/middleware/tenant.ts`: extracts subdomain from `req.hostname` (or `X-Tenant-Subdomain` header for dev), calls admin app `GET /api/tenants/:subdomain` with 60s in-memory TTL cache, rejects blocked tenants with 403 `{ error: "tenant_blocked" }`, then wraps `next()` in `tenantAls.run(...)`.
+- `artifacts/api-server/src/middleware/feature.ts`: `requireFeature(key)` per-route gate.
+- `artifacts/api-server/src/routes/index.ts`: each module router is wrapped with `requireFeature("<key>")` so admin can disable any module per customer.
+- `GET /api/me/features` returns `{ tenant, features }` for the current request.
+- Frontend `FeaturesProvider` fetches `/api/me/features` once at app load; `AppLayout` hides nav items for disabled features; `App.tsx` `<FeatureGate>` 404s direct route hits; `BlockedPage` shown when tenant is blocked (triggered by `tenant_blocked` event from `apiFetch`).
+- Required env on CRM for multi-tenant mode: `ADMIN_API_URL`, optional `ADMIN_API_KEY`, optional `TENANT_DB_URL_TEMPLATE` (e.g. `postgres://user:pass@db:5432/{db}`); if `TENANT_DB_URL_TEMPLATE` is not set, the tenant URL is derived from `DATABASE_URL` by swapping the database segment.
+- Dev / single-tenant fallback: if `ADMIN_API_URL` is unset OR no subdomain is detected (localhost / IP / reserved name), the request uses the default DB and all features are treated as enabled. Replit preview keeps working unchanged.
 - Deploy: see `artifacts/fratelanza-admin/README.md` and `docker-compose.example.yml`.
 
 ## VPS Deployment

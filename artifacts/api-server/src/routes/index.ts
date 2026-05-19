@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import meRouter from "./me";
 import dashboardRouter from "./dashboard";
 import tasksRouter from "./tasks";
 import clientsRouter from "./clients";
@@ -14,23 +15,27 @@ import usersRouter from "./users";
 import suppliersRouter from "./suppliers";
 import stockMovementsRouter from "./stockMovements";
 import purchaseOrdersRouter from "./purchaseOrders";
+import { requireFeature } from "../middleware/feature";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
-router.use(dashboardRouter);
-router.use(tasksRouter);
-router.use(clientsRouter);
-router.use(transactionsRouter);
-router.use(employeesRouter);
-router.use(notificationsRouter);
-router.use(reportsRouter);
-router.use(stockMovementsRouter);
-router.use(productsRouter);
-router.use(rentalsRouter);
+router.use(meRouter);
 router.use(usersRouter);
-router.use(suppliersRouter);
-router.use(purchaseOrdersRouter);
+router.use(dashboardRouter);
+router.use(requireFeature("notifications"), notificationsRouter);
+
+// Per-module feature gates (admin can disable any of these per-customer).
+router.use(requireFeature("tasks"), tasksRouter);
+router.use(requireFeature("crm"), clientsRouter);
+router.use(requireFeature("finance"), transactionsRouter);
+router.use(requireFeature("team"), employeesRouter);
+router.use(requireFeature("products"), productsRouter);
+router.use(requireFeature("products"), stockMovementsRouter);
+router.use(requireFeature("suppliers"), suppliersRouter);
+router.use(requireFeature("purchase_orders"), purchaseOrdersRouter);
+router.use(requireFeature("rentals"), rentalsRouter);
+router.use(requireFeature("reports"), reportsRouter);
 
 export default router;

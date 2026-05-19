@@ -4,9 +4,12 @@ import pinoHttp from "pino-http";
 import path from "path";
 import session from "express-session";
 import router from "./routes";
+import { tenantMiddleware } from "./middleware/tenant";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+
+app.set("trust proxy", true);
 
 app.use(
   pinoHttp({
@@ -27,6 +30,12 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: false, httpOnly: true, maxAge: 7 * 24 * 60 * 60 * 1000 },
 }));
+
+// Tenant resolution: parses subdomain, looks up tenant config from admin app,
+// enforces blocked status, and binds the per-tenant DB pool for the rest of
+// this request via AsyncLocalStorage. In single-tenant / dev mode (no
+// ADMIN_API_URL configured or no subdomain), this is a no-op.
+app.use("/api", tenantMiddleware);
 
 const PUBLIC_PATHS = ["/api/auth/login", "/api/healthz"];
 

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "../AuthProvider";
+import { useFeatures } from "../FeaturesProvider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -47,8 +48,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const isAdmin = user?.role === "admin";
   const userPerms = user?.permissions ?? [];
+  const { features } = useFeatures();
 
-  const navItems = ALL_NAV_ITEMS.filter(item => isAdmin || userPerms.includes(item.key));
+  const navItems = ALL_NAV_ITEMS.filter(item => {
+    // Dashboard always visible; other items must be enabled for the tenant AND the user.
+    if (item.key !== "dashboard" && features[item.key] === false) return false;
+    return isAdmin || userPerms.includes(item.key);
+  });
 
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location === href || location.startsWith(href + "/");

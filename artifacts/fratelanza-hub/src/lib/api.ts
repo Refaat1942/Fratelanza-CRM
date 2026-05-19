@@ -11,6 +11,16 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     window.location.href = "/login";
     throw new Error("Unauthorized");
   }
+  if (res.status === 403) {
+    const body = await res.clone().json().catch(() => ({} as any));
+    if (body?.error === "tenant_blocked") {
+      window.dispatchEvent(new CustomEvent("tenant-blocked"));
+      throw new Error("Subscription paused");
+    }
+    if (body?.error === "feature_disabled") {
+      throw new Error(`Feature disabled: ${body.feature}`);
+    }
+  }
   if (!res.ok) throw new Error(`API error ${res.status}`);
   if (res.status === 204) return undefined as T;
   return res.json();

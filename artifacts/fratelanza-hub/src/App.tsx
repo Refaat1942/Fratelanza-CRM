@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -5,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
+import { FeaturesProvider, useFeatures } from "@/components/FeaturesProvider";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/dashboard";
 import Tasks from "@/pages/tasks";
@@ -20,6 +22,7 @@ import Suppliers from "@/pages/suppliers";
 import PurchaseOrders from "@/pages/purchase-orders";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
+import BlockedPage from "@/pages/blocked";
 import { DeleteConfirmProvider } from "@/components/DeleteConfirmProvider";
 
 const queryClient = new QueryClient({
@@ -38,6 +41,13 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function FeatureGate({ feature, children }: { feature: string; children: React.ReactNode }) {
+  const { features, loading } = useFeatures();
+  if (loading) return null;
+  if (features[feature] === false) return <NotFound />;
+  return <>{children}</>;
+}
+
 function AppRouter() {
   return (
     <Switch>
@@ -47,16 +57,16 @@ function AppRouter() {
           <AppLayout>
             <Switch>
               <Route path="/" component={Dashboard} />
-              <Route path="/tasks" component={Tasks} />
-              <Route path="/crm" component={CRM} />
-              <Route path="/finance" component={Finance} />
-              <Route path="/team" component={Team} />
-              <Route path="/notifications" component={NotificationsPage} />
-              <Route path="/reports" component={Reports} />
-              <Route path="/products" component={Products} />
-              <Route path="/rentals" component={Rentals} />
-              <Route path="/suppliers" component={Suppliers} />
-              <Route path="/purchase-orders" component={PurchaseOrders} />
+              <Route path="/tasks"><FeatureGate feature="tasks"><Tasks /></FeatureGate></Route>
+              <Route path="/crm"><FeatureGate feature="crm"><CRM /></FeatureGate></Route>
+              <Route path="/finance"><FeatureGate feature="finance"><Finance /></FeatureGate></Route>
+              <Route path="/team"><FeatureGate feature="team"><Team /></FeatureGate></Route>
+              <Route path="/notifications"><FeatureGate feature="notifications"><NotificationsPage /></FeatureGate></Route>
+              <Route path="/reports"><FeatureGate feature="reports"><Reports /></FeatureGate></Route>
+              <Route path="/products"><FeatureGate feature="products"><Products /></FeatureGate></Route>
+              <Route path="/rentals"><FeatureGate feature="rentals"><Rentals /></FeatureGate></Route>
+              <Route path="/suppliers"><FeatureGate feature="suppliers"><Suppliers /></FeatureGate></Route>
+              <Route path="/purchase-orders"><FeatureGate feature="purchase_orders"><PurchaseOrders /></FeatureGate></Route>
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>
@@ -67,20 +77,36 @@ function AppRouter() {
   );
 }
 
+function BlockedListener({ children }: { children: React.ReactNode }) {
+  const { blocked } = useFeatures();
+  const [forced, setForced] = useState(false);
+  useEffect(() => {
+    const onBlocked = () => setForced(true);
+    window.addEventListener("tenant-blocked", onBlocked);
+    return () => window.removeEventListener("tenant-blocked", onBlocked);
+  }, []);
+  if (blocked || forced) return <BlockedPage />;
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
           <LanguageProvider>
-            <AuthProvider>
-              <DeleteConfirmProvider>
-                <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-                  <AppRouter />
-                </WouterRouter>
-                <Toaster />
-              </DeleteConfirmProvider>
-            </AuthProvider>
+            <FeaturesProvider>
+              <BlockedListener>
+                <AuthProvider>
+                  <DeleteConfirmProvider>
+                    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+                      <AppRouter />
+                    </WouterRouter>
+                    <Toaster />
+                  </DeleteConfirmProvider>
+                </AuthProvider>
+              </BlockedListener>
+            </FeaturesProvider>
           </LanguageProvider>
         </ThemeProvider>
       </TooltipProvider>
