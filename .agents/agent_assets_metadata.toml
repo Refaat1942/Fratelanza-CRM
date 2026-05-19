@@ -6,3 +6,9 @@ id = "hRENDTQH78OZotHUVJvX8"
 uri = "file://exports/Fratelanza-Admin-update.tar.gz"
 type = "unspecified"
 title = "Fratelanza-Admin update bundle (drag into GitHub)"
+
+[[outputs]]
+id = "v_2pkIwGNfYEydx_sVkqd"
+uri = "file://BLUEPRINT.md"
+type = "text"
+title = "Fratelanza Hub — Blueprint"
