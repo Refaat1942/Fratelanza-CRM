@@ -1,0 +1,60 @@
+<%- include('../_header', { title: mode === 'new' ? 'New customer' : 'Edit customer' }) %>
+<div class="max-w-2xl">
+  <a href="/customers" class="text-sm text-slate-500 hover:text-slate-900">← Back to customers</a>
+  <h1 class="text-2xl font-bold mt-2 mb-6"><%= mode === 'new' ? 'Add a new customer' : 'Edit ' + customer.name %></h1>
+
+  <% if (error) { %>
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4"><%= error %></div>
+  <% } %>
+
+  <form method="post" action="<%= mode === 'new' ? '/customers/new' : '/customers/' + customer.id + '/edit' %>" class="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+    <div>
+      <label class="block text-sm font-medium mb-1">Customer name</label>
+      <input name="name" required value="<%= customer.name %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Acme Wedding Hall" />
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Subdomain</label>
+        <% if (mode === 'new') { %>
+          <input name="subdomain" required value="<%= customer.subdomain %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="acme" />
+          <p class="text-xs text-slate-500 mt-1">Accessed at <code>acme.yourdomain.com</code>. Cannot be changed later.</p>
+        <% } else { %>
+          <input value="<%= customer.subdomain %>" disabled class="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-500" />
+        <% } %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Database name</label>
+        <% if (mode === 'new') { %>
+          <input name="db_name" value="<%= customer.db_name %>" class="w-full border border-slate-300 rounded-lg px-3 py-2 font-mono text-sm" placeholder="fratelanza_acme (auto)" />
+          <p class="text-xs text-slate-500 mt-1">Leave empty to auto-generate from subdomain.</p>
+        <% } else { %>
+          <input value="<%= customer.db_name %>" disabled class="w-full bg-slate-100 border border-slate-300 rounded-lg px-3 py-2 text-slate-500 font-mono text-sm" />
+        <% } %>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Notes (internal)</label>
+      <textarea name="notes" rows="2" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Contact person, contract dates, etc."><%= customer.notes || '' %></textarea>
+    </div>
+
+    <div class="pt-2 border-t border-slate-200">
+      <label class="block text-sm font-semibold mb-3">Enabled features</label>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+        <% featureKeys.forEach(function(k) { %>
+          <label class="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+            <input type="checkbox" name="feature_<%= k %>" <%= features[k] ? 'checked' : '' %> class="w-4 h-4" />
+            <span class="text-sm"><%= featureLabels[k].en %> <span class="text-slate-400">· <%= featureLabels[k].ar %></span></span>
+          </label>
+        <% }) %>
+      </div>
+    </div>
+
+    <div class="pt-4 flex items-center gap-3">
+      <button class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2 rounded-lg"><%= mode === 'new' ? 'Create customer' : 'Save changes' %></button>
+      <a href="/customers" class="text-sm text-slate-600 hover:text-slate-900">Cancel</a>
+    </div>
+  </form>
+</div>
+<%- include('../_footer') %>

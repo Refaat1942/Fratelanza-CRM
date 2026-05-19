@@ -58,6 +58,17 @@ A bilingual (English/Arabic, RTL-aware) business operations web app for managing
 - Bilingual forms: Show only the active language fields (EN or AR), not both simultaneously
 - All UI must be consistent per language (all Arabic or all English, no mixing)
 
+## Fratelanza Admin (separate product, in `artifacts/fratelanza-admin/`)
+
+Self-contained Express + EJS multi-tenant control plane for selling the CRM as SaaS. Designed to be extracted into its own GitHub repo (`Fratelanza-Admin`) and run as its own Docker service on the VPS.
+
+- Tech: Express 5 + express-session (Postgres-backed) + EJS + Tailwind CDN + `pg`.
+- Tables (auto-created on first run): `admin_users`, `admin_customers`, `admin_session`. Lives in its OWN database — never shares a DB with the CRM.
+- Default admin login: `admin` / `admin123` (override via `ADMIN_USERNAME` / `ADMIN_PASSWORD`).
+- Public endpoint `GET /api/tenants/:subdomain` returns `{ name, subdomain, db_name, status, features }` — the CRM will use this in Phase 2 to look up tenant config by subdomain.
+- Phase status: Phase 1 done (login, customers CRUD, feature flags, block/unblock). Phase 2 = CRM tenant-awareness, Phase 3 = auto-provisioning of per-customer DBs, Phase 4 = nginx wildcard subdomain.
+- Deploy: see `artifacts/fratelanza-admin/README.md` and `docker-compose.example.yml`.
+
 ## VPS Deployment
 
 - VPS: 187.124.15.14, port 1025

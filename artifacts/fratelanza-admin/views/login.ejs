@@ -1,0 +1,16 @@
+<%- include('_header', { title: 'Sign in', username: null, currentPath: '/login' }) %>
+<div class="min-h-[70vh] flex items-center justify-center">
+  <form action="/login" method="post" class="bg-white shadow-lg rounded-2xl p-8 w-full max-w-sm border border-slate-200">
+    <h1 class="text-2xl font-semibold text-slate-900 text-center mb-1">Fratelanza Admin</h1>
+    <p class="text-sm text-slate-500 text-center mb-6">Sign in to manage your customers</p>
+    <% if (error) { %>
+      <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4"><%= error %></div>
+    <% } %>
+    <label class="block text-sm font-medium mb-1">Username</label>
+    <input name="username" autofocus required class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-slate-900" />
+    <label class="block text-sm font-medium mb-1">Password</label>
+    <input type="password" name="password" required class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-slate-900" />
+    <button class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium rounded-lg py-2.5">Sign in</button>
+  </form>
+</div>
+<%- include('_footer') %>

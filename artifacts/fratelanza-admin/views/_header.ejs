@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> · Fratelanza Admin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>body { font-family: 'Outfit', system-ui, sans-serif; }</style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+<% if (typeof username !== 'undefined' && username) { %>
+<header class="bg-slate-900 text-white">
+  <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+    <a href="/" class="font-semibold text-lg">Fratelanza Admin</a>
+    <nav class="flex items-center gap-4 text-sm">
+      <a href="/" class="<%= currentPath === '/' ? 'text-amber-400' : 'hover:text-amber-300' %>">Dashboard</a>
+      <a href="/customers" class="<%= currentPath.startsWith('/customers') ? 'text-amber-400' : 'hover:text-amber-300' %>">Customers</a>
+      <span class="opacity-50">|</span>
+      <span class="text-slate-300 text-xs">Signed in as <%= username %></span>
+      <form action="/logout" method="post" class="inline">
+        <button class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded">Log out</button>
+      </form>
+    </nav>
+  </div>
+</header>
+<% } %>
+<main class="max-w-6xl mx-auto px-6 py-8">
