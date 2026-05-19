@@ -1,48 +1,51 @@
 # Phase 4 — VPS deployment (wildcard subdomains + SSL)
 
-End-to-end runbook for serving the Fratelanza CRM and Admin on one VPS with HTTPS
-on every customer subdomain.
+End-to-end runbook for serving the Fratelanza CRM **and** the admin control plane
+on one VPS, from **one git repo**, with HTTPS on every customer subdomain.
 
 **Target:** `187.124.15.14`, Ubuntu, Docker installed.
 **Domain:** `fratelanza.com` (replace everywhere if different).
 
-> **Order matters.** The nginx config in this repo references Let's Encrypt
-> certificate paths that don't exist on a fresh VPS, so `nginx -t` will fail
-> unless you issue the wildcard cert *first*. The DNS-01 challenge does not
-> require nginx, so this works on a brand-new server.
+> One repo, one `docker compose up`, four containers (CRM app + CRM DB + admin app + admin DB).
+> No second GitHub repo, no syncing.
 
 ---
 
 ## 1. DNS records
 
-Create these at your DNS provider:
+Create these at your DNS provider (Cloudflare, Hostinger, etc.):
 
-| Type | Name | Value | Notes |
-|------|------|-------|-------|
-| A | `fratelanza.com` | `187.124.15.14` | apex |
-| A | `*.fratelanza.com` | `187.124.15.14` | wildcard — covers every customer |
-| A | `admin.fratelanza.com` | `187.124.15.14` | control plane |
+| Type | Name | Value |
+|------|------|-------|
+| A | `fratelanza.com` | `187.124.15.14` |
+| A | `*.fratelanza.com` | `187.124.15.14` |
+| A | `admin.fratelanza.com` | `187.124.15.14` |
 
 Wait until `dig +short customer1.fratelanza.com` returns the VPS IP before moving on.
 
-## 2. Install nginx + certbot
+## 2. Install nginx + certbot on the VPS
 
 ```bash
 sudo apt update
 sudo apt install -y nginx certbot
 ```
 
-Don't copy the Fratelanza config yet — issue the cert first.
+## 3. Issue the wildcard SSL certificate (BEFORE installing the nginx config)
 
-## 3. Issue the wildcard certificate (BEFORE touching nginx config)
+Wildcards need the **DNS-01** challenge — it talks directly to your DNS
+provider and does **not** need nginx running. Clone the repo first so the
+helper script is available:
 
-Wildcards require the **DNS-01** challenge, which talks directly to your DNS
-provider and does **not** need nginx running. Two paths:
+```bash
+cd ~
+git clone https://github.com/Refaat1942/Fratelanza-HUB.git
+cd Fratelanza-HUB
+```
 
 ### A. Cloudflare (recommended — auto-renews)
 
 1. In Cloudflare, create an API token with **Zone → DNS → Edit** for `fratelanza.com`.
-2. On the VPS, inside the cloned `Fratelanza-HUB` repo:
+2. On the VPS:
 
 ```bash
 sudo DOMAIN=fratelanza.com EMAIL=you@example.com \
@@ -50,31 +53,25 @@ sudo DOMAIN=fratelanza.com EMAIL=you@example.com \
      ./deploy/setup-ssl.sh cloudflare
 ```
 
-Renewal runs automatically via `certbot.timer` (already installed by apt).
-Verify with `sudo certbot renew --dry-run`.
+Renewal runs automatically via `certbot.timer`. Verify with `sudo certbot renew --dry-run`.
 
-### B. Manual DNS (any provider, no API access)
+### B. Manual DNS (any provider)
 
 ```bash
 sudo DOMAIN=fratelanza.com EMAIL=you@example.com \
      ./deploy/setup-ssl.sh manual
 ```
 
-Certbot prints two `_acme-challenge` TXT records — paste them into your DNS panel,
-wait ~1 minute, then press Enter. **Renewal is also manual** every 60 days, so
-switch to Cloudflare/another DNS API as soon as you can.
+Certbot prints two `_acme-challenge` TXT records — paste them into your DNS
+panel, wait ~1 minute, then press Enter. **Renewal is manual every 60 days.**
 
-After this step you should see:
-
+You should now have:
 ```
 /etc/letsencrypt/live/fratelanza.com/fullchain.pem
 /etc/letsencrypt/live/fratelanza.com/privkey.pem
 ```
 
 ## 4. Install the Fratelanza nginx config
-
-Now the cert files referenced by `deploy/nginx.conf` exist, so the config will
-pass `nginx -t`.
 
 ```bash
 sudo cp deploy/nginx.conf /etc/nginx/sites-available/fratelanza
@@ -86,82 +83,84 @@ sudo systemctl reload nginx
 
 ## 5. Lock down the firewall
 
-The CRM (`1025`) and admin (`2025`) compose files already bind their
-published ports to `127.0.0.1`, so they're only reachable via nginx on the
-host. Belt-and-braces: enable UFW to only allow SSH + HTTP/HTTPS publicly.
+Docker already binds the app ports to `127.0.0.1`, but enable UFW for belt-and-braces:
 
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 sudo ufw --force enable
-sudo ufw status
 ```
 
-Sanity check (run from a different machine — should both fail/connection refused):
+## 6. Set the secrets and start the stack
+
+Generate strong, URL-safe values (no `@ : / # % ? &` or spaces — those break
+Postgres connection strings):
 
 ```bash
-curl -v http://187.124.15.14:1025
-curl -v http://187.124.15.14:2025
-```
-
-## 6. Update CRM `.env` for multi-tenant mode
-
-In the CRM `.env` on the VPS:
-
-```env
-POSTGRES_PASSWORD=...
-SESSION_SECRET=...
-
-# Multi-tenancy (Phase 2)
-ADMIN_API_URL=http://host.docker.internal:2025
-ADMIN_API_KEY=must_match_admin_compose
-NODE_ENV=production
+openssl rand -hex 24   # run a few times, one per CHANGE_ME slot
 ```
 
 Then:
 
 ```bash
-cd ~/Fratelanza-HUB && git pull origin main && docker compose up -d --build
+cd ~/Fratelanza-HUB
+cp .env.example .env
+nano .env          # paste the generated values into every CHANGE_ME slot
+docker compose up -d --build
+docker compose ps  # all four services should be "running"
+docker compose logs --tail=40 admin-app app   # should be quiet, no errors
 ```
 
-> `host.docker.internal` is wired up in the CRM `docker-compose.yml`
-> (`extra_hosts: host.docker.internal:host-gateway`), so the CRM container
-> reaches the admin app at the host's loopback port `2025`.
+That single `up -d --build` starts:
+- `db` — Postgres for the CRM and for all customer tenant DBs
+- `app` — CRM (loopback `127.0.0.1:1025`)
+- `admin-db` — Postgres for the admin metadata
+- `admin-app` — admin control plane (loopback `127.0.0.1:2025`)
 
 ## 7. Smoke test
 
 ```bash
-# CRM apex (no tenant configured -> dev fallback DB)
-curl -sI https://fratelanza.com/api/healthz
-
-# Admin control plane
-curl -sI https://admin.fratelanza.com/healthz
-
-# A real customer subdomain (must exist in the admin app already)
-curl -sI https://customer1.fratelanza.com/api/healthz
+curl -sI https://fratelanza.com/api/healthz             # CRM apex
+curl -sI https://admin.fratelanza.com/healthz           # Admin control plane
 ```
 
-All three should return `HTTP/2 200`.
+Both should return `HTTP/2 200`.
 
-## 8. Adding a new customer (end-to-end)
+## 8. Add your first customer
 
-1. Sign in at `https://admin.fratelanza.com`.
+1. Go to `https://admin.fratelanza.com`, log in with the `ADMIN_USERNAME` /
+   `ADMIN_PASSWORD` you set in `.env`.
 2. Click **+ Add customer**. Enter name, subdomain (e.g. `acme`), tick the
    features they're paying for, save.
-3. Watch the **DB** column flip: `pending → provisioning → ready`.
-4. Tell the customer to open `https://acme.fratelanza.com` and log in with
-   `admin / admin123` — they should change it immediately.
+3. The **DB** column flips `pending → provisioning → ready` within seconds.
+4. The customer opens `https://acme.fratelanza.com` and logs in with
+   `admin / <TENANT_DEFAULT_ADMIN_PASSWORD>`. They should change it immediately.
 
 DNS already wildcards to the VPS, the CRM resolves the subdomain via the admin
-API, switches to the per-customer DB, and away they go. No deploy, no restart.
+API, switches to the per-customer DB, and away they go. **No deploy, no restart
+needed for new customers.**
 
-## 9. Renewal & ops
+## 9. Updating the code later
 
-- Auto-renewal (Cloudflare mode): `systemctl list-timers | grep certbot`
-- Force renewal test: `sudo certbot renew --dry-run`
-- Nginx config reload after edits: `sudo nginx -t && sudo systemctl reload nginx`
-- Block a non-paying customer: admin UI → **Block**. CRM shows the
-  "Subscription paused" page within 60s (admin API cache TTL).
-- Verify backend ports are loopback-only: `ss -ltnp | grep -E ':(1025|2025)\b'`
-  — addresses should be `127.0.0.1`, not `0.0.0.0`.
+On your laptop:
+1. Edit in Replit, push to GitHub via the Git panel (one click).
+
+On the VPS:
+```bash
+cd ~/Fratelanza-HUB
+git pull
+docker compose up -d --build
+```
+
+That's it for both apps. They share the same git checkout.
+
+## 10. Ops cheat sheet
+
+| Want to… | Command |
+|---|---|
+| See logs | `docker compose logs -f app` (or `admin-app`) |
+| Restart one service | `docker compose restart app` |
+| Renew SSL test | `sudo certbot renew --dry-run` |
+| Confirm ports are loopback | `ss -ltnp \| grep -E ':(1025\|2025)\b'` (should show `127.0.0.1`) |
+| Block a non-paying customer | admin UI → **Block** (CRM reflects within 60s) |

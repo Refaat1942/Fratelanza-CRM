@@ -60,7 +60,7 @@ A bilingual (English/Arabic, RTL-aware) business operations web app for managing
 
 ## Fratelanza Admin (separate product, in `artifacts/fratelanza-admin/`)
 
-Self-contained Express + EJS multi-tenant control plane for selling the CRM as SaaS. Designed to be extracted into its own GitHub repo (`Fratelanza-Admin`) and run as its own Docker service on the VPS.
+Self-contained Express + EJS multi-tenant control plane for selling the CRM as SaaS. Lives in this same monorepo and ships in the same `docker-compose.yml` — no second GitHub repo needed.
 
 - Tech: Express 5 + express-session (Postgres-backed) + EJS + Tailwind CDN + `pg`.
 - Tables (auto-created on first run): `admin_users`, `admin_customers`, `admin_session`. Lives in its OWN database — never shares a DB with the CRM.
@@ -73,8 +73,9 @@ Self-contained Express + EJS multi-tenant control plane for selling the CRM as S
 - `deploy/nginx.conf`: terminates TLS for `fratelanza.com`, `*.fratelanza.com`, and `admin.fratelanza.com`. CRM (port 1025) gets the wildcard + apex; admin (port 2025) gets `admin.fratelanza.com` only. `Host` header is preserved (critical — CRM resolves the tenant from it). HTTP→HTTPS redirect on port 80.
 - `deploy/setup-ssl.sh`: one-shot certbot helper that issues a single wildcard cert covering apex + `*` + admin via DNS-01. Cloudflare mode (recommended, auto-renews via `certbot.timer`) or manual mode (any DNS provider, but renewal is manual every 60 days).
 - `deploy/README.md`: full Phase 4 runbook — DNS records to create, nginx install, cert issuance, end-to-end customer onboarding test.
-- `docker-compose.yml` (CRM): now passes `ADMIN_API_URL`, `ADMIN_API_KEY`, `TENANT_DB_URL_TEMPLATE` through to the container and adds `extra_hosts: host.docker.internal:host-gateway` so the CRM container can reach the admin compose project on the host.
-- `.env.example` updated with the new multi-tenant env vars (commented for single-tenant fallback).
+- `docker-compose.yml`: single-file stack with **four** services — `db` (CRM Postgres), `app` (CRM), `admin-db` (admin Postgres), `admin-app` (admin). CRM reaches the admin over the docker network at `http://admin-app:5050`; admin provisions tenant DBs into the CRM's `db` Postgres via `TENANT_MAINTENANCE_DB_URL=postgresql://fratelanza:...@db:5432/postgres`. Both app ports bound to `127.0.0.1` (loopback) — nginx fronts them.
+- `.env.example`: one file with all secrets (`POSTGRES_PASSWORD`, `SESSION_SECRET`, `ADMIN_DB_PASSWORD`, `ADMIN_SESSION_SECRET`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_API_KEY`, `TENANT_DEFAULT_ADMIN_PASSWORD`).
+- Deploy workflow: `git clone Fratelanza-HUB && cp .env.example .env && docker compose up -d --build`. Updates: `git pull && docker compose up -d --build`. No second repo, no PAT, no sync action.
 
 ## Multi-tenancy (Phase 3 — auto-provisioning)
 
