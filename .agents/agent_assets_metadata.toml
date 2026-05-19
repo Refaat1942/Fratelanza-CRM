@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "hRENDTQH78OZotHUVJvX8"
+uri = "file://exports/Fratelanza-Admin-update.tar.gz"
+type = "unspecified"
+title = "Fratelanza-Admin update bundle (drag into GitHub)"
