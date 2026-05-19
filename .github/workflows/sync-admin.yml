@@ -1,0 +1,73 @@
+# Automatically mirrors the artifacts/fratelanza-admin/ folder up to the
+# separate Fratelanza-Admin GitHub repo whenever this repo is pushed.
+#
+# One-time setup (do this once on github.com):
+#   1. Create a Personal Access Token (classic) with scope: repo
+#      https://github.com/settings/tokens/new
+#   2. In THIS repo (Fratelanza-HUB) -> Settings -> Secrets and variables
+#      -> Actions -> "New repository secret":
+#         Name:  ADMIN_REPO_PAT
+#         Value: <paste the token>
+#   3. That's it. Push to main and watch the "Actions" tab.
+#
+# Behavior:
+#   - Runs only when files under artifacts/fratelanza-admin/ change
+#     (or when you click "Run workflow" manually).
+#   - Preserves the Fratelanza-Admin repo's git history (no force-push).
+#   - Skips if there's nothing new to sync.
+
+name: Sync admin subfolder to Fratelanza-Admin repo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'artifacts/fratelanza-admin/**'
+      - '.github/workflows/sync-admin.yml'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout HUB repo
+        uses: actions/checkout@v4
+
+      - name: Mirror artifacts/fratelanza-admin -> Fratelanza-Admin
+        env:
+          PAT: ${{ secrets.ADMIN_REPO_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PAT:-}" ]; then
+            echo "::error::Repository secret ADMIN_REPO_PAT is not set."
+            echo "::error::Create a token at https://github.com/settings/tokens/new (scope: repo)"
+            echo "::error::then add it as a secret named ADMIN_REPO_PAT in this repo's settings."
+            exit 1
+          fi
+
+          ADMIN_REPO="Refaat1942/Fratelanza-Admin"
+          WORK=/tmp/admin-mirror
+          rm -rf "$WORK"
+
+          echo ">>> Cloning $ADMIN_REPO"
+          git clone "https://x-access-token:${PAT}@github.com/${ADMIN_REPO}.git" "$WORK"
+          cd "$WORK"
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          echo ">>> Replacing tracked files with current admin folder"
+          # Wipe everything except .git, then copy the fresh snapshot in.
+          find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          cp -a "$GITHUB_WORKSPACE/artifacts/fratelanza-admin/." .
+
+          git add -A
+          if git diff --cached --quiet; then
+            echo ">>> No changes to sync. Done."
+            exit 0
+          fi
+
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          git commit -m "Sync from Fratelanza-HUB@${SHORT_SHA}"
+          git push origin HEAD:main
+          echo ">>> Synced successfully."
