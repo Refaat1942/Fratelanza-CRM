@@ -1,6 +1,7 @@
 <%- include('_header', { title: 'Dashboard' }) %>
 <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
-<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
   <div class="bg-white border border-slate-200 rounded-xl p-5">
     <div class="text-sm text-slate-500">Total customers</div>
     <div class="text-3xl font-bold mt-2"><%= stats.total %></div>
@@ -14,6 +15,22 @@
     <div class="text-3xl font-bold mt-2 text-red-600"><%= stats.blocked %></div>
   </div>
 </div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <div class="text-sm text-slate-500">MRR (active subs)</div>
+    <div class="text-2xl font-bold mt-2 text-slate-900"><%= fmtMoney(billing.mrr) %> <span class="text-sm font-normal text-slate-500">EGP / month</span></div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <div class="text-sm text-slate-500">Due within 7 days</div>
+    <div class="text-2xl font-bold mt-2 text-amber-600"><%= billing.due_soon %></div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <div class="text-sm text-slate-500">Overdue</div>
+    <div class="text-2xl font-bold mt-2 text-red-600"><%= billing.overdue %></div>
+  </div>
+</div>
+
 <div class="bg-white border border-slate-200 rounded-xl">
   <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
     <h2 class="font-semibold">Recent customers</h2>
@@ -24,13 +41,13 @@
       <div class="p-6 text-center text-slate-500 text-sm">No customers yet. <a href="/customers/new" class="text-slate-900 underline">Add one</a>.</div>
     <% } else { %>
       <% recent.forEach(function(r) { %>
-        <div class="px-5 py-3 flex items-center justify-between">
+        <a href="/customers/<%= r.id %>" class="block px-5 py-3 flex items-center justify-between hover:bg-slate-50">
           <div>
             <div class="font-medium"><%= r.name %></div>
-            <div class="text-xs text-slate-500"><%= r.subdomain %>.yourdomain.com</div>
+            <div class="text-xs text-slate-500"><%= r.subdomain %>.fratelanza.com</div>
           </div>
           <span class="text-xs px-2 py-1 rounded-full <%= r.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' %>"><%= r.status %></span>
-        </div>
+        </a>
       <% }) %>
     <% } %>
   </div>

@@ -1,0 +1,181 @@
+<%- include('../_header', { title: customer.name }) %>
+
+<a href="/customers" class="text-sm text-slate-500 hover:text-slate-900">← All customers</a>
+<div class="flex items-start justify-between mt-2 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold flex items-center gap-3">
+      <%= customer.name %>
+      <span class="text-xs font-normal px-2 py-1 rounded-full <%= customer.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' %>"><%= customer.status %></span>
+    </h1>
+    <p class="text-slate-500 mt-1 text-sm"><a href="https://<%= customer.subdomain %>.fratelanza.com" target="_blank" class="text-slate-700 hover:underline"><%= customer.subdomain %>.fratelanza.com</a> · DB: <code class="text-xs"><%= customer.db_name %></code></p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/customers/<%= customer.id %>/edit" class="text-sm px-3 py-2 rounded border border-slate-300 hover:bg-slate-100">Edit</a>
+    <a href="/customers/<%= customer.id %>/users" class="text-sm px-3 py-2 rounded border border-slate-300 hover:bg-slate-100">Users</a>
+  </div>
+</div>
+
+<% if (revealed) { %>
+  <div class="mb-6 bg-amber-50 border-2 border-amber-300 rounded-xl p-5">
+    <div class="font-semibold text-amber-900 mb-2">🔑 New password generated — copy now (shown only once)</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <div class="text-xs text-amber-700 uppercase">Username</div>
+        <div class="font-mono text-lg select-all"><%= revealed.username %></div>
+      </div>
+      <div>
+        <div class="text-xs text-amber-700 uppercase">Password</div>
+        <div class="font-mono text-lg select-all bg-white px-3 py-2 rounded border border-amber-300"><%= revealed.password %></div>
+      </div>
+    </div>
+    <p class="text-xs text-amber-800 mt-3">Send this to the customer through a secure channel. Once you navigate away, it won't be shown again.</p>
+  </div>
+<% } %>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <div class="text-xs text-slate-500 uppercase">Plan</div>
+    <div class="text-xl font-bold mt-1"><%= customer.plan_name || '—' %></div>
+    <div class="text-sm text-slate-600 mt-1"><%= fmtMoney(customer.billing_amount) %> EGP / <%= customer.billing_cycle || 'monthly' %></div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <div class="text-xs text-slate-500 uppercase">Next billing</div>
+    <div class="text-xl font-bold mt-1"><%= fmtDate(customer.next_billing_date) %></div>
+    <% if (daysUntilBilling !== null) { %>
+      <div class="text-sm mt-1 <%= daysUntilBilling < 0 ? 'text-red-600' : daysUntilBilling <= 7 ? 'text-amber-600' : 'text-slate-600' %>">
+        <%= daysUntilBilling < 0 ? Math.abs(daysUntilBilling) + ' days overdue' : daysUntilBilling + ' days remaining' %>
+      </div>
+    <% } %>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <div class="text-xs text-slate-500 uppercase">Total paid lifetime</div>
+    <div class="text-xl font-bold mt-1"><%= fmtMoney(totalPaid) %> EGP</div>
+    <div class="text-sm text-slate-600 mt-1">Last: <%= fmtDate(customer.last_payment_date) %></div>
+  </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <h2 class="font-semibold mb-3">Subscription details</h2>
+    <dl class="text-sm divide-y divide-slate-100">
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Status</dt><dd><%= customer.payment_status || 'trial' %></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Subscription start</dt><dd><%= fmtDate(customer.subscription_start) %></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Subscription end</dt><dd><%= fmtDate(customer.subscription_end) %><% if (daysUntilEnd !== null && daysUntilEnd >= 0) { %> <span class="text-xs text-slate-500">(<%= daysUntilEnd %> days left)</span><% } %></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Customer since</dt><dd><%= fmtDate(customer.created_at) %></dd></div>
+    </dl>
+    <h3 class="font-semibold mt-5 mb-2 text-sm">Contact</h3>
+    <dl class="text-sm divide-y divide-slate-100">
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Name</dt><dd><%= customer.contact_name || '—' %></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Email</dt><dd><%= customer.contact_email || '—' %></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Phone</dt><dd><%= customer.contact_phone || '—' %></dd></div>
+    </dl>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-xl p-5">
+    <h2 class="font-semibold mb-3">Record a payment</h2>
+    <form method="post" action="/customers/<%= customer.id %>/payments" class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-600 mb-1">Amount (EGP)</label>
+          <input type="number" step="0.01" min="0.01" name="amount" required value="<%= customer.billing_amount || '' %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 mb-1">Payment date</label>
+          <input type="date" name="payment_date" required value="<%= new Date().toISOString().slice(0,10) %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-slate-600 mb-1">Method</label>
+          <input name="method" placeholder="Cash / Bank / Transfer" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-600 mb-1">Reference</label>
+          <input name="reference" placeholder="Receipt #" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+        </div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-600 mb-1">Notes</label>
+        <input name="notes" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+      </div>
+      <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-lg">Record payment</button>
+      <p class="text-xs text-slate-500">Marks status as <code>paid</code>, advances next billing date by one cycle, and records the payment in history.</p>
+    </form>
+  </div>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl mb-6">
+  <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+    <h2 class="font-semibold">Payment history (<%= payments.length %>)</h2>
+  </div>
+  <% if (payments.length === 0) { %>
+    <div class="p-6 text-center text-slate-500 text-sm">No payments recorded yet.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr>
+          <th class="text-left px-5 py-2">Date</th>
+          <th class="text-left px-5 py-2">Amount (EGP)</th>
+          <th class="text-left px-5 py-2">Method</th>
+          <th class="text-left px-5 py-2">Reference</th>
+          <th class="text-left px-5 py-2">Notes</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% payments.forEach(function(p) { %>
+          <tr>
+            <td class="px-5 py-2"><%= fmtDate(p.payment_date) %></td>
+            <td class="px-5 py-2 font-medium"><%= fmtMoney(p.amount) %></td>
+            <td class="px-5 py-2 text-slate-600"><%= p.method || '—' %></td>
+            <td class="px-5 py-2 text-slate-600 text-xs"><%= p.reference || '—' %></td>
+            <td class="px-5 py-2 text-slate-600 text-xs"><%= p.notes || '' %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl p-5 mb-6">
+  <h2 class="font-semibold mb-3">Enabled features</h2>
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+    <% Object.keys(featureLabels).forEach(function(k) { %>
+      <div class="px-3 py-2 rounded-lg border <%= features[k] ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50 opacity-60' %>">
+        <span class="text-sm"><%= featureLabels[k].en %></span>
+        <span class="float-right text-xs"><%= features[k] ? '✓' : '○' %></span>
+      </div>
+    <% }) %>
+  </div>
+  <p class="text-xs text-slate-500 mt-3">To change which modules are enabled, click <a href="/customers/<%= customer.id %>/edit" class="underline">Edit</a>.</p>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl p-5">
+  <h2 class="font-semibold mb-3 text-red-700">Danger zone</h2>
+  <div class="flex flex-wrap items-center gap-2">
+    <form action="/customers/<%= customer.id %>/reset-admin-password" method="post" class="inline" onsubmit="return confirm('Reset the main admin password for this customer? A new password will be generated and shown once.');">
+      <button class="text-sm px-3 py-2 rounded bg-amber-600 hover:bg-amber-700 text-white">🔑 Reset admin password</button>
+    </form>
+    <% if (customer.provision_status !== 'ready') { %>
+      <form action="/customers/<%= customer.id %>/reprovision" method="post" class="inline">
+        <button class="text-sm px-3 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">Re-provision DB</button>
+      </form>
+    <% } %>
+    <% if (customer.status === 'active') { %>
+      <form action="/customers/<%= customer.id %>/block" method="post" class="inline" onsubmit="return confirm('Block this customer? Their CRM will show a paused page.');">
+        <button class="text-sm px-3 py-2 rounded bg-red-600 hover:bg-red-700 text-white">Block customer</button>
+      </form>
+    <% } else { %>
+      <form action="/customers/<%= customer.id %>/unblock" method="post" class="inline">
+        <button class="text-sm px-3 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white">Unblock</button>
+      </form>
+    <% } %>
+    <form action="/customers/<%= customer.id %>/delete" method="post" class="inline" onsubmit="return confirm('PERMANENTLY delete this customer record? (Their database is NOT deleted automatically.)');">
+      <button class="text-sm px-3 py-2 rounded text-red-600 hover:bg-red-50 border border-red-200">Delete record</button>
+    </form>
+  </div>
+  <% if (customer.provision_error) { %>
+    <p class="text-xs text-red-600 mt-3">Last provision error: <%= customer.provision_error %></p>
+  <% } %>
+</div>
+
+<%- include('../_footer') %>

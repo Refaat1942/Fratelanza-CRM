@@ -1,0 +1,59 @@
+<%- include('_header', { title: 'Monitor' }) %>
+
+<h1 class="text-2xl font-bold mb-2">Tenant monitor</h1>
+<p class="text-sm text-slate-500 mb-6">Live snapshot of each tenant's database — connection status, user count, and most recent activity.</p>
+
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <% if (tenants.length === 0) { %>
+    <div class="p-8 text-center text-slate-500 text-sm">No tenants yet.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr>
+          <th class="text-left px-5 py-3">Customer</th>
+          <th class="text-left px-5 py-3">Subdomain</th>
+          <th class="text-left px-5 py-3">DB</th>
+          <th class="text-left px-5 py-3">Connection</th>
+          <th class="text-left px-5 py-3">Users</th>
+          <th class="text-left px-5 py-3">Last activity</th>
+          <th class="text-right px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% tenants.forEach(function(t) {
+             const lastDate = t.last_activity ? new Date(t.last_activity) : null;
+             const hoursAgo = lastDate ? Math.round((Date.now() - lastDate.getTime()) / 3600000) : null;
+        %>
+          <tr>
+            <td class="px-5 py-3 font-medium"><a href="/customers/<%= t.id %>" class="hover:underline"><%= t.name %></a></td>
+            <td class="px-5 py-3 text-slate-600 text-xs"><%= t.subdomain %></td>
+            <td class="px-5 py-3 font-mono text-xs text-slate-500"><%= t.db_name %></td>
+            <td class="px-5 py-3">
+              <% if (t.ok) { %>
+                <span class="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">✓ healthy</span>
+              <% } else { %>
+                <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700" title="<%= (t.error||'').replace(/\"/g,'&quot;') %>">✗ unreachable</span>
+              <% } %>
+            </td>
+            <td class="px-5 py-3"><%= t.users_count !== null ? t.users_count : '—' %></td>
+            <td class="px-5 py-3 text-xs">
+              <% if (lastDate) { %>
+                <%= fmtDate(lastDate) %>
+                <span class="text-slate-500"><%= hoursAgo < 1 ? '(just now)' : hoursAgo < 24 ? '(' + hoursAgo + 'h ago)' : '(' + Math.round(hoursAgo/24) + 'd ago)' %></span>
+              <% } else { %>
+                <span class="text-slate-400">no activity</span>
+              <% } %>
+            </td>
+            <td class="px-5 py-3 text-right">
+              <a href="/customers/<%= t.id %>/users" class="text-xs px-2 py-1 rounded border border-slate-300 hover:bg-slate-100">Users</a>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<p class="text-xs text-slate-500 mt-4">Page connects to each tenant DB on every load — if you have many tenants, it may take a few seconds.</p>
+
+<%- include('_footer') %>

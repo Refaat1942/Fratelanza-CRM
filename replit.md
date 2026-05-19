@@ -68,6 +68,17 @@ Self-contained Express + EJS multi-tenant control plane for selling the CRM as S
 - Public endpoint `GET /api/tenants/:subdomain` returns `{ name, subdomain, db_name, status, features }` — the CRM will use this in Phase 2 to look up tenant config by subdomain.
 - Phase status: All 4 phases done.
 
+### Billing & subscription management (Phase 5)
+- Customer fields: `plan_name`, `billing_amount` (EGP), `billing_cycle` (monthly/quarterly/yearly/lifetime), `subscription_start/end`, `next_billing_date`, `last_payment_date`, `payment_status` (trial/paid/due/overdue/cancelled), `contact_name/email/phone`. Added via idempotent `ALTER TABLE ... IF NOT EXISTS`.
+- New `admin_payments` table: payment history per customer. Recording a payment auto-advances `next_billing_date` by one cycle and sets `payment_status='paid'`.
+- Customer detail page (`/customers/:id`) shows subscription card, days until billing, total paid lifetime, payment history table, record-payment form, danger zone (reset admin password, re-provision, block, delete).
+- Reports tab (`/reports`): MRR (from active subs), customers by payment status, revenue by plan, due in next 30 days, overdue list, recent payments. **Excel download** at `/reports/export.xlsx` (ExcelJS, 2 sheets: Customers + Payments).
+- Monitor tab (`/monitor`): per-tenant live snapshot — connects to each tenant DB in parallel and shows connection health, user count, last activity timestamp. Skips tenants where `provision_status != 'ready'`.
+- Password reset tools:
+  - `POST /customers/:id/reset-admin-password` — resets the tenant's `admin` user. Generates 12-char password, bcrypts it, updates tenant DB's `users` table, reveals once via session flash on detail page.
+  - `GET /customers/:id/users` lists all users of a tenant DB; `POST /customers/:id/users/:userId/reset-password` resets any one. Same reveal-once pattern.
+- New dep: `exceljs` ^4.4.0 on admin app. New helpers in `db.ts`: `tenantConnectionString`, `withTenantPool` (short-lived pool, max:2), `advanceBillingDate`, `monthlyEquivalent`.
+
 ## VPS routing (Phase 4)
 
 - `deploy/nginx.conf`: terminates TLS for `fratelanza.com`, `*.fratelanza.com`, and `admin.fratelanza.com`. CRM (port 1025) gets the wildcard + apex; admin (port 2025) gets `admin.fratelanza.com` only. `Host` header is preserved (critical — CRM resolves the tenant from it). HTTP→HTTPS redirect on port 80.

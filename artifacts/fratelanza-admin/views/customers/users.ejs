@@ -1,0 +1,65 @@
+<%- include('../_header', { title: customer.name + ' · Users' }) %>
+
+<a href="/customers/<%= customer.id %>" class="text-sm text-slate-500 hover:text-slate-900">← Back to <%= customer.name %></a>
+<h1 class="text-2xl font-bold mt-2 mb-6">Users of <%= customer.name %></h1>
+
+<% if (revealed) { %>
+  <div class="mb-6 bg-amber-50 border-2 border-amber-300 rounded-xl p-5">
+    <div class="font-semibold text-amber-900 mb-2">🔑 New password generated — copy now (shown only once)</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <div class="text-xs text-amber-700 uppercase">Username</div>
+        <div class="font-mono text-lg select-all"><%= revealed.username %></div>
+      </div>
+      <div>
+        <div class="text-xs text-amber-700 uppercase">Password</div>
+        <div class="font-mono text-lg select-all bg-white px-3 py-2 rounded border border-amber-300"><%= revealed.password %></div>
+      </div>
+    </div>
+    <p class="text-xs text-amber-800 mt-3">Send this to the user through a secure channel. Won't be shown again.</p>
+  </div>
+<% } %>
+
+<% if (loadError) { %>
+  <div class="bg-red-50 border border-red-200 text-red-800 text-sm rounded-lg p-4 mb-4">
+    Could not load users from tenant DB:<br />
+    <code class="text-xs"><%= loadError %></code>
+  </div>
+<% } %>
+
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+  <% if (users.length === 0 && !loadError) { %>
+    <div class="p-8 text-center text-slate-500 text-sm">No users found.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr>
+          <th class="text-left px-5 py-3">ID</th>
+          <th class="text-left px-5 py-3">Username</th>
+          <th class="text-left px-5 py-3">Role</th>
+          <th class="text-left px-5 py-3">Created</th>
+          <th class="text-right px-5 py-3">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% users.forEach(function(u) { %>
+          <tr>
+            <td class="px-5 py-3 text-slate-500"><%= u.id %></td>
+            <td class="px-5 py-3 font-medium"><%= u.username %></td>
+            <td class="px-5 py-3"><span class="text-xs px-2 py-1 rounded-full <%= u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700' %>"><%= u.role || 'user' %></span></td>
+            <td class="px-5 py-3 text-slate-600 text-xs"><%= fmtDate(u.created_at) %></td>
+            <td class="px-5 py-3 text-right">
+              <form action="/customers/<%= customer.id %>/users/<%= u.id %>/reset-password" method="post" class="inline" onsubmit="return confirm('Reset password for <%= u.username %>? A new password will be generated and shown once.');">
+                <button class="text-xs px-2 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white">🔑 Reset password</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<p class="text-xs text-slate-500 mt-4">User management (adding/removing users, changing roles) is done by the customer inside their own CRM at Settings → Users.</p>
+
+<%- include('../_footer') %>

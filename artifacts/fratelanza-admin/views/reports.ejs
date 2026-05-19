@@ -1,0 +1,140 @@
+<%- include('_header', { title: 'Reports' }) %>
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold">Reports</h1>
+  <a href="/reports/export.xlsx" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 rounded-lg">⬇ Download Excel</a>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs text-slate-500 uppercase">Total customers</div>
+    <div class="text-2xl font-bold mt-1"><%= summary.total %></div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs text-slate-500 uppercase">Active</div>
+    <div class="text-2xl font-bold mt-1 text-emerald-600"><%= summary.active %></div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs text-slate-500 uppercase">Blocked</div>
+    <div class="text-2xl font-bold mt-1 text-red-600"><%= summary.blocked %></div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded-xl p-4">
+    <div class="text-xs text-slate-500 uppercase">MRR (EGP)</div>
+    <div class="text-2xl font-bold mt-1 text-slate-900"><%= fmtMoney(summary.mrr) %></div>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+  <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+    <div class="text-xs text-blue-700 uppercase">Trial</div>
+    <div class="text-xl font-bold mt-1 text-blue-900"><%= summary.trial %></div>
+  </div>
+  <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+    <div class="text-xs text-emerald-700 uppercase">Paid</div>
+    <div class="text-xl font-bold mt-1 text-emerald-900"><%= summary.paid %></div>
+  </div>
+  <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+    <div class="text-xs text-amber-700 uppercase">Due</div>
+    <div class="text-xl font-bold mt-1 text-amber-900"><%= summary.due %></div>
+  </div>
+  <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+    <div class="text-xs text-red-700 uppercase">Overdue</div>
+    <div class="text-xl font-bold mt-1 text-red-900"><%= summary.overdue %></div>
+  </div>
+  <div class="bg-slate-100 border border-slate-200 rounded-xl p-4">
+    <div class="text-xs text-slate-600 uppercase">Cancelled</div>
+    <div class="text-xl font-bold mt-1 text-slate-700"><%= summary.cancelled %></div>
+  </div>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl mb-6">
+  <div class="px-5 py-3 border-b border-slate-200">
+    <h2 class="font-semibold">Lifetime revenue collected</h2>
+  </div>
+  <div class="px-5 py-4">
+    <div class="text-3xl font-bold text-emerald-700"><%= fmtMoney(summary.total_paid_lifetime) %> <span class="text-base font-normal text-slate-500">EGP</span></div>
+    <p class="text-xs text-slate-500 mt-1">Sum of all payments recorded in admin payment history.</p>
+  </div>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl mb-6">
+  <div class="px-5 py-3 border-b border-slate-200">
+    <h2 class="font-semibold">Revenue by plan (active customers)</h2>
+  </div>
+  <% if (byPlan.length === 0) { %>
+    <div class="p-6 text-center text-slate-500 text-sm">No active customers with a plan.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr><th class="text-left px-5 py-2">Plan</th><th class="text-right px-5 py-2">Customers</th><th class="text-right px-5 py-2">Sum (EGP per cycle)</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% byPlan.forEach(function(p) { %>
+          <tr><td class="px-5 py-2"><%= p.plan %></td><td class="px-5 py-2 text-right"><%= p.count %></td><td class="px-5 py-2 text-right font-medium"><%= fmtMoney(p.total) %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl mb-6">
+  <div class="px-5 py-3 border-b border-slate-200">
+    <h2 class="font-semibold">Due in the next 30 days (<%= dueSoon.length %>)</h2>
+  </div>
+  <% if (dueSoon.length === 0) { %>
+    <div class="p-6 text-center text-slate-500 text-sm">Nothing due soon.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr><th class="text-left px-5 py-2">Customer</th><th class="text-left px-5 py-2">Plan</th><th class="text-left px-5 py-2">Amount</th><th class="text-left px-5 py-2">Next bill</th><th class="text-left px-5 py-2">Days</th><th class="text-left px-5 py-2">Status</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% dueSoon.forEach(function(c) { %>
+          <tr><td class="px-5 py-2"><a href="/customers/<%= c.id %>" class="font-medium hover:underline"><%= c.name %></a><div class="text-xs text-slate-500"><%= c.subdomain %></div></td><td class="px-5 py-2 text-slate-600"><%= c.plan_name || '—' %></td><td class="px-5 py-2"><%= fmtMoney(c.billing_amount) %> / <%= c.billing_cycle %></td><td class="px-5 py-2"><%= fmtDate(c.next_billing_date) %></td><td class="px-5 py-2 <%= c.days_until <= 7 ? 'text-amber-700 font-medium' : 'text-slate-600' %>"><%= c.days_until %></td><td class="px-5 py-2"><%= c.payment_status %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl mb-6">
+  <div class="px-5 py-3 border-b border-slate-200">
+    <h2 class="font-semibold text-red-700">Overdue / past due (<%= overdue.length %>)</h2>
+  </div>
+  <% if (overdue.length === 0) { %>
+    <div class="p-6 text-center text-slate-500 text-sm">No overdue customers.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr><th class="text-left px-5 py-2">Customer</th><th class="text-left px-5 py-2">Plan</th><th class="text-left px-5 py-2">Amount</th><th class="text-left px-5 py-2">Next bill</th><th class="text-left px-5 py-2">Status</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% overdue.forEach(function(c) { %>
+          <tr><td class="px-5 py-2"><a href="/customers/<%= c.id %>" class="font-medium hover:underline"><%= c.name %></a><div class="text-xs text-slate-500"><%= c.subdomain %></div></td><td class="px-5 py-2 text-slate-600"><%= c.plan_name || '—' %></td><td class="px-5 py-2"><%= fmtMoney(c.billing_amount) %></td><td class="px-5 py-2"><%= fmtDate(c.next_billing_date) %></td><td class="px-5 py-2 text-red-700 font-medium"><%= c.payment_status %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<div class="bg-white border border-slate-200 rounded-xl">
+  <div class="px-5 py-3 border-b border-slate-200">
+    <h2 class="font-semibold">Recent payments (last 20)</h2>
+  </div>
+  <% if (recentPayments.length === 0) { %>
+    <div class="p-6 text-center text-slate-500 text-sm">No payments recorded yet.</div>
+  <% } else { %>
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-slate-600 text-xs uppercase">
+        <tr><th class="text-left px-5 py-2">Date</th><th class="text-left px-5 py-2">Customer</th><th class="text-left px-5 py-2">Amount</th><th class="text-left px-5 py-2">Method</th><th class="text-left px-5 py-2">Ref</th></tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        <% recentPayments.forEach(function(p) { %>
+          <tr><td class="px-5 py-2 text-slate-600"><%= fmtDate(p.payment_date) %></td><td class="px-5 py-2"><a href="/customers/<%= p.customer_id %>" class="hover:underline"><%= p.customer_name %></a></td><td class="px-5 py-2 font-medium"><%= fmtMoney(p.amount) %></td><td class="px-5 py-2 text-slate-600 text-xs"><%= p.method || '—' %></td><td class="px-5 py-2 text-slate-600 text-xs"><%= p.reference || '—' %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('_footer') %>
