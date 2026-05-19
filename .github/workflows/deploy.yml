@@ -1,9 +1,23 @@
+# Manual VPS deploy.
+#
+# This workflow used to run on every push to main, which caused "deployment
+# failed" emails before the VPS was actually set up. It is now MANUAL ONLY:
+# go to the repo's "Actions" tab on GitHub, pick "Deploy to VPS", click
+# "Run workflow". Nothing happens automatically on push.
+#
+# Before you can use this you must set three repo secrets under
+# Settings -> Secrets and variables -> Actions:
+#   - VPS_HOST     (e.g. 187.124.15.14)
+#   - VPS_USER     (e.g. root or your ssh user)
+#   - VPS_SSH_KEY  (private SSH key, in PEM format)
+#
+# Until those are set + the VPS is provisioned per deploy/README.md, leave
+# this workflow alone — clicking "Run workflow" will just fail.
+
 name: Deploy to VPS
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
