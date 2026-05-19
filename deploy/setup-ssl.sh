@@ -59,7 +59,6 @@ case "$MODE" in
       --dns-cloudflare-propagation-seconds 30 \
       -d "${DOMAIN}" \
       -d "*.${DOMAIN}" \
-      -d "admin.${DOMAIN}" \
       --email "$EMAIL" \
       --agree-tos \
       --non-interactive
@@ -73,7 +72,6 @@ case "$MODE" in
       --preferred-challenges dns \
       -d "${DOMAIN}" \
       -d "*.${DOMAIN}" \
-      -d "admin.${DOMAIN}" \
       --email "$EMAIL" \
       --agree-tos
     echo ""
