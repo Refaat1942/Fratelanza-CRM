@@ -19,7 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Building2, User, Phone, Mail, Trash2, Edit2, Star, Target, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Building2, User, Phone, Mail, Trash2, Edit2, Star, Target, CheckCircle2, XCircle, MessageCircle } from "lucide-react";
+import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
@@ -349,6 +350,23 @@ export default function CRM() {
                     )}
                   </div>
                   <div className="pt-4 flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {client.phone && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 border-emerald-200"
+                        onClick={() => {
+                          const greeting = isAr
+                            ? `السلام عليكم ${client.nameAr || client.name}،`
+                            : `Hello ${client.name},`;
+                          openWhatsApp(client.phone, greeting);
+                        }}
+                        title={t("Send WhatsApp", "إرسال واتساب")}
+                        data-testid={`btn-whatsapp-client-${client.id}`}
+                      >
+                        <MessageCircle size={14} />
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => openEdit(client)} data-testid={`btn-edit-client-${client.id}`}>
                       <Edit2 size={14} className={isRtl ? "ml-1" : "mr-1"} />
                       {t("Edit", "تعديل")}

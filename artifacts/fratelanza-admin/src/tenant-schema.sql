@@ -185,3 +185,41 @@ CREATE TABLE "purchase_orders" (
 	CONSTRAINT "purchase_orders_po_number_unique" UNIQUE("po_number")
 );
 
+CREATE TABLE "invoice_items" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"invoice_id" integer NOT NULL,
+	"description" text NOT NULL,
+	"description_ar" text,
+	"quantity" real DEFAULT 1 NOT NULL,
+	"unit_price" real DEFAULT 0 NOT NULL,
+	"total" real DEFAULT 0 NOT NULL,
+	"sort_order" integer DEFAULT 0 NOT NULL
+);
+
+CREATE TABLE "invoices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"invoice_number" text NOT NULL,
+	"client_id" integer,
+	"client_name_snapshot" text,
+	"client_phone_snapshot" text,
+	"status" text DEFAULT 'draft' NOT NULL,
+	"issue_date" date DEFAULT now() NOT NULL,
+	"due_date" date,
+	"subtotal" real DEFAULT 0 NOT NULL,
+	"tax_rate" real DEFAULT 0 NOT NULL,
+	"tax_amount" real DEFAULT 0 NOT NULL,
+	"total" real DEFAULT 0 NOT NULL,
+	"paid_amount" real DEFAULT 0 NOT NULL,
+	"notes" text,
+	"notes_ar" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "invoices_invoice_number_unique" UNIQUE("invoice_number")
+);
+
+ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE cascade ON UPDATE no action;
+npm notice
+npm notice New minor version of npm available! 11.6.2 -> 11.14.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1
+npm notice To update run: npm install -g npm@11.14.1
+npm notice

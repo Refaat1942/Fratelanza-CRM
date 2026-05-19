@@ -10,3 +10,4 @@ export * from "./rentals";
 export * from "./suppliers";
 export * from "./stockMovements";
 export * from "./purchaseOrders";
+export * from "./invoices";

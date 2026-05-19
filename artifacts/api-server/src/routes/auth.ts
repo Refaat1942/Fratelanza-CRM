@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 
 const router: IRouter = Router();
 
-const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","suppliers","purchase_orders","reports","notifications","settings"];
+const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","suppliers","purchase_orders","invoicing","reports","notifications","settings"];
 
 async function ensureAdminExists() {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.username, "admin"));
