@@ -16,6 +16,7 @@ import suppliersRouter from "./suppliers";
 import stockMovementsRouter from "./stockMovements";
 import purchaseOrdersRouter from "./purchaseOrders";
 import { requireFeature } from "../middleware/feature";
+import { requirePermission } from "../middleware/permissions";
 
 const router: IRouter = Router();
 
@@ -26,16 +27,17 @@ router.use(usersRouter);
 router.use(dashboardRouter);
 router.use(requireFeature("notifications"), notificationsRouter);
 
-// Per-module feature gates (admin can disable any of these per-customer).
-router.use(requireFeature("tasks"), tasksRouter);
-router.use(requireFeature("crm"), clientsRouter);
-router.use(requireFeature("finance"), transactionsRouter);
-router.use(requireFeature("team"), employeesRouter);
-router.use(requireFeature("products"), productsRouter);
-router.use(requireFeature("products"), stockMovementsRouter);
-router.use(requireFeature("suppliers"), suppliersRouter);
-router.use(requireFeature("purchase_orders"), purchaseOrdersRouter);
-router.use(requireFeature("rentals"), rentalsRouter);
-router.use(requireFeature("reports"), reportsRouter);
+// Per-module gates: tenant feature toggle (admin can disable per-customer) +
+// per-user permission check (manager assigns module access to employees).
+router.use(requireFeature("tasks"), requirePermission("tasks"), tasksRouter);
+router.use(requireFeature("crm"), requirePermission("crm"), clientsRouter);
+router.use(requireFeature("finance"), requirePermission("finance"), transactionsRouter);
+router.use(requireFeature("team"), requirePermission("team"), employeesRouter);
+router.use(requireFeature("products"), requirePermission("products"), productsRouter);
+router.use(requireFeature("products"), requirePermission("products"), stockMovementsRouter);
+router.use(requireFeature("suppliers"), requirePermission("suppliers"), suppliersRouter);
+router.use(requireFeature("purchase_orders"), requirePermission("purchase_orders"), purchaseOrdersRouter);
+router.use(requireFeature("rentals"), requirePermission("rentals"), rentalsRouter);
+router.use(requireFeature("reports"), requirePermission("reports"), reportsRouter);
 
 export default router;

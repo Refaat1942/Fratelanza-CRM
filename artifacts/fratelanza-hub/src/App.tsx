@@ -43,8 +43,14 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 function FeatureGate({ feature, children }: { feature: string; children: React.ReactNode }) {
   const { features, loading } = useFeatures();
+  const { user } = useAuth();
   if (loading) return null;
+  // Tenant-level: feature must be enabled for the workspace.
   if (features[feature] === false) return <NotFound />;
+  // User-level: non-admins need the permission in their assigned list.
+  if (user && user.role !== "admin" && !(user.permissions || []).includes(feature)) {
+    return <NotFound />;
+  }
   return <>{children}</>;
 }
 
