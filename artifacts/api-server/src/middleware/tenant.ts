@@ -9,7 +9,10 @@ const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
 const ALLOW_TENANT_HEADER =
   process.env.NODE_ENV !== "production" || process.env.ALLOW_TENANT_HEADER === "1";
 const RESERVED_SUBDOMAINS = new Set(["www", "admin", "api", "app"]);
-const CACHE_TTL_MS = 60_000;
+// Short TTL so block/unblock (and feature toggle) changes take effect within
+// a few seconds. 5s is small enough for SaaS blocking SLAs and large enough
+// to absorb bursty request traffic without hammering the admin lookup endpoint.
+const CACHE_TTL_MS = 5_000;
 
 type CacheEntry = { ctx: TenantContext | null; expiresAt: number };
 // Only successful lookups (including authoritative 404s) are cached — transient
