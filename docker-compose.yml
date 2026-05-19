@@ -18,13 +18,28 @@ services:
     build: .
     restart: unless-stopped
     ports:
-      - "1025:3000"
+      # Bind to loopback only — nginx on the host reverse-proxies 443 -> 1025.
+      # This keeps the CRM unreachable over plain HTTP from the public internet.
+      - "127.0.0.1:1025:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgresql://fratelanza:${POSTGRES_PASSWORD}@db:5432/fratelanza
       STATIC_DIR: /app/artifacts/fratelanza-hub/dist/public
       SESSION_SECRET: ${SESSION_SECRET}
+      # --- Multi-tenancy (Phase 2/3) ---
+      # Where the CRM looks up subdomain -> tenant config. In Docker, the
+      # admin app runs on the VPS host (port 2025 from its own compose
+      # project), so we use host.docker.internal.
+      ADMIN_API_URL: ${ADMIN_API_URL:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      # Template used to connect to each customer's database. Must point at
+      # the same Postgres server that the admin app provisioned the DBs on.
+      TENANT_DB_URL_TEMPLATE: ${TENANT_DB_URL_TEMPLATE:-postgresql://fratelanza:${POSTGRES_PASSWORD}@db:5432/{db}}
+    extra_hosts:
+      # Lets `ADMIN_API_URL=http://host.docker.internal:2025` resolve to the
+      # VPS host where the admin compose project listens.
+      - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy

@@ -66,7 +66,15 @@ Self-contained Express + EJS multi-tenant control plane for selling the CRM as S
 - Tables (auto-created on first run): `admin_users`, `admin_customers`, `admin_session`. Lives in its OWN database — never shares a DB with the CRM.
 - Default admin login: `admin` / `admin123` (override via `ADMIN_USERNAME` / `ADMIN_PASSWORD`).
 - Public endpoint `GET /api/tenants/:subdomain` returns `{ name, subdomain, db_name, status, features }` — the CRM will use this in Phase 2 to look up tenant config by subdomain.
-- Phase status: Phases 1 + 2 + 3 done. Phase 4 = nginx wildcard subdomain + SSL on VPS.
+- Phase status: All 4 phases done.
+
+## VPS routing (Phase 4)
+
+- `deploy/nginx.conf`: terminates TLS for `fratelanza.com`, `*.fratelanza.com`, and `admin.fratelanza.com`. CRM (port 1025) gets the wildcard + apex; admin (port 2025) gets `admin.fratelanza.com` only. `Host` header is preserved (critical — CRM resolves the tenant from it). HTTP→HTTPS redirect on port 80.
+- `deploy/setup-ssl.sh`: one-shot certbot helper that issues a single wildcard cert covering apex + `*` + admin via DNS-01. Cloudflare mode (recommended, auto-renews via `certbot.timer`) or manual mode (any DNS provider, but renewal is manual every 60 days).
+- `deploy/README.md`: full Phase 4 runbook — DNS records to create, nginx install, cert issuance, end-to-end customer onboarding test.
+- `docker-compose.yml` (CRM): now passes `ADMIN_API_URL`, `ADMIN_API_KEY`, `TENANT_DB_URL_TEMPLATE` through to the container and adds `extra_hosts: host.docker.internal:host-gateway` so the CRM container can reach the admin compose project on the host.
+- `.env.example` updated with the new multi-tenant env vars (commented for single-tenant fallback).
 
 ## Multi-tenancy (Phase 3 — auto-provisioning)
 

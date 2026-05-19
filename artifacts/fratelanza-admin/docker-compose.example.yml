@@ -31,7 +31,10 @@ services:
       ADMIN_API_KEY: CHANGE_ME_API_KEY_FOR_CRM_LOOKUPS
       PORT: 5050
     ports:
-      - "2025:5050"
+      # Bind to loopback only — nginx on the host reverse-proxies
+      # https://admin.fratelanza.com -> 127.0.0.1:2025. This keeps the
+      # admin app unreachable over plain HTTP from the public internet.
+      - "127.0.0.1:2025:5050"
 
 volumes:
   admin_db_data:
