@@ -20,6 +20,10 @@ import { useToast } from "@/hooks/use-toast";
 type NavItem = {
   href: string;
   key: string;
+  // Optional: tenant feature-flag key, if it differs from the user-permission key.
+  // Defaults to `key` when omitted. Used so e.g. dental items can require the "dental"
+  // feature flag but reuse the "medical" user permission.
+  featureKey?: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   labelEn: string;
   labelAr: string;
@@ -81,11 +85,11 @@ const NAV_GROUPS: NavGroup[] = [
         labelAr: "الأسنان",
         icon: Smile,
         items: [
-          // Permission gate intentionally uses "medical" — dental reuses the medical permission.
-          // The tenant feature gate ("dental") is enforced by the parent subgroup's featureKey.
-          { href: "/dental/catalog", key: "medical", icon: ListPlus, labelEn: "Dental Catalog", labelAr: "قائمة علاجات الأسنان" },
-          { href: "/dental/chart", key: "medical", icon: Grid3x3, labelEn: "Dental Chart", labelAr: "خريطة الأسنان" },
-          { href: "/dental/visits", key: "medical", icon: ClipboardList, labelEn: "Dental Visits", labelAr: "زيارات الأسنان" },
+          // Permission gate uses "medical" (dental reuses medical permission),
+          // but tenant feature gate uses "dental" so the items appear only when the dental flag is on.
+          { href: "/dental/catalog", key: "medical", featureKey: "dental", icon: ListPlus, labelEn: "Dental Catalog", labelAr: "قائمة علاجات الأسنان" },
+          { href: "/dental/chart",   key: "medical", featureKey: "dental", icon: Grid3x3,  labelEn: "Dental Chart",   labelAr: "خريطة الأسنان" },
+          { href: "/dental/visits",  key: "medical", featureKey: "dental", icon: ClipboardList, labelEn: "Dental Visits", labelAr: "زيارات الأسنان" },
         ],
       },
     ],
@@ -119,7 +123,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { features } = useFeatures();
 
   const canSee = (item: NavItem) => {
-    if (item.key !== "dashboard" && features[item.key] === false) return false;
+    const featKey = item.featureKey ?? item.key;
+    if (item.key !== "dashboard" && features[featKey] === false) return false;
     return isAdmin || userPerms.includes(item.key);
   };
 
