@@ -7,6 +7,7 @@ export type AuthUser = {
   role: string;
   permissions: string[];
   displayName?: string;
+  branchId?: number | null;
   mustChangePassword?: boolean;
 } | null;
 type AuthCtx = {

@@ -213,6 +213,20 @@ Sellable add-on for dentists/dental clinics. Admin-toggleable per tenant via the
 - **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` has dental tables appended (as `CREATE TABLE IF NOT EXISTS` since they were added after Phase A). New tenants get them automatically.
 - **Existing tenants migration**: `deploy/migrations/002-dental.sql` — idempotent `CREATE TABLE IF NOT EXISTS` + indices, wrapped in BEGIN/COMMIT, safe to re-run. Apply with `deploy/migrate-tenants.sh deploy/migrations/002-dental.sql`.
 
+## Phase D2 — branch_id on records + first form wired (✅ DONE, non-breaking)
+
+Tags every transactional record with an optional branch. No filtering yet (that's D3) — D2 is just the columns + form plumbing.
+
+- **Migration**: `deploy/migrations/005-branch-id-on-records.sql` — uses a DO loop with `information_schema` lookup so it skips any table that doesn't exist yet (e.g. a tenant that hasn't applied Phase B dental or Phase C treatment plans migrations). Idempotent (`ADD COLUMN IF NOT EXISTS` + `CREATE INDEX IF NOT EXISTS`). Adds `branch_id INTEGER` (nullable) to: `tasks, patients, medical_appointments, visits, medical_invoices, transactions, treatment_plans, employees, products, rentals, dental_visits` + matching indices. Same DDL appended to `artifacts/fratelanza-admin/src/tenant-schema.sql`.
+- **Drizzle schemas updated**: same 11 tables (in `lib/db/src/schema/`).
+- **Session + auth**: login response, `/auth/me`, and `req.session` now include `branchId` (read from `users.branch_id`). `AuthProvider.AuthUser` exposes `branchId` so frontend can default new records to the logged-in user's branch.
+- **Backend write paths accept `branchId`** (zod `.number().int().positive().nullable().optional()`) on: `patients` (POST/PATCH via shared input schema), `medical/appointments` (POST insert), `treatment-plans` (POST/PATCH), `tasks` (POST + PATCH — extracted from `req.body` manually since `CreateTaskBody`/`UpdateTaskBody` come from Orval codegen and shouldn't be edited by hand).
+- **Reusable `<BranchSelect>`** (`artifacts/fratelanza-hub/src/components/BranchSelect.tsx`) — fetches `/branches` once (5-min staleTime), filters to active branches, renders nothing if the tenant has no branches (so single-branch tenants see no UI clutter). Includes a "— No branch —" option.
+- **Patients form wired**: new patient defaults `branchId` to `user.branchId`; field is editable in the form. Edit dialog respects the existing value. Other forms (Appointments, Treatment Plans, Tasks, Invoices, etc.) — same pattern, will wire in **D2b** next turn.
+- **Deploy to VPS**: `git pull && docker compose up -d --build app` then `bash deploy/migrate-tenants.sh deploy/migrations/005-branch-id-on-records.sql` (type `yes`).
+
+**D2b (next turn)**: wire `<BranchSelect>` into Appointments, Treatment Plans, Tasks, Medical Invoices, Transactions, Employees, Products, Rentals forms. Mechanical.
+
 ## Phase D1 — Branches + roles foundation (✅ DONE, non-breaking)
 
 First slice of Phase D. **Additive only** — existing data and flows untouched. Sets up the data model + admin UI; D2 will wire `branch_id` onto records, D3 will scope queries per user's branch.

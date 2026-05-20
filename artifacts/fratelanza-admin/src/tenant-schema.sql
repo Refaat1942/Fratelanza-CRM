@@ -448,3 +448,27 @@ CREATE TABLE IF NOT EXISTS branches (
 ALTER TABLE users ADD COLUMN IF NOT EXISTS branch_id INTEGER;
 CREATE INDEX IF NOT EXISTS idx_users_branch_id ON users(branch_id);
 CREATE INDEX IF NOT EXISTS idx_branches_active ON branches(is_active);
+
+-- Phase D2: branch_id on all transactional records (additive, nullable)
+ALTER TABLE tasks                 ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE patients              ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE medical_appointments  ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE visits                ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE medical_invoices      ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE transactions          ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE treatment_plans       ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE employees             ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE products              ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE rentals               ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+ALTER TABLE dental_visits         ADD COLUMN IF NOT EXISTS branch_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_tasks_branch                ON tasks(branch_id);
+CREATE INDEX IF NOT EXISTS idx_patients_branch             ON patients(branch_id);
+CREATE INDEX IF NOT EXISTS idx_medical_appointments_branch ON medical_appointments(branch_id);
+CREATE INDEX IF NOT EXISTS idx_visits_branch               ON visits(branch_id);
+CREATE INDEX IF NOT EXISTS idx_medical_invoices_branch     ON medical_invoices(branch_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_branch         ON transactions(branch_id);
+CREATE INDEX IF NOT EXISTS idx_treatment_plans_branch      ON treatment_plans(branch_id);
+CREATE INDEX IF NOT EXISTS idx_employees_branch            ON employees(branch_id);
+CREATE INDEX IF NOT EXISTS idx_products_branch             ON products(branch_id);
+CREATE INDEX IF NOT EXISTS idx_rentals_branch              ON rentals(branch_id);
+CREATE INDEX IF NOT EXISTS idx_dental_visits_branch        ON dental_visits(branch_id);

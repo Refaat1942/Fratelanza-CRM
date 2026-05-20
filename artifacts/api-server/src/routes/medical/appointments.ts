@@ -16,6 +16,7 @@ const AppointmentInput = z.object({
   reason: z.string().nullable().optional(),
   reasonAr: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
+  branchId: z.number().int().positive().nullable().optional(),
 });
 
 // Conflict detection: does the given doctor already have a non-cancelled appointment overlapping [start, end)?
@@ -115,6 +116,7 @@ router.post("/appointments", async (req, res): Promise<void> => {
     reason: parsed.data.reason ?? null,
     reasonAr: parsed.data.reasonAr ?? null,
     notes: parsed.data.notes ?? null,
+    branchId: parsed.data.branchId ?? null,
   }).returning();
   res.status(201).json(appt);
 });

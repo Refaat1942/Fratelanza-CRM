@@ -22,6 +22,8 @@ import { PageHeader } from "@/components/ui-ext/page-header";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
 import { SectionCard } from "@/components/ui-ext/section-card";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 
 type Patient = {
   id: number;
@@ -38,6 +40,7 @@ type Patient = {
   emergencyContactName?: string | null;
   emergencyContactPhone?: string | null;
   notes?: string | null; notesAr?: string | null;
+  branchId?: number | null;
 };
 
 type Stats = { total: number; recent: number };
@@ -47,6 +50,7 @@ const EMPTY: Patient = {
   gender: null, dateOfBirth: "", nationalId: "", phone: "", email: "",
   address: "", addressAr: "", bloodType: "", allergies: "", chronicConditions: "",
   emergencyContactName: "", emergencyContactPhone: "", notes: "", notesAr: "",
+  branchId: null,
 };
 
 function calcAge(dob?: string | null): number | null {
@@ -61,6 +65,7 @@ export default function Patients() {
   const { t, isRtl, language } = useLanguage();
   const isAr = language === "ar";
   const lf = useLangField();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
@@ -107,6 +112,11 @@ export default function Patients() {
 
   const openEdit = (p: Patient) => { setEditing(p); setForm({ ...EMPTY, ...p }); };
 
+  const openCreate = () => {
+    setForm({ ...EMPTY, branchId: user?.branchId ?? null });
+    setCreateOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // Strict per-language form. Write policy:
@@ -124,6 +134,7 @@ export default function Patients() {
       chronicConditions: form.chronicConditions || null,
       emergencyContactName: form.emergencyContactName || null,
       emergencyContactPhone: form.emergencyContactPhone || null,
+      branchId: form.branchId ?? null,
     };
     if (isAr) {
       data.firstNameAr = form.firstNameAr || "";
@@ -259,6 +270,8 @@ export default function Patients() {
             onChange={e => isAr ? setForm({ ...form, notesAr: e.target.value }) : setForm({ ...form, notes: e.target.value })}
           />
         </div>
+
+        <BranchSelect value={form.branchId} onChange={id => setForm({ ...form, branchId: id })} />
       </div>
       <DialogFooter>
         <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
@@ -277,7 +290,7 @@ export default function Patients() {
         actions={
           <Dialog open={createOpen} onOpenChange={open => { setCreateOpen(open); if (!open) setForm(EMPTY); }}>
             <DialogTrigger asChild>
-              <Button data-testid="btn-create-patient" className="gap-1.5 h-9"><Plus size={15}/>{t("New Patient", "مريض جديد")}</Button>
+              <Button data-testid="btn-create-patient" className="gap-1.5 h-9" onClick={openCreate}><Plus size={15}/>{t("New Patient", "مريض جديد")}</Button>
             </DialogTrigger>
             <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>
               <DialogHeader>
@@ -336,7 +349,7 @@ export default function Patients() {
             title={t("No patients yet", "لا يوجد مرضى بعد")}
             description={t("Add your first patient to start tracking visits, prescriptions, and invoices.", "أضف أول مريض لتبدأ تتبع الزيارات والوصفات والفواتير.")}
             action={
-              <Button onClick={() => setCreateOpen(true)} className="gap-1.5"><Plus size={15}/>{t("Add Patient", "إضافة مريض")}</Button>
+              <Button onClick={openCreate} className="gap-1.5"><Plus size={15}/>{t("Add Patient", "إضافة مريض")}</Button>
             }
           />
         ) : (

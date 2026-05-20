@@ -22,6 +22,7 @@ const PlanInput = z.object({
   notesAr: z.string().nullable().optional(),
   startDate: z.string().nullable().optional(),
   targetCompletionDate: z.string().nullable().optional(),
+  branchId: z.number().int().positive().nullable().optional(),
 });
 
 router.get("/treatment-plans", async (req, res): Promise<void> => {

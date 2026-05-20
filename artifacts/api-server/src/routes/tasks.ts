@@ -44,10 +44,12 @@ router.post("/tasks", async (req, res): Promise<void> => {
   const parsed = CreateTaskBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const recurrence = RECURRENCE.parse(req.body.recurrence ?? "none");
+  const branchId = typeof req.body.branchId === "number" ? req.body.branchId : null;
   const { dueDate, ...rest } = parsed.data;
   const [task] = await db.insert(tasksTable).values({
     ...rest,
     recurrence,
+    branchId,
     ...(dueDate ? { dueDate: dueDate.toISOString().slice(0, 10) } : {}),
   }).returning();
 
@@ -87,12 +89,16 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
 
   const recurrenceRaw = req.body.recurrence;
   const recurrenceUpdate = recurrenceRaw ? RECURRENCE.parse(recurrenceRaw) : undefined;
+  const branchIdUpdate = Object.prototype.hasOwnProperty.call(req.body, "branchId")
+    ? (typeof req.body.branchId === "number" ? req.body.branchId : null)
+    : undefined;
 
   const [oldTask] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
   const { dueDate: updateDueDate, ...updateRest } = parsed.data;
   const [task] = await db.update(tasksTable).set({
     ...updateRest,
     ...(recurrenceUpdate ? { recurrence: recurrenceUpdate } : {}),
+    ...(branchIdUpdate !== undefined ? { branchId: branchIdUpdate } : {}),
     ...(updateDueDate !== undefined ? { dueDate: updateDueDate ? updateDueDate.toISOString().slice(0, 10) : null } : {}),
   }).where(eq(tasksTable.id, params.data.id)).returning();
 

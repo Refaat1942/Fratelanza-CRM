@@ -12,6 +12,7 @@ export const transactionsTable = pgTable("transactions", {
   category: text("category").notNull(),
   date: text("date").notNull(),
   clientId: integer("client_id"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

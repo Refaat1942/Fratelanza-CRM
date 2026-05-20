@@ -19,6 +19,7 @@ export const rentalsTable = pgTable("rentals", {
   notes: text("notes"),
   documentPath: text("document_path"),
   documentName: text("document_name"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

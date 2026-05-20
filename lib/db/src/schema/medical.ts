@@ -23,6 +23,7 @@ export const patientsTable = pgTable("patients", {
   emergencyContactPhone: text("emergency_contact_phone"),
   notes: text("notes"),
   notesAr: text("notes_ar"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -42,6 +43,7 @@ export const medicalAppointmentsTable = pgTable("medical_appointments", {
   reason: text("reason"),
   reasonAr: text("reason_ar"),
   notes: text("notes"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -63,6 +65,7 @@ export const visitsTable = pgTable("visits", {
   treatmentAr: text("treatment_ar"),
   followUpDate: date("follow_up_date"),
   notes: text("notes"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -113,6 +116,7 @@ export const medicalInvoicesTable = pgTable("medical_invoices", {
   transactionId: integer("transaction_id"), // link to transactions when paid
   notes: text("notes"),
   notesAr: text("notes_ar"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -24,6 +24,7 @@ const PatientInput = z.object({
   emergencyContactPhone: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
   notesAr: z.string().nullable().optional(),
+  branchId: z.number().int().positive().nullable().optional(),
 });
 
 router.get("/patients/stats", async (_req, res): Promise<void> => {

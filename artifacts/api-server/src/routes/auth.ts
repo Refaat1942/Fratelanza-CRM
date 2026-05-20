@@ -72,6 +72,7 @@ router.post("/auth/login", loginLimiter, async (req: Request, res: Response): Pr
   (req.session as any).username = user.username;
   (req.session as any).role = user.role;
   (req.session as any).permissions = permissions;
+  (req.session as any).branchId = (user as any).branchId ?? null;
   (req.session as any).mustChangePassword = mustChangePassword;
 
   log?.info({ ip, username, ua, event: "login_success", mustChangePassword }, "login_success");
@@ -82,6 +83,7 @@ router.post("/auth/login", loginLimiter, async (req: Request, res: Response): Pr
     displayName: user.displayName,
     role: user.role,
     permissions,
+    branchId: (user as any).branchId ?? null,
     mustChangePassword,
   });
 });
@@ -100,6 +102,7 @@ router.get("/auth/me", (req: Request, res: Response): void => {
     username: s.username,
     role: s.role,
     permissions,
+    branchId: s.branchId ?? null,
     mustChangePassword: !!s.mustChangePassword,
   });
 });
