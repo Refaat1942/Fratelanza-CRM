@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db, visitsTable, patientsTable, employeesTable } from "@workspace/db";
+import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -65,6 +66,8 @@ router.get("/visits", async (req, res): Promise<void> => {
     const did = parseInt(req.query.doctorId, 10);
     if (Number.isFinite(did)) conds.push(eq(visitsTable.doctorId, did));
   }
+  const bw = branchWhere(req, visitsTable.branchId);
+  if (bw) conds.push(bw);
   const where = conds.length ? and(...conds) : undefined;
   const rows = await selectVisits(where);
   res.json(rows);

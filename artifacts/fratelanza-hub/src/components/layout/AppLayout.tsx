@@ -12,6 +12,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "../AuthProvider";
 import { useFeatures } from "../FeaturesProvider";
+import { BranchPicker } from "../BranchPicker";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -360,6 +361,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <h1 className="text-[15px] font-semibold text-foreground">{headerTitle}</h1>
           </div>
           <div className="flex items-center gap-2">
+            <BranchPicker />
             <Button variant="outline" size="sm" onClick={() => setLanguage(language === "en" ? "ar" : "en")} data-testid="toggle-language" className="font-medium text-xs px-2.5 h-8">
               {language === "en" ? "عربي" : "English"}
             </Button>

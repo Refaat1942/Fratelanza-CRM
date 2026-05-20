@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, ne, sql, asc } from "drizzle-orm";
 import { db, medicalAppointmentsTable, patientsTable, employeesTable } from "@workspace/db";
+import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 
 const router: IRouter = Router();

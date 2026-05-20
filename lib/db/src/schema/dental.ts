@@ -53,6 +53,7 @@ export const dentalVisitsTable = pgTable("dental_visits", {
   notes: text("notes"),
   notesAr: text("notes_ar"),
   followUpDate: date("follow_up_date"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

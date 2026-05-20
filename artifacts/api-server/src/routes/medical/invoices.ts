@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, sql } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
+import { branchWhere } from "../../lib/branchScope";
 import {
   db, medicalInvoicesTable, medicalInvoiceLinesTable,
   patientsTable, employeesTable, transactionsTable,
@@ -66,9 +67,11 @@ async function selectInvoices(where?: any) {
 }
 
 router.get("/medical-invoices", async (req, res): Promise<void> => {
-  const where = typeof req.query.patientId === "string"
+  const pidWhere = typeof req.query.patientId === "string"
     ? eq(medicalInvoicesTable.patientId, parseInt(req.query.patientId, 10))
     : undefined;
+  const bw = branchWhere(req, medicalInvoicesTable.branchId);
+  const where = pidWhere && bw ? and(pidWhere, bw) : (pidWhere ?? bw);
   const rows = await selectInvoices(where);
   res.json(rows);
 });

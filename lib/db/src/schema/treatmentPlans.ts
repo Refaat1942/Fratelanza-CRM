@@ -21,6 +21,7 @@ export const treatmentPlansTable = pgTable("treatment_plans", {
   estimatedTotal: real("estimated_total").notNull().default(0),
   startDate: date("start_date"),
   targetCompletionDate: date("target_completion_date"),
+  branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

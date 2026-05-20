@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { and, eq, desc, sql } from "drizzle-orm";
 import { db, dentalVisitsTable, patientsTable, employeesTable, dentalProceduresTable } from "@workspace/db";
+import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -30,10 +31,12 @@ const VisitInput = z.object({
 
 router.get("/dental-visits", async (req, res): Promise<void> => {
   const patientId = req.query.patient ? parseInt(String(req.query.patient), 10) : null;
-  const conditions = [];
+  const conditions: any[] = [];
   if (patientId && Number.isFinite(patientId)) {
     conditions.push(eq(dentalVisitsTable.patientId, patientId));
   }
+  const bw = branchWhere(req, dentalVisitsTable.branchId);
+  if (bw) conditions.push(bw);
   const rows = await db
     .select({
       v: dentalVisitsTable,

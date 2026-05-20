@@ -231,6 +231,17 @@ All transactional records now accept and persist `branchId` end-to-end. No list 
 - **Backend write paths**: `visits` (POST+PATCH), `employees` (POST+PATCH), `products` (POST+PATCH), `rentals` (POST+PATCH multipart — `Number()`-coerces FormData string), `medical-invoices` POST. Pattern: `branchId` is extracted from `req.body` manually (not in the Orval/zod schemas, so it's spread into `.values`/`.set` only when valid: positive integer → set, `null` → clear, otherwise ignore).
 - **Frontend forms wired**: `team`, `products`, `rentals`, `medical/visits`, `medical/invoices`, `medical/treatment-plans`. Each form: new records default to `user.branchId`, edit dialog preserves existing value, `<BranchSelect>` rendered (auto-hides for single-branch tenants).
 - **Next (D3)**: filter list endpoints by `req.session.branchId` for non-admin users + admin branch picker in topbar to override the filter.
+
+### Phase D3 — branch-scoped list filtering + admin picker (✅ DONE)
+
+End-to-end branch scoping. Non-admins see only their branch's data automatically; admins see everything and can narrow via a topbar picker.
+
+- **Helper** `artifacts/api-server/src/lib/branchScope.ts` — `effectiveBranchId(req)` and `branchWhere(req, col)`. Rules: admin → no filter unless `session.branchOverride` is set; non-admin → filter by `session.branchId` if set, else no filter (treated as global user — owner/accountant).
+- **Override endpoint** `POST /api/branches/select-override` (admin-only) — body `{ branchId: number | null }`. Validates branch exists. `branchOverride` now included in `/api/auth/me` so frontend can sync the picker.
+- **List endpoints filtered** (11 total): `tasks`, `transactions`, `employees`, `products` (+ `/low-stock`), `rentals`, `treatment-plans`, `patients`, `appointments`, `visits`, `medical-invoices`, `dental-visits`. Each one composes the branch filter with existing where clauses via `and(...)`. Detail/edit/delete endpoints intentionally NOT scoped — direct ID access is allowed across branches (admin can still edit any record they have a link to).
+- **Drizzle schemas backfilled**: `treatment_plans` and `dental_visits` were missing `branchId: integer("branch_id")` in code (column existed in DB from migration 005, just not in schema). Now added.
+- **Frontend** `BranchPicker` (`components/BranchPicker.tsx`) — admin-only Select rendered in the topbar of `AppLayout`. Shows `All branches` + active branches. On change: POST to override endpoint, refresh `/auth/me`, then `qc.invalidateQueries()` to refetch every list. Auto-hides for tenants with no branches. `AuthUser.branchOverride` added to the provider type.
+- **Deploy to VPS**: code-only change, no migration needed (`git pull && docker compose up -d --build app`). Note: `branchOverride` lives in the session, so admins will need to log in once after deploy for it to start working (existing sessions just see no filter, which is the safe default).
 - **Deploy to VPS**: `git pull && docker compose up -d --build app` then `bash deploy/migrate-tenants.sh deploy/migrations/005-branch-id-on-records.sql` (type `yes`).
 
 **D2b (✅ this turn — 3 of 8 forms wired)**: Appointments, Tasks, Transactions (Finance) forms now have `<BranchSelect>`, default `branchId` to logged-in user's branch, and send `branchId` in the create payload. Transactions route extracts `branchId` from `req.body` manually (codegen Zod). Remaining 5 forms (Treatment Plans, Visits, Medical Invoices, Team, Products, Rentals) — same 3-line pattern, deferred to **D2c**.

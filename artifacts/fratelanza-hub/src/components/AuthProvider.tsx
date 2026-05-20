@@ -8,6 +8,7 @@ export type AuthUser = {
   permissions: string[];
   displayName?: string;
   branchId?: number | null;
+  branchOverride?: number | null;
   mustChangePassword?: boolean;
 } | null;
 type AuthCtx = {
