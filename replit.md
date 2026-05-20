@@ -148,9 +148,9 @@ Off-VPS automated backups to Google Drive via `rclone`. Setup is in `deploy/BACK
 - **`docker-compose.yml` fix bundled with this:** CRM uploads now use a bind mount (`./uploads:/app/uploads`) instead of being lost inside the container on every `docker compose up --build`. Existing deployments must `docker compose down && docker compose up -d --build` once to pick up the new volume layout (uploads dir starts empty after the migration — pre-existing rental docs would have been lost on the prior rebuild anyway since they were never persisted).
 - Disaster-recovery drill documented in `deploy/BACKUPS.md` — restore onto a fresh test VPS once per quarter.
 
-## Medical module (Phase A — in progress)
+## Medical module (Phase A — ✅ DONE, sellable)
 
-Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via new `"medical"` feature flag.
+Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via the `"medical"` feature flag. EN/AR bilingual, RTL-aware, EGP-only. End-to-end smoke-tested via Playwright.
 
 - **Schema** (`lib/db/src/schema/medical.ts`): `patients`, `medical_appointments`, `visits`, `medical_procedures` (catalog), `prescriptions`. Bilingual fields where relevant (`*_ar`).
 - **Feature flag**: `"medical"` added to `FEATURE_KEYS` in `artifacts/fratelanza-admin/src/db.ts` (label: "Medical / Clinic" / "العيادة الطبية") and `ALL_FEATURES` in `artifacts/api-server/src/routes/me.ts`.
@@ -167,7 +167,19 @@ Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via ne
     - **CRM**: `routes/medical/reports.ts` exposes 5 endpoints under `/api/medical-reports/`: `overview` (10 KPIs incl. patients, visits today/week/month, appts today, revenue today/week/month, outstanding, follow-ups), `visits-per-day?days=N` (gap-filled with `generate_series` so empty days still appear as 0), `revenue-per-doctor` (last 90 days, top 10, joins employees for bilingual names, "Unassigned" bucket for null doctor), `top-procedures` (last 90 days, joins catalog, falls back to invoice line description for custom items), `monthly-trend` (last 6 months, billed vs collected). All exclude `status='cancelled'` invoices so reversals don't double-count.
     - Page at `/medical/reports`: 6 KPI cards, monthly line chart, 30-day area chart, two horizontal bar charts (revenue per doctor + top procedures). Recharts axes flip for RTL via `reversed`/`orientation` props. Date formatting uses `ar-EG` locale when language is AR.
     - **Admin**: New `last_seen_at TIMESTAMPTZ` column on `admin_customers`. `GET /api/tenants/:subdomain` fires a non-blocking `UPDATE last_seen_at=NOW()` on every successful lookup — CRM middleware caches tenant config for 60s, so heartbeat granularity is ~1 minute. Dashboard now shows: "Online now" stat (last_seen within 5 min, animated dot), payment alerts banner at the top (overdue OR due within 3 days for active customers, sorted overdue-first, max 10), live activity feed (last 8 tenants by recency with relative time). 4-card KPI grid replaces the old 3-card layout.
-  - ⏳ T006: Polish + e2e + Phase A docs
+  - ✅ T006: Polish + e2e + Phase A docs. Full Playwright e2e smoke pass: login → patients (create new) → reports (KPIs + charts) → invoices (paid + cancelled visible, new-invoice dialog opens without Radix crash) → AR language toggle (RTL flip, Arabic sidebar labels, ج.م currency on reports). All medical pages reviewed for EN/AR string coverage — no untranslated strings. Phase A is sellable to a real doctor.
+
+### Phase A — Sell sheet (what a clinic gets)
+
+- **Patients**: bilingual records, search by name/phone/national ID, allergies/chronic conditions/blood type, emergency contact, one-click WhatsApp.
+- **Appointments**: day/week navigator, per-doctor conflict detection (409 on overlap), status workflow (scheduled→confirmed→completed/no_show/cancelled), one-click bilingual WhatsApp reminder.
+- **Visits**: chief complaint / diagnosis / treatment, follow-up date, filter by patient, stats (today / 7-day / upcoming follow-ups).
+- **Procedures catalog**: 7 categories (consultation/dental/lab/imaging/surgery/other), EGP prices, active flag.
+- **Medical Invoices**: pick patient → add procedures or custom lines → quantity × price auto-total → partial-payment friendly. Hardened: create+pay wrapped in db transaction, payments use `SELECT FOR UPDATE` to serialize concurrent writes, paid invoices block hard-delete (cancel-with-reversal instead), AR-only custom lines are normalized server-side.
+- **Finance bridge**: every payment posts an `income`/`medical` row in `transactions`; cancellations post a compensating negative row. Net is exact (verified via 5-concurrent-pay race test).
+- **Medical Reports**: 6 KPI cards, 6-month revenue trend (billed vs collected), 30-day visits area chart, revenue per doctor (top 10, last 90d), top procedures (top 10, last 90d). Cancelled invoices excluded — Finance shows the full ledger.
+- **Admin super-dashboard**: per-tenant heartbeat via tenant lookup endpoint, "Online now" stat (last 5 min, animated pulse), payment alerts banner (overdue + due-within-3-days, sorted overdue-first), live activity feed (last 8 tenants by recency).
+- **Reporting indices** (in `tenant-schema.sql`): visit_date, follow_up_date, patient_id, start_at, doctor_id on appointments, invoice_date / doctor_id / patient_id / status on invoices, invoice_id / procedure_id on invoice lines.
 
 ## Gotchas
 
