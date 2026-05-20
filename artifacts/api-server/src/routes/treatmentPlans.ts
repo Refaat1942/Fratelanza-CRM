@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, sql, and } from "drizzle-orm";
+import { branchWhere } from "../lib/branchScope";
 import {
   db,
   treatmentPlansTable,
@@ -29,13 +30,15 @@ router.get("/treatment-plans", async (req, res): Promise<void> => {
   const patientId = req.query.patient ? Number(req.query.patient) : null;
   const status = typeof req.query.status === "string" ? req.query.status : null;
 
-  const whereParts = [];
+  const whereParts: any[] = [];
   if (patientId && Number.isFinite(patientId)) {
     whereParts.push(eq(treatmentPlansTable.patientId, patientId));
   }
   if (status) {
     whereParts.push(eq(treatmentPlansTable.status, status));
   }
+  const bw = branchWhere(req, treatmentPlansTable.branchId);
+  if (bw) whereParts.push(bw);
 
   const rows = await db
     .select({

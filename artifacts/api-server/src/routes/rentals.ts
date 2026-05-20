@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db, rentalsTable } from "@workspace/db";
+import { branchWhere } from "../lib/branchScope";
 import { z } from "zod";
 import multer from "multer";
 import path from "path";
@@ -71,8 +72,11 @@ router.get("/rentals/stats", async (_req, res): Promise<void> => {
   res.json(stats);
 });
 
-router.get("/rentals", async (_req, res): Promise<void> => {
-  const rentals = await db.select().from(rentalsTable).orderBy(desc(rentalsTable.createdAt));
+router.get("/rentals", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, rentalsTable.branchId);
+  const rentals = bw
+    ? await db.select().from(rentalsTable).where(bw).orderBy(desc(rentalsTable.createdAt))
+    : await db.select().from(rentalsTable).orderBy(desc(rentalsTable.createdAt));
   res.json(rentals);
 });
 

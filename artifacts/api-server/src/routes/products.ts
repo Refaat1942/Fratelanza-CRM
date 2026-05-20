@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, productsTable } from "@workspace/db";
+import { branchWhere } from "../lib/branchScope";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -29,14 +30,19 @@ router.get("/products/stats", async (_req, res): Promise<void> => {
   res.json(stats);
 });
 
-router.get("/products", async (_req, res): Promise<void> => {
-  const products = await db.select().from(productsTable).orderBy(productsTable.createdAt);
+router.get("/products", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, productsTable.branchId);
+  const products = bw
+    ? await db.select().from(productsTable).where(bw).orderBy(productsTable.createdAt)
+    : await db.select().from(productsTable).orderBy(productsTable.createdAt);
   res.json(products);
 });
 
-router.get("/products/low-stock", async (_req, res): Promise<void> => {
+router.get("/products/low-stock", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, productsTable.branchId);
+  const lowStock = sql`${productsTable.stock} <= ${productsTable.reorderPoint}`;
   const rows = await db.select().from(productsTable)
-    .where(sql`${productsTable.stock} <= ${productsTable.reorderPoint}`)
+    .where(bw ? and(lowStock, bw) : lowStock)
     .orderBy(productsTable.stock);
   res.json(rows);
 });

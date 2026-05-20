@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, tasksTable, activityTable, notificationsTable } from "@workspace/db";
+import { branchWhere } from "../lib/branchScope";
 import {
   ListTasksQueryParams,
   ListTasksResponse,
@@ -33,9 +34,13 @@ router.get("/tasks/stats", async (req, res): Promise<void> => {
 router.get("/tasks", async (req, res): Promise<void> => {
   const params = ListTasksQueryParams.safeParse(req.query);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+  const conds: any[] = [];
+  if (params.data.status) conds.push(eq(tasksTable.status, params.data.status));
+  if (params.data.priority) conds.push(eq(tasksTable.priority, params.data.priority));
+  const bw = branchWhere(req, tasksTable.branchId);
+  if (bw) conds.push(bw);
   let query = db.select().from(tasksTable).$dynamic();
-  if (params.data.status) query = query.where(eq(tasksTable.status, params.data.status));
-  if (params.data.priority) query = query.where(eq(tasksTable.priority, params.data.priority));
+  if (conds.length) query = query.where(conds.length === 1 ? conds[0] : and(...conds));
   const tasks = await query.orderBy(tasksTable.createdAt);
   res.json(ListTasksResponse.parse(tasks));
 });

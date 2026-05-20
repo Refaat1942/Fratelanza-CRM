@@ -80,6 +80,8 @@ router.get("/appointments", async (req, res): Promise<void> => {
       lt(medicalAppointmentsTable.startAt, to),
     );
   }
+  const bw = branchWhere(req, medicalAppointmentsTable.branchId);
+  if (bw) where = where ? and(where, bw) : bw;
   const rows = await listJoined(where);
   res.json(rows);
 });

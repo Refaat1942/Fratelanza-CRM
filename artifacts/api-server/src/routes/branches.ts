@@ -30,6 +30,28 @@ router.get("/branches", async (_req, res): Promise<void> => {
   res.json(rows);
 });
 
+// Admin-only: set or clear the per-session branch override.
+// Body: { branchId: number | null }  (null clears the override)
+router.post("/branches/select-override", async (req, res): Promise<void> => {
+  if (!requireAdmin(req, res)) return;
+  const raw = (req.body as { branchId?: unknown })?.branchId;
+  const s = req.session as any;
+  if (raw === null) {
+    s.branchOverride = null;
+    res.json({ branchOverride: null });
+    return;
+  }
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isInteger(n) || n <= 0) {
+    res.status(400).json({ error: "branchId must be a positive integer or null" });
+    return;
+  }
+  const [b] = await db.select().from(branchesTable).where(eq(branchesTable.id, n));
+  if (!b) { res.status(404).json({ error: "Branch not found" }); return; }
+  s.branchOverride = n;
+  res.json({ branchOverride: n });
+});
+
 router.post("/branches", async (req, res): Promise<void> => {
   if (!requireAdmin(req, res)) return;
   const parsed = BranchInput.safeParse(req.body);

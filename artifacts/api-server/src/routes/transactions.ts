@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db, transactionsTable, activityTable } from "@workspace/db";
+import { branchWhere } from "../lib/branchScope";
 import {
   ListTransactionsQueryParams,
   ListTransactionsResponse,
@@ -51,13 +52,13 @@ router.get("/transactions", async (req, res): Promise<void> => {
     return;
   }
 
+  const conds: any[] = [];
+  if (params.data.type) conds.push(eq(transactionsTable.type, params.data.type));
+  if (params.data.category) conds.push(eq(transactionsTable.category, params.data.category));
+  const bw = branchWhere(req, transactionsTable.branchId);
+  if (bw) conds.push(bw);
   let query = db.select().from(transactionsTable).$dynamic();
-  if (params.data.type) {
-    query = query.where(eq(transactionsTable.type, params.data.type));
-  }
-  if (params.data.category) {
-    query = query.where(eq(transactionsTable.category, params.data.category));
-  }
+  if (conds.length) query = query.where(conds.length === 1 ? conds[0] : and(...conds));
 
   const transactions = await query.orderBy(transactionsTable.createdAt);
   res.json(ListTransactionsResponse.parse(transactions));

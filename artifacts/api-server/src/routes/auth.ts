@@ -103,6 +103,7 @@ router.get("/auth/me", (req: Request, res: Response): void => {
     role: s.role,
     permissions,
     branchId: s.branchId ?? null,
+    branchOverride: typeof s.branchOverride === "number" ? s.branchOverride : null,
     mustChangePassword: !!s.mustChangePassword,
   });
 });

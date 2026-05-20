@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, or, ilike, sql, desc } from "drizzle-orm";
+import { and, eq, or, ilike, sql, desc } from "drizzle-orm";
 import { db, patientsTable, activityTable } from "@workspace/db";
+import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -39,21 +40,21 @@ router.get("/patients/stats", async (_req, res): Promise<void> => {
 });
 
 router.get("/patients", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, patientsTable.branchId);
   const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const searchCond = search
+    ? or(
+        ilike(patientsTable.firstName, `%${search}%`),
+        ilike(patientsTable.firstNameAr, `%${search}%`),
+        ilike(patientsTable.lastName, `%${search}%`),
+        ilike(patientsTable.lastNameAr, `%${search}%`),
+        ilike(patientsTable.phone, `%${search}%`),
+        ilike(patientsTable.nationalId, `%${search}%`),
+      )
+    : undefined;
+  const where = searchCond && bw ? and(searchCond, bw) : (searchCond ?? bw);
   let query = db.select().from(patientsTable).$dynamic();
-  if (search) {
-    const pat = `%${search}%`;
-    query = query.where(
-      or(
-        ilike(patientsTable.firstName, pat),
-        ilike(patientsTable.firstNameAr, pat),
-        ilike(patientsTable.lastName, pat),
-        ilike(patientsTable.lastNameAr, pat),
-        ilike(patientsTable.phone, pat),
-        ilike(patientsTable.nationalId, pat),
-      ),
-    );
-  }
+  if (where) query = query.where(where);
   const rows = await query.orderBy(desc(patientsTable.createdAt)).limit(500);
   res.json(rows);
 });
