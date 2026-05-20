@@ -9,7 +9,9 @@ import {
 } from "recharts";
 import {
   Users, Stethoscope, CalendarDays, DollarSign, AlertCircle, Activity, LineChart as LineChartIcon,
+  Download,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui-ext/page-header";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { SectionCard } from "@/components/ui-ext/section-card";
@@ -75,6 +77,17 @@ export default function MedicalReports() {
         icon={<LineChartIcon size={20} />}
         title={t("Medical Reports", "تقارير العيادة")}
         description={t("Visit trends, revenue per doctor, and top procedures — all in EGP.", "اتجاهات الزيارات وإيراد كل طبيب وأكثر الإجراءات شيوعًا — بالجنيه.")}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { window.location.href = "/api/medical-reports/export.xlsx"; }}
+            data-testid="btn-export-medical-xlsx"
+          >
+            <Download size={14} className="me-1.5" />
+            {t("Download Excel", "تنزيل Excel")}
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
