@@ -177,39 +177,62 @@ async function main() {
   // ----- Dashboard -----
   app.get("/", requireAuth, async (_req, res) => {
     const { rows } = await pool.query<{
-      total: string;
-      active: string;
-      blocked: string;
+      total: string; active: string; blocked: string; online: string;
     }>(`SELECT
           COUNT(*)::text AS total,
           COUNT(*) FILTER (WHERE status = 'active')::text AS active,
-          COUNT(*) FILTER (WHERE status = 'blocked')::text AS blocked
+          COUNT(*) FILTER (WHERE status = 'blocked')::text AS blocked,
+          COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '5 minutes')::text AS online
         FROM admin_customers`);
-    const stats = rows[0] || { total: "0", active: "0", blocked: "0" };
+    const stats = rows[0] || { total: "0", active: "0", blocked: "0", online: "0" };
 
-    // Quick billing summary on dashboard
-    const billing = await pool.query<{
-      mrr: string;
-      due_soon: string;
-      overdue: string;
-    }>(`SELECT
-          COALESCE(SUM(CASE
-            WHEN billing_cycle='monthly' THEN billing_amount
-            WHEN billing_cycle='quarterly' THEN billing_amount/3
-            WHEN billing_cycle='yearly' THEN billing_amount/12
-            ELSE 0 END), 0)::text AS mrr,
-          COUNT(*) FILTER (WHERE next_billing_date IS NOT NULL
-                            AND next_billing_date BETWEEN CURRENT_DATE
-                            AND CURRENT_DATE + INTERVAL '7 days')::text AS due_soon,
-          COUNT(*) FILTER (WHERE payment_status = 'overdue')::text AS overdue
-        FROM admin_customers WHERE status = 'active'`);
+    const billing = await pool.query<{ mrr: string; due_soon: string; overdue: string }>(`
+      SELECT
+        COALESCE(SUM(CASE
+          WHEN billing_cycle='monthly' THEN billing_amount
+          WHEN billing_cycle='quarterly' THEN billing_amount/3
+          WHEN billing_cycle='yearly' THEN billing_amount/12
+          ELSE 0 END), 0)::text AS mrr,
+        COUNT(*) FILTER (WHERE next_billing_date IS NOT NULL
+                          AND next_billing_date BETWEEN CURRENT_DATE
+                          AND CURRENT_DATE + INTERVAL '7 days')::text AS due_soon,
+        COUNT(*) FILTER (WHERE payment_status = 'overdue')::text AS overdue
+      FROM admin_customers WHERE status = 'active'
+    `);
+
+    // Payment alerts: overdue + due within 3 days (active customers only)
+    const alerts = await pool.query(`
+      SELECT id, name, subdomain, payment_status, next_billing_date, billing_amount,
+             (next_billing_date - CURRENT_DATE) AS days_until
+      FROM admin_customers
+      WHERE status = 'active'
+        AND (payment_status = 'overdue'
+             OR (next_billing_date IS NOT NULL
+                 AND next_billing_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '3 days'
+                 AND payment_status <> 'paid'))
+      ORDER BY (payment_status = 'overdue') DESC, next_billing_date ASC NULLS LAST
+      LIMIT 10
+    `);
+
+    // Live activity: most recently seen tenants
+    const liveActivity = await pool.query(`
+      SELECT id, name, subdomain, last_seen_at,
+             EXTRACT(EPOCH FROM (NOW() - last_seen_at))::int AS seconds_ago
+      FROM admin_customers
+      WHERE last_seen_at IS NOT NULL
+      ORDER BY last_seen_at DESC
+      LIMIT 8
+    `);
 
     const recent = await pool.query(
       "SELECT id, name, subdomain, status, created_at FROM admin_customers ORDER BY created_at DESC LIMIT 5",
     );
+
     res.render("dashboard", {
       stats,
       billing: billing.rows[0] || { mrr: "0", due_soon: "0", overdue: "0" },
+      alerts: alerts.rows,
+      liveActivity: liveActivity.rows,
       recent: recent.rows,
     });
   });
@@ -861,15 +884,21 @@ async function main() {
       res.status(401).json({ error: "unauthorized" });
       return;
     }
+    const sub = req.params.subdomain.toLowerCase();
     const { rows } = await pool.query(
-      "SELECT name, subdomain, db_name, status, features FROM admin_customers WHERE subdomain=$1",
-      [req.params.subdomain.toLowerCase()],
+      "SELECT id, name, subdomain, db_name, status, features FROM admin_customers WHERE subdomain=$1",
+      [sub],
     );
     if (!rows[0]) {
       res.status(404).json({ error: "not_found" });
       return;
     }
-    res.json(rows[0]);
+    // Heartbeat — record last_seen so the admin dashboard can show online/offline.
+    // Fire-and-forget; failures must not block the tenant lookup.
+    pool.query("UPDATE admin_customers SET last_seen_at = NOW() WHERE id=$1", [rows[0].id])
+      .catch((err) => console.warn(`[admin] heartbeat update failed for ${sub}:`, err.message));
+    const { id: _id, ...payload } = rows[0];
+    res.json(payload);
   });
 
   app.get("/healthz", (_req, res) => res.json({ ok: true }));

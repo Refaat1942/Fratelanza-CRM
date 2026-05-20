@@ -327,3 +327,16 @@ CREATE TABLE "visits" (
 );
 
 ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE cascade ON UPDATE no action;
+
+-- T005 reporting indices (added for medical reports performance)
+CREATE INDEX IF NOT EXISTS visits_visit_date_idx              ON "visits" ("visit_date");
+CREATE INDEX IF NOT EXISTS visits_patient_id_idx              ON "visits" ("patient_id");
+CREATE INDEX IF NOT EXISTS visits_follow_up_date_idx          ON "visits" ("follow_up_date");
+CREATE INDEX IF NOT EXISTS medical_appointments_start_at_idx  ON "medical_appointments" ("start_at");
+CREATE INDEX IF NOT EXISTS medical_appointments_doctor_id_idx ON "medical_appointments" ("doctor_id");
+CREATE INDEX IF NOT EXISTS medical_invoices_invoice_date_idx  ON "medical_invoices" ("invoice_date");
+CREATE INDEX IF NOT EXISTS medical_invoices_doctor_id_idx     ON "medical_invoices" ("doctor_id");
+CREATE INDEX IF NOT EXISTS medical_invoices_patient_id_idx    ON "medical_invoices" ("patient_id");
+CREATE INDEX IF NOT EXISTS medical_invoices_status_idx        ON "medical_invoices" ("status");
+CREATE INDEX IF NOT EXISTS medical_invoice_lines_invoice_id_idx   ON "medical_invoice_lines" ("invoice_id");
+CREATE INDEX IF NOT EXISTS medical_invoice_lines_procedure_id_idx ON "medical_invoice_lines" ("procedure_id");
