@@ -98,3 +98,37 @@ export const prescriptionsTable = pgTable("prescriptions", {
 });
 
 export type Prescription = typeof prescriptionsTable.$inferSelect;
+
+// =============== Medical Invoices ===============
+export const medicalInvoicesTable = pgTable("medical_invoices", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  visitId: integer("visit_id"),
+  doctorId: integer("doctor_id"),
+  invoiceDate: date("invoice_date").notNull(),
+  total: real("total").notNull().default(0), // EGP
+  paidAmount: real("paid_amount").notNull().default(0), // EGP
+  status: text("status").notNull().default("unpaid"), // unpaid|partial|paid|cancelled
+  paymentMethod: text("payment_method"), // cash|card|transfer|other
+  transactionId: integer("transaction_id"), // link to transactions when paid
+  notes: text("notes"),
+  notesAr: text("notes_ar"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type MedicalInvoice = typeof medicalInvoicesTable.$inferSelect;
+
+export const medicalInvoiceLinesTable = pgTable("medical_invoice_lines", {
+  id: serial("id").primaryKey(),
+  invoiceId: integer("invoice_id").notNull(),
+  procedureId: integer("procedure_id"),
+  description: text("description").notNull(),
+  descriptionAr: text("description_ar"),
+  quantity: integer("quantity").notNull().default(1),
+  unitPrice: real("unit_price").notNull().default(0), // EGP
+  total: real("total").notNull().default(0), // EGP
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type MedicalInvoiceLine = typeof medicalInvoiceLinesTable.$inferSelect;

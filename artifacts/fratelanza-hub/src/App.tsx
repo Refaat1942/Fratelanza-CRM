@@ -24,6 +24,8 @@ import Invoices from "@/pages/invoices";
 import Patients from "@/pages/medical/patients";
 import Appointments from "@/pages/medical/appointments";
 import Visits from "@/pages/medical/visits";
+import Procedures from "@/pages/medical/procedures";
+import MedicalInvoices from "@/pages/medical/invoices";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import BlockedPage from "@/pages/blocked";
@@ -81,6 +83,8 @@ function AppRouter() {
               <Route path="/medical/patients"><FeatureGate feature="medical"><Patients /></FeatureGate></Route>
               <Route path="/medical/appointments"><FeatureGate feature="medical"><Appointments /></FeatureGate></Route>
               <Route path="/medical/visits"><FeatureGate feature="medical"><Visits /></FeatureGate></Route>
+              <Route path="/medical/procedures"><FeatureGate feature="medical"><Procedures /></FeatureGate></Route>
+              <Route path="/medical/invoices"><FeatureGate feature="medical"><MedicalInvoices /></FeatureGate></Route>
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>

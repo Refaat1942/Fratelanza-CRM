@@ -231,6 +231,35 @@ CREATE TABLE "medical_appointments" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
+CREATE TABLE "medical_invoice_lines" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"invoice_id" integer NOT NULL,
+	"procedure_id" integer,
+	"description" text NOT NULL,
+	"description_ar" text,
+	"quantity" integer DEFAULT 1 NOT NULL,
+	"unit_price" real DEFAULT 0 NOT NULL,
+	"total" real DEFAULT 0 NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "medical_invoices" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"patient_id" integer NOT NULL,
+	"visit_id" integer,
+	"doctor_id" integer,
+	"invoice_date" date NOT NULL,
+	"total" real DEFAULT 0 NOT NULL,
+	"paid_amount" real DEFAULT 0 NOT NULL,
+	"status" text DEFAULT 'unpaid' NOT NULL,
+	"payment_method" text,
+	"transaction_id" integer,
+	"notes" text,
+	"notes_ar" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE "medical_procedures" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
