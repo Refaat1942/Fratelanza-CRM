@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "./LanguageProvider";
 import { useAuth } from "./AuthProvider";
+import { useFeatures } from "./FeaturesProvider";
 import { apiFetch } from "@/lib/api";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Building2 } from "lucide-react";
@@ -16,17 +17,20 @@ type Branch = { id: number; name: string; nameAr?: string | null; isActive: bool
 export function BranchPicker() {
   const { t, language } = useLanguage();
   const { user, refresh } = useAuth();
+  const { features } = useFeatures();
   const qc = useQueryClient();
   const { toast } = useToast();
   const isAr = language === "ar";
+  const branchesEnabled = features["branches"] !== false;
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["branches"],
     queryFn: () => apiFetch("/branches"),
     staleTime: 5 * 60 * 1000,
-    enabled: user?.role === "admin",
+    enabled: user?.role === "admin" && branchesEnabled,
   });
 
+  if (!branchesEnabled) return null;
   if (user?.role !== "admin") return null;
   const active = (branches ?? []).filter(b => b.isActive);
   if (active.length === 0) return null;

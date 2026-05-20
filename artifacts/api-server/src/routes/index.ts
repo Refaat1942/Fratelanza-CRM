@@ -29,7 +29,7 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(meRouter);
 router.use(usersRouter);
-router.use(branchesRouter);
+router.use(requireFeature("branches"), branchesRouter);
 router.use(dashboardRouter);
 router.use(requireFeature("notifications"), notificationsRouter);
 

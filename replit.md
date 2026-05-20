@@ -254,6 +254,14 @@ D3 filtered the *list* endpoints but the KPI cards on top of every page still sh
 - **Raw-SQL endpoints scoped via fragment helpers** (D4b — added immediately after): `treatment-plans-stats`, `medical-reports/overview`, `medical-reports/visits-per-day`, `medical-reports/revenue-per-doctor`, `medical-reports/top-procedures`, `medical-reports/monthly-trend`, `medical-reports/export.xlsx`. New helpers in `branchScope.ts`: `branchAndFragment(req, qualifiedCol)` returns ` AND <col> = <bid>` for raw SQL already having WHERE; `branchWhereFragment(req, qualifiedCol)` returns ` WHERE <col> = <bid>` for subqueries without WHERE. `qualifiedColumn` is interpolated via `sql.raw` so callers must pass only trusted hardcoded identifiers (never user input). `treatment_plan_items` has no `branch_id` of its own, so it's scoped indirectly via `WHERE plan_id IN (SELECT id FROM treatment_plans WHERE branch_id = X)`.
 - **Deploy to VPS**: code-only, `git pull && docker compose up -d --build app`. No migration.
 
+### Phase D6 — branches is now a toggleable feature (✅ DONE)
+Admin can enable/disable the whole multi-branch capability per customer.
+- `"branches"` added to `FEATURE_KEYS` in admin `db.ts` (label "Multi-branch" / "تعدد الفروع") and `ALL_FEATURES` in api `me.ts`.
+- `routes/index.ts`: `branchesRouter` is now wrapped with `requireFeature("branches")` (returns 404 when off).
+- `BranchPicker.tsx`: reads `useFeatures()` and self-hides when branches is disabled (also disables the underlying `/branches` query so no spurious 404s in the network tab).
+- Sidebar nav item for `/branches` was already keyed `"branches"`, so AppLayout's existing feature-filter hides it for free.
+- No migration. Existing tenants get `branches: true` by default (the `defaultFeatures()` helper in admin builds an all-true object). Admins must explicitly untick it to hide.
+
 ### Phase D5 — branch badges on list rows (✅ DONE)
 
 Tiny inline badge so admins viewing "All branches" can tell which row belongs to which branch at a glance.
