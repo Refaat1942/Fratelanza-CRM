@@ -23,40 +23,46 @@ router.get("/users", async (req: Request, res: Response): Promise<void> => {
     role: usersTable.role,
     permissions: usersTable.permissions,
     isActive: usersTable.isActive,
+    branchId: usersTable.branchId,
     createdAt: usersTable.createdAt,
   }).from(usersTable);
   res.json(users);
 });
 
+const ROLE_VALUES = ["admin", "manager", "doctor", "receptionist", "accountant", "assistant", "user"] as const;
+
 const createSchema = z.object({
   username: z.string().min(2),
   password: z.string().min(4),
   displayName: z.string().optional(),
-  role: z.enum(["admin", "user"]).default("user"),
+  role: z.enum(ROLE_VALUES).default("user"),
   permissions: z.array(z.string()).default([]),
+  branchId: z.number().int().nullable().optional(),
 });
 
 router.post("/users", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data", details: parsed.error.flatten() }); return; }
-  const { username, password, displayName, role, permissions } = parsed.data;
+  const { username, password, displayName, role, permissions, branchId } = parsed.data;
   const existing = await db.select().from(usersTable).where(eq(usersTable.username, username));
   if (existing.length > 0) { res.status(409).json({ error: "Username already exists" }); return; }
   const passwordHash = await bcrypt.hash(password, 10);
   const [user] = await db.insert(usersTable).values({
     username, passwordHash, displayName, role,
     permissions: JSON.stringify(permissions),
-  }).returning({ id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName, role: usersTable.role, permissions: usersTable.permissions });
+    branchId: branchId ?? null,
+  }).returning({ id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName, role: usersTable.role, permissions: usersTable.permissions, branchId: usersTable.branchId });
   res.status(201).json(user);
 });
 
 const updateSchema = z.object({
   displayName: z.string().optional(),
-  role: z.enum(["admin", "user"]).optional(),
+  role: z.enum(ROLE_VALUES).optional(),
   permissions: z.array(z.string()).optional(),
   password: z.string().min(4).optional(),
   isActive: z.boolean().optional(),
+  branchId: z.number().int().nullable().optional(),
 });
 
 router.patch("/users/:id", async (req: Request, res: Response): Promise<void> => {
@@ -71,10 +77,12 @@ router.patch("/users/:id", async (req: Request, res: Response): Promise<void> =>
   if (parsed.data.permissions !== undefined) updates.permissions = JSON.stringify(parsed.data.permissions);
   if (parsed.data.password) updates.passwordHash = await bcrypt.hash(parsed.data.password, 10);
   if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
+  if (parsed.data.branchId !== undefined) updates.branchId = parsed.data.branchId;
   await db.update(usersTable).set(updates).where(eq(usersTable.id, id));
   const [user] = await db.select({
     id: usersTable.id, username: usersTable.username, displayName: usersTable.displayName,
     role: usersTable.role, permissions: usersTable.permissions, isActive: usersTable.isActive,
+    branchId: usersTable.branchId,
   }).from(usersTable).where(eq(usersTable.id, id));
   res.json(user);
 });

@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
-  Wallet, LineChart, ChevronDown, ChevronRight, Smile, Grid3x3
+  Wallet, LineChart, ChevronDown, ChevronRight, Smile, Grid3x3, Building2
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/invoices", key: "invoicing", icon: Receipt, labelEn: "Invoices", labelAr: "الفواتير" },
       { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
       { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
+      { href: "/branches", key: "branches", icon: Building2, labelEn: "Branches", labelAr: "الفروع" },
     ],
   },
   {

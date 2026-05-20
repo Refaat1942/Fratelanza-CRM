@@ -23,7 +23,30 @@ type AppUser = {
   role: string;
   permissions: string;
   isActive: boolean;
+  branchId?: number | null;
   createdAt: string;
+};
+
+type Branch = { id: number; name: string; nameAr?: string | null; isActive: boolean };
+
+const ROLE_OPTIONS = [
+  { value: "admin",        labelEn: "Admin",        labelAr: "مدير عام" },
+  { value: "manager",      labelEn: "Manager",      labelAr: "مدير" },
+  { value: "doctor",       labelEn: "Doctor",       labelAr: "طبيب" },
+  { value: "receptionist", labelEn: "Receptionist", labelAr: "موظف استقبال" },
+  { value: "accountant",   labelEn: "Accountant",   labelAr: "محاسب" },
+  { value: "assistant",    labelEn: "Assistant",    labelAr: "مساعد" },
+  { value: "user",         labelEn: "User",         labelAr: "مستخدم" },
+];
+
+const ROLE_PRESETS: Record<string, string[]> = {
+  admin:        ["dashboard","tasks","crm","finance","team","products","suppliers","purchase_orders","rentals","reports","notifications","medical","invoicing"],
+  manager:      ["dashboard","tasks","crm","finance","team","products","suppliers","purchase_orders","rentals","reports","notifications","medical","invoicing"],
+  doctor:       ["dashboard","medical","notifications"],
+  receptionist: ["dashboard","tasks","crm","medical","notifications"],
+  accountant:   ["dashboard","finance","invoicing","reports","notifications"],
+  assistant:    ["dashboard","medical","notifications"],
+  user:         ["dashboard"],
 };
 
 const ALL_MODULES = [
@@ -51,8 +74,14 @@ export default function Settings() {
   const [editUser, setEditUser] = useState<AppUser | null>(null);
   const [permUser, setPermUser] = useState<AppUser | null>(null);
 
-  const [createForm, setCreateForm] = useState({ username: "", password: "", displayName: "", role: "user" });
-  const [editForm, setEditForm] = useState({ displayName: "", role: "user", password: "" });
+  const [createForm, setCreateForm] = useState<{username:string;password:string;displayName:string;role:string;branchId:number|null}>({ username: "", password: "", displayName: "", role: "user", branchId: null });
+  const [editForm, setEditForm] = useState<{displayName:string;role:string;password:string;branchId:number|null}>({ displayName: "", role: "user", password: "", branchId: null });
+
+  const { data: branches } = useQuery<Branch[]>({
+    queryKey: ["branches"],
+    queryFn: () => apiFetch("/branches"),
+    enabled: me?.role === "admin",
+  });
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
   const { data: users, isLoading } = useQuery<AppUser[]>({
@@ -62,8 +91,8 @@ export default function Settings() {
   });
 
   const createUser = useMutation({
-    mutationFn: (data: any) => apiFetch("/users", { method: "POST", body: JSON.stringify({ ...data, permissions: [] }) }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); setCreateOpen(false); setCreateForm({ username: "", password: "", displayName: "", role: "user" }); toast({ title: t("User created", "تم إنشاء المستخدم") }); },
+    mutationFn: (data: any) => apiFetch("/users", { method: "POST", body: JSON.stringify({ ...data, permissions: ROLE_PRESETS[data.role] ?? [] }) }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); setCreateOpen(false); setCreateForm({ username: "", password: "", displayName: "", role: "user", branchId: null }); toast({ title: t("User created", "تم إنشاء المستخدم") }); },
     onError: (e: any) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
   });
 
@@ -93,7 +122,7 @@ export default function Settings() {
 
   const openEdit = (u: AppUser) => {
     setEditUser(u);
-    setEditForm({ displayName: u.displayName || "", role: u.role, password: "" });
+    setEditForm({ displayName: u.displayName || "", role: u.role, password: "", branchId: u.branchId ?? null });
   };
 
   const openPerms = (u: AppUser) => {
@@ -215,8 +244,19 @@ export default function Settings() {
                 <Select value={createForm.role} onValueChange={v => setCreateForm({ ...createForm, role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">{t("User", "مستخدم")}</SelectItem>
-                    <SelectItem value="admin">{t("Admin", "مدير")}</SelectItem>
+                    {ROLE_OPTIONS.map(r => <SelectItem key={r.value} value={r.value}>{isRtl ? r.labelAr : r.labelEn}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">{t("Role auto-assigns recommended page access (you can still customize later).", "يقوم الدور بتعيين الصلاحيات الموصى بها تلقائياً (يمكنك التخصيص لاحقاً).")}</p>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("Branch", "الفرع")}</Label>
+                <Select value={createForm.branchId == null ? "none" : String(createForm.branchId)}
+                  onValueChange={v => setCreateForm({ ...createForm, branchId: v === "none" ? null : parseInt(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("— No branch —", "— بدون فرع —")}</SelectItem>
+                    {branches?.filter(b => b.isActive).map(b => <SelectItem key={b.id} value={String(b.id)}>{isRtl ? (b.nameAr || b.name) : b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -229,7 +269,7 @@ export default function Settings() {
       {/* Edit User Dialog */}
       <Dialog open={!!editUser} onOpenChange={v => !v && setEditUser(null)}>
         <DialogContent className={isRtl ? "rtl" : "ltr"}>
-          <form onSubmit={e => { e.preventDefault(); if (editUser) { const data: any = { displayName: editForm.displayName, role: editForm.role }; if (editForm.password) data.password = editForm.password; updateUser.mutate({ id: editUser.id, data }); } }}>
+          <form onSubmit={e => { e.preventDefault(); if (editUser) { const data: any = { displayName: editForm.displayName, role: editForm.role, branchId: editForm.branchId }; if (editForm.password) data.password = editForm.password; updateUser.mutate({ id: editUser.id, data }); } }}>
             <DialogHeader><DialogTitle>{t("Edit User", "تعديل المستخدم")}</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2"><Label>{t("Display Name", "الاسم المعروض")}</Label><Input value={editForm.displayName} onChange={e => setEditForm({ ...editForm, displayName: e.target.value })} /></div>
@@ -238,8 +278,18 @@ export default function Settings() {
                 <Select value={editForm.role} onValueChange={v => setEditForm({ ...editForm, role: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">{t("User", "مستخدم")}</SelectItem>
-                    <SelectItem value="admin">{t("Admin", "مدير")}</SelectItem>
+                    {ROLE_OPTIONS.map(r => <SelectItem key={r.value} value={r.value}>{isRtl ? r.labelAr : r.labelEn}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>{t("Branch", "الفرع")}</Label>
+                <Select value={editForm.branchId == null ? "none" : String(editForm.branchId)}
+                  onValueChange={v => setEditForm({ ...editForm, branchId: v === "none" ? null : parseInt(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("— No branch —", "— بدون فرع —")}</SelectItem>
+                    {branches?.filter(b => b.isActive).map(b => <SelectItem key={b.id} value={String(b.id)}>{isRtl ? (b.nameAr || b.name) : b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

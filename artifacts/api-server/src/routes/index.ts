@@ -19,6 +19,7 @@ import invoicesRouter from "./invoices";
 import medicalRouter from "./medical";
 import dentalRouter from "./dental";
 import treatmentPlansRouter from "./treatmentPlans";
+import branchesRouter from "./branches";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
 
@@ -28,6 +29,7 @@ router.use(healthRouter);
 router.use(authRouter);
 router.use(meRouter);
 router.use(usersRouter);
+router.use(branchesRouter);
 router.use(dashboardRouter);
 router.use(requireFeature("notifications"), notificationsRouter);
 

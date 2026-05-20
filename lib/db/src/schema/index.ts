@@ -14,3 +14,4 @@ export * from "./invoices";
 export * from "./medical";
 export * from "./dental";
 export * from "./treatmentPlans";
+export * from "./branches";

@@ -213,6 +213,21 @@ Sellable add-on for dentists/dental clinics. Admin-toggleable per tenant via the
 - **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` has dental tables appended (as `CREATE TABLE IF NOT EXISTS` since they were added after Phase A). New tenants get them automatically.
 - **Existing tenants migration**: `deploy/migrations/002-dental.sql` — idempotent `CREATE TABLE IF NOT EXISTS` + indices, wrapped in BEGIN/COMMIT, safe to re-run. Apply with `deploy/migrate-tenants.sh deploy/migrations/002-dental.sql`.
 
+## Phase D1 — Branches + roles foundation (✅ DONE, non-breaking)
+
+First slice of Phase D. **Additive only** — existing data and flows untouched. Sets up the data model + admin UI; D2 will wire `branch_id` onto records, D3 will scope queries per user's branch.
+
+- **Schema**: new `branches` table (`lib/db/src/schema/branches.ts` — name + name_ar, address, phone, manager, is_active). New nullable `branch_id INTEGER` column on `users`.
+- **Backend**: `routes/branches.ts` — GET open to all logged-in users (for picker dropdowns), POST/PATCH/DELETE admin-only. `routes/users.ts` extended: role enum now `admin | manager | doctor | receptionist | accountant | assistant | user`; user create/update accepts `branchId`. Existing "user"/"admin" rows stay valid.
+- **Frontend**: new `/branches` page (admin-only) — card grid CRUD with bilingual name/address, manager, phone, active toggle. Sidebar shows "Branches" under General (admin sees it only — `canSee` requires admin or `branches` permission, and no non-admin gets that perm).
+- **Settings**: user create/edit dialogs now show all 7 roles + branch dropdown. Picking a role auto-applies a recommended permission preset (`ROLE_PRESETS` in `pages/settings.tsx`) — admin/manager get all, doctor/assistant get medical+notifications, receptionist gets tasks+crm+medical, accountant gets finance+invoicing+reports. Permissions can still be hand-edited via the existing permissions dialog (presets are a starting point, not a lock-in).
+- **Migration**: `deploy/migrations/004-branches-roles.sql` — idempotent (CREATE TABLE IF NOT EXISTS + ALTER ADD COLUMN IF NOT EXISTS + indices in a BEGIN/COMMIT). Same DDL appended to `artifacts/fratelanza-admin/src/tenant-schema.sql` so new tenants get it automatically.
+- **Deploy to VPS**: `git pull && docker compose up -d --build app` then `bash deploy/migrate-tenants.sh deploy/migrations/004-branches-roles.sql` (type `yes`).
+
+**Not yet done (D2/D3 — separate turns):**
+- D2: Add `branch_id` (nullable) to patients, appointments, visits, invoices, transactions, treatment_plans, employees, products, rentals, tasks. Add branch picker on every create/edit form (defaults to user's assigned branch).
+- D3: Filter list endpoints by `req.session.branchId` for non-admins. Admins/managers see all branches with a branch picker in the header.
+
 ## Phase C — Treatment Plans + sidebar scroll fix (✅ DONE)
 
 Sellable multi-visit treatment planner for clinics. Gated by existing `"medical"` feature flag (no new flag needed — treatment plans is part of the medical bundle). Permission also `"medical"`.
