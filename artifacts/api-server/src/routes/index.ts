@@ -20,6 +20,7 @@ import medicalRouter from "./medical";
 import dentalRouter from "./dental";
 import treatmentPlansRouter from "./treatmentPlans";
 import branchesRouter from "./branches";
+import tenantSettingsRouter from "./tenantSettings";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
 
@@ -28,6 +29,7 @@ const router: IRouter = Router();
 router.use(healthRouter);
 router.use(authRouter);
 router.use(meRouter);
+router.use(tenantSettingsRouter);
 router.use(usersRouter);
 router.use(requireFeature("branches"), branchesRouter);
 router.use(dashboardRouter);

@@ -56,7 +56,7 @@ app.use(session({
 
 app.use("/api", tenantMiddleware);
 
-const PUBLIC_PATHS = ["/api/auth/login", "/api/healthz"];
+const PUBLIC_PATHS = ["/api/auth/login", "/api/healthz", "/api/branding/public"];
 
 // Paths still allowed when the user must change their password.
 // Everything else is blocked until the default password is rotated.
@@ -80,6 +80,10 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   next();
 });
+
+// Serve uploaded files (rental docs, tenant logos) statically.
+const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+app.use("/uploads", express.static(uploadDir));
 
 app.use("/api", router);
 

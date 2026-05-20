@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useBranding, useCompanyName } from "@/components/BrandingProvider";
 import { Eye, EyeOff, Building2 } from "lucide-react";
 
 export default function Login() {
   const { login } = useAuth();
   const [, navigate] = useLocation();
   const { language, setLanguage, t, isRtl } = useLanguage();
+  const { branding } = useBranding();
+  const companyName = useCompanyName(language === "ar");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -41,10 +44,14 @@ export default function Login() {
         </div>
         <div className="relative z-10">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
-              <Building2 size={20} className="text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center overflow-hidden">
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt="logo" className="w-full h-full object-cover" />
+              ) : (
+                <Building2 size={20} className="text-white" />
+              )}
             </div>
-            <span className="text-white font-bold text-xl tracking-tight">Fratelanza</span>
+            <span className="text-white font-bold text-xl tracking-tight">{companyName}</span>
           </div>
         </div>
         <div className="relative z-10 space-y-4">
@@ -60,7 +67,7 @@ export default function Login() {
             ))}
           </div>
         </div>
-        <p className="relative z-10 text-white/30 text-xs">© {new Date().getFullYear()} Fratelanza Hub</p>
+        <p className="relative z-10 text-white/30 text-xs">© {new Date().getFullYear()} {companyName}</p>
       </div>
 
       {/* Right login panel */}
@@ -75,10 +82,14 @@ export default function Login() {
           <div className="w-full max-w-sm space-y-8">
             {/* Mobile logo */}
             <div className="lg:hidden flex items-center gap-3 justify-center">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-                <Building2 size={20} className="text-primary-foreground" />
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center overflow-hidden">
+                {branding.logoUrl ? (
+                  <img src={branding.logoUrl} alt="logo" className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 size={20} className="text-primary-foreground" />
+                )}
               </div>
-              <span className="font-bold text-xl">Fratelanza</span>
+              <span className="font-bold text-xl">{companyName}</span>
             </div>
 
             <div className="space-y-2">

@@ -472,3 +472,15 @@ CREATE INDEX IF NOT EXISTS idx_employees_branch            ON employees(branch_i
 CREATE INDEX IF NOT EXISTS idx_products_branch             ON products(branch_id);
 CREATE INDEX IF NOT EXISTS idx_rentals_branch              ON rentals(branch_id);
 CREATE INDEX IF NOT EXISTS idx_dental_visits_branch        ON dental_visits(branch_id);
+
+-- Phase E1: tenant branding (singleton row per tenant DB)
+CREATE TABLE IF NOT EXISTS tenant_settings (
+  id              INTEGER PRIMARY KEY DEFAULT 1,
+  company_name    TEXT,
+  company_name_ar TEXT,
+  logo_url        TEXT,
+  primary_color   TEXT,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT tenant_settings_singleton CHECK (id = 1)
+);
+INSERT INTO tenant_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;

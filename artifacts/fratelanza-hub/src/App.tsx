@@ -7,6 +7,7 @@ import { LanguageProvider } from "@/components/LanguageProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
 import { FeaturesProvider, useFeatures } from "@/components/FeaturesProvider";
+import { BrandingProvider } from "@/components/BrandingProvider";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Dashboard from "@/pages/dashboard";
 import Tasks from "@/pages/tasks";
@@ -132,12 +133,14 @@ function App() {
             <FeaturesProvider>
               <BlockedListener>
                 <AuthProvider>
+                  <BrandingProvider>
                   <DeleteConfirmProvider>
                     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
                       <AppRouter />
                     </WouterRouter>
                     <Toaster />
                   </DeleteConfirmProvider>
+                  </BrandingProvider>
                 </AuthProvider>
               </BlockedListener>
             </FeaturesProvider>

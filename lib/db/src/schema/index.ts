@@ -15,3 +15,4 @@ export * from "./medical";
 export * from "./dental";
 export * from "./treatmentPlans";
 export * from "./branches";
+export * from "./tenantSettings";

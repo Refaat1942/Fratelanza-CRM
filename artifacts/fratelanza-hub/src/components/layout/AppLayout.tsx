@@ -13,6 +13,7 @@ import { apiFetch } from "@/lib/api";
 import { useAuth } from "../AuthProvider";
 import { useFeatures } from "../FeaturesProvider";
 import { BranchPicker } from "../BranchPicker";
+import { useCompanyName, useBranding } from "../BrandingProvider";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,6 +125,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === "admin";
   const userPerms = user?.permissions ?? [];
   const { features } = useFeatures();
+  const isAr = language === "ar";
+  const companyName = useCompanyName(isAr);
+  const { branding } = useBranding();
 
   const canSee = (item: NavItem) => {
     const featKey = item.featureKey ?? item.key;
@@ -268,11 +272,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     <>
       <div className="px-5 pt-5 pb-3 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0 shadow-sm">
-            <Stethoscope size={18} className="text-sidebar-primary-foreground" />
+          <div className="w-9 h-9 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt="logo" className="w-full h-full object-cover" />
+            ) : (
+              <Stethoscope size={18} className="text-sidebar-primary-foreground" />
+            )}
           </div>
           <div className="min-w-0">
-            <div className="font-bold text-[15px] tracking-tight text-sidebar-foreground">{t("Fratelanza", "فراتيلانزا")}</div>
+            <div className="font-bold text-[15px] tracking-tight text-sidebar-foreground truncate">{companyName}</div>
             {user?.displayName && (
               <p className="text-[11px] text-sidebar-foreground/55 mt-0.5 truncate">{user.displayName}</p>
             )}

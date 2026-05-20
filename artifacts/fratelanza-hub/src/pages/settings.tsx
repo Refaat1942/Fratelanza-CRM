@@ -15,6 +15,8 @@ import { Plus, Trash2, Edit2, ShieldCheck, User as UserIcon, Lock, Ban, CheckCir
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { Switch } from "@/components/ui/switch";
+import { useBranding } from "@/components/BrandingProvider";
+import { Upload, Image as ImageIcon, Trash2 as Trash } from "lucide-react";
 
 type AppUser = {
   id: number;
@@ -156,6 +158,8 @@ export default function Settings() {
         <h2 className="text-2xl font-bold">{t("Settings", "الإعدادات")}</h2>
         <p className="text-muted-foreground text-sm">{t("Manage users and access permissions", "إدارة المستخدمين والصلاحيات")}</p>
       </div>
+
+      <BrandingCard />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -333,5 +337,158 @@ export default function Settings() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function BrandingCard() {
+  const { t, isRtl } = useLanguage();
+  const { user: me } = useAuth();
+  const { toast } = useToast();
+  const { branding, refresh } = useBranding();
+  const [name, setName] = React.useState(branding.companyName || "");
+  const [nameAr, setNameAr] = React.useState(branding.companyNameAr || "");
+  const [color, setColor] = React.useState(branding.primaryColor || "");
+  const [saving, setSaving] = React.useState(false);
+  const [uploading, setUploading] = React.useState(false);
+
+  React.useEffect(() => {
+    setName(branding.companyName || "");
+    setNameAr(branding.companyNameAr || "");
+    setColor(branding.primaryColor || "");
+  }, [branding.companyName, branding.companyNameAr, branding.primaryColor]);
+
+  if (me?.role !== "admin") return null;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await apiFetch("/settings/branding", {
+        method: "PUT",
+        body: JSON.stringify({
+          companyName: name.trim() || null,
+          companyNameAr: nameAr.trim() || null,
+          primaryColor: color.trim() || null,
+        }),
+      });
+      await refresh();
+      toast({ title: t("Branding saved", "تم حفظ هوية الشركة") });
+    } catch (e: any) {
+      toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const uploadLogo = async (file: File) => {
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: t("Logo too large (max 2MB)", "الشعار كبير جداً (الحد الأقصى 2 ميجا)"), variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("logo", file);
+      const res = await fetch("/api/settings/branding/logo", { method: "POST", credentials: "include", body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "upload_failed");
+      }
+      await refresh();
+      toast({ title: t("Logo uploaded", "تم رفع الشعار") });
+    } catch (e: any) {
+      toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeLogo = async () => {
+    try {
+      await apiFetch("/settings/branding/logo", { method: "DELETE" });
+      await refresh();
+      toast({ title: t("Logo removed", "تم حذف الشعار") });
+    } catch (e: any) {
+      toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" });
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">{t("Company Branding", "هوية الشركة")}</CardTitle>
+        <CardDescription>{t("Customize your company name, logo, and brand color shown across the app and login page.", "خصص اسم وشعار ولون شركتك الذي يظهر في كل التطبيق وصفحة تسجيل الدخول.")}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex items-center gap-4">
+          <div className="w-20 h-20 rounded-lg border-2 border-dashed border-border bg-muted flex items-center justify-center overflow-hidden shrink-0">
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt="logo" className="w-full h-full object-cover" />
+            ) : (
+              <ImageIcon size={28} className="text-muted-foreground" />
+            )}
+          </div>
+          <div className="flex-1 space-y-2">
+            <Label className="text-sm">{t("Logo", "الشعار")}</Label>
+            <div className="flex gap-2 flex-wrap">
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium cursor-pointer hover:opacity-90">
+                <Upload size={14} />
+                {uploading ? t("Uploading…", "جاري الرفع…") : t("Upload Logo", "رفع شعار")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  disabled={uploading}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }}
+                />
+              </label>
+              {branding.logoUrl && (
+                <Button variant="outline" size="sm" onClick={removeLogo}>
+                  <Trash size={14} className={isRtl ? "ml-1" : "mr-1"} />
+                  {t("Remove", "حذف")}
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">{t("PNG, JPG, WEBP or SVG. Max 2 MB. Square images work best.", "صور PNG, JPG, WEBP أو SVG. الحد الأقصى 2 ميجا. الصور المربعة أفضل.")}</p>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>{t("Company Name (English)", "اسم الشركة (إنجليزي)")}</Label>
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="Acme Clinic" />
+          </div>
+          <div className="space-y-2">
+            <Label>{t("Company Name (Arabic)", "اسم الشركة (عربي)")}</Label>
+            <Input value={nameAr} onChange={e => setNameAr(e.target.value)} placeholder="عيادة المثال" dir="rtl" />
+          </div>
+        </div>
+
+        <div className="space-y-2 max-w-xs">
+          <Label>{t("Primary Color (optional)", "اللون الأساسي (اختياري)")}</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              placeholder="#1e40af"
+              maxLength={7}
+            />
+            <input
+              type="color"
+              value={/^#[0-9a-fA-F]{6}$/.test(color) ? color : "#1e40af"}
+              onChange={e => setColor(e.target.value)}
+              className="w-10 h-10 rounded border border-border cursor-pointer"
+              aria-label="color picker"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">{t("Format: #rrggbb. Leave blank to use default.", "الصيغة: #rrggbb. اتركه فارغاً للون الافتراضي.")}</p>
+        </div>
+
+        <div className="flex justify-end">
+          <Button onClick={save} disabled={saving}>
+            {saving ? t("Saving…", "جاري الحفظ…") : t("Save Branding", "حفظ الهوية")}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -254,6 +254,27 @@ D3 filtered the *list* endpoints but the KPI cards on top of every page still sh
 - **Raw-SQL endpoints scoped via fragment helpers** (D4b — added immediately after): `treatment-plans-stats`, `medical-reports/overview`, `medical-reports/visits-per-day`, `medical-reports/revenue-per-doctor`, `medical-reports/top-procedures`, `medical-reports/monthly-trend`, `medical-reports/export.xlsx`. New helpers in `branchScope.ts`: `branchAndFragment(req, qualifiedCol)` returns ` AND <col> = <bid>` for raw SQL already having WHERE; `branchWhereFragment(req, qualifiedCol)` returns ` WHERE <col> = <bid>` for subqueries without WHERE. `qualifiedColumn` is interpolated via `sql.raw` so callers must pass only trusted hardcoded identifiers (never user input). `treatment_plan_items` has no `branch_id` of its own, so it's scoped indirectly via `WHERE plan_id IN (SELECT id FROM treatment_plans WHERE branch_id = X)`.
 - **Deploy to VPS**: code-only, `git pull && docker compose up -d --build app`. No migration.
 
+### Phase E1 — Per-tenant branding (✅ DONE)
+Each tenant can customize their CRM with their own company name (EN+AR), logo, and primary color.
+- **Schema**: new singleton `tenant_settings` table (id=1 check constraint, company_name, company_name_ar, logo_url, primary_color). Drizzle in `lib/db/src/schema/tenantSettings.ts`.
+- **API** `artifacts/api-server/src/routes/tenantSettings.ts`:
+  - `GET /api/branding/public` — **unauthenticated** (added to `PUBLIC_PATHS` in app.ts) so the login page can fetch the logo + name before login.
+  - `GET /api/settings/branding` — full row, any logged-in user.
+  - `PUT /api/settings/branding` — admin only, updates name + color (Zod-validated `#rrggbb`).
+  - `POST /api/settings/branding/logo` — admin only, multer upload (PNG/JPG/WEBP/SVG, 2MB cap), saves to `./uploads/logos/`. Previous logo deleted best-effort.
+  - `DELETE /api/settings/branding/logo` — admin only.
+  - `requireAdmin` middleware reads `session.role`. No feature gate — branding is universal.
+  - `ensureRow()` does `INSERT ... ON CONFLICT DO NOTHING` so the singleton always exists.
+- **Static uploads**: `app.ts` now serves `app.use("/uploads", express.static(uploadDir))` so logos are reachable at `/uploads/logos/<file>`.
+- **Frontend**: `BrandingProvider` (in `components/BrandingProvider.tsx`) fetches `/api/branding/public` at app boot, exposes `useBranding()` + `useCompanyName(isAr, fallback)`. Sets `--brand-primary` CSS var when a primary color is configured. Wraps the app **inside** `<AuthProvider>` so logout/login refresh still mount it.
+- **UI integration**:
+  - `AppLayout.tsx` — sidebar header shows tenant logo (falls back to Stethoscope icon) + tenant name (falls back to "Fratelanza").
+  - `login.tsx` — both desktop left panel and mobile center logo + name use branding.
+  - `settings.tsx` — new `<BrandingCard />` admin section: logo upload/remove, EN + AR name inputs, color picker (text + native `<input type=color>`).
+- **Tenant schema**: appended `tenant_settings` CREATE TABLE IF NOT EXISTS + INSERT to `artifacts/fratelanza-admin/src/tenant-schema.sql`. New tenants auto-get it.
+- **Existing tenants migration**: `deploy/migrations/006-branding.sql` — idempotent BEGIN/COMMIT block. Apply with `deploy/migrate-tenants.sh deploy/migrations/006-branding.sql`.
+- **Sells the white-label promise** in Enterprise package (and is genuinely useful for every clinic to put their own name on the login page).
+
 ### Phase D6 — branches is now a toggleable feature (✅ DONE)
 Admin can enable/disable the whole multi-branch capability per customer.
 - `"branches"` added to `FEATURE_KEYS` in admin `db.ts` (label "Multi-branch" / "تعدد الفروع") and `ALL_FEATURES` in api `me.ts`.
