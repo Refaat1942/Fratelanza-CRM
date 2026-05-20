@@ -21,10 +21,11 @@ const ProductInput = z.object({
   status: z.enum(["available", "unavailable", "low_stock"]).default("available"),
 });
 
-router.get("/products/stats", async (_req, res): Promise<void> => {
-  const rows = await db
-    .select({ status: productsTable.status, count: sql<number>`cast(count(*) as int)` })
-    .from(productsTable).groupBy(productsTable.status);
+router.get("/products/stats", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, productsTable.branchId);
+  const q = db.select({ status: productsTable.status, count: sql<number>`cast(count(*) as int)` })
+    .from(productsTable).$dynamic();
+  const rows = await (bw ? q.where(bw) : q).groupBy(productsTable.status);
   const stats = { available: 0, unavailable: 0, low_stock: 0, total: 0 };
   for (const r of rows) { if (r.status in stats) stats[r.status as keyof typeof stats] = r.count; stats.total += r.count; }
   res.json(stats);

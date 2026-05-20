@@ -19,6 +19,7 @@ import { Plus, Clock, CheckCircle2, AlertCircle, PlayCircle, Trash2, Edit2, Acti
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
+import { BranchBadge } from "@/components/BranchBadge";
 import { useAuth } from "@/components/AuthProvider";
 
 type Task = {
@@ -287,6 +288,7 @@ export default function Tasks() {
                     📅 {isOverdue ? t("OVERDUE:", "متأخر:") : ""} {task.dueDate}
                   </span>
                 )}
+                <BranchBadge branchId={(task as any).branchId} />
               </div>
             </div>
           </div>

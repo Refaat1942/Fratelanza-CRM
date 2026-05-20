@@ -22,10 +22,10 @@ const EmployeeInput = z.object({
 });
 
 router.get("/employees/stats", async (req, res): Promise<void> => {
-  const rows = await db
-    .select({ status: employeesTable.status, count: sql<number>`cast(count(*) as int)` })
-    .from(employeesTable)
-    .groupBy(employeesTable.status);
+  const bw = branchWhere(req, employeesTable.branchId);
+  const q = db.select({ status: employeesTable.status, count: sql<number>`cast(count(*) as int)` })
+    .from(employeesTable).$dynamic();
+  const rows = await (bw ? q.where(bw) : q).groupBy(employeesTable.status);
   const stats = { active: 0, inactive: 0, on_leave: 0 };
   for (const row of rows) {
     if (row.status in stats) stats[row.status as keyof typeof stats] = row.count;

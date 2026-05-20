@@ -16,6 +16,7 @@ import { FileText, Plus, User, Stethoscope, Calendar, Trash2, Edit, ClipboardLis
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
+import { BranchBadge } from "@/components/BranchBadge";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
@@ -273,6 +274,7 @@ export default function Visits() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <BranchBadge branchId={(v as any).branchId} />
                       {v.followUpDate && (
                         <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400">
                           <Calendar size={11} className={isRtl ? "ml-1" : "mr-1"} />

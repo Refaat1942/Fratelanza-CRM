@@ -244,6 +244,23 @@ End-to-end branch scoping. Non-admins see only their branch's data automatically
 - **Deploy to VPS**: code-only change, no migration needed (`git pull && docker compose up -d --build app`). Note: `branchOverride` lives in the session, so admins will need to log in once after deploy for it to start working (existing sessions just see no filter, which is the safe default).
 - **Deploy to VPS**: `git pull && docker compose up -d --build app` then `bash deploy/migrate-tenants.sh deploy/migrations/005-branch-id-on-records.sql` (type `yes`).
 
+### Phase D4 — branch-scoped stats/summary endpoints (✅ DONE)
+
+D3 filtered the *list* endpoints but the KPI cards on top of every page still showed tenant-wide totals — lying to non-admin users in multi-branch tenants. D4 closes that gap by applying the same `branchWhere()` helper to every `/stats` and `/summary` endpoint.
+
+- **Endpoints scoped (10)**: `tasks/stats`, `products/stats`, `rentals/stats`, `employees/stats`, `transactions/summary`, `patients/stats`, `visits/stats`, `medical-invoices/stats`, `dental-visits/stats`, `dashboard/summary` (tasks + transactions subqueries — clients table has no branchId so it stays tenant-wide).
+- **Pattern**: change handler signature from `_req` to `req`, compute `const bw = branchWhere(req, table.branchId)`, then either `.where(bw)` on a Drizzle query (using `.$dynamic()` so the chain is reassignable) or `and(existingClause, bw)` when there's already a where. Same rules as D3: admin without override sees everything, non-admin sees only their `session.branchId`.
+- **Intentionally NOT scoped** (low ROI, raw SQL): `treatment-plans-stats` (raw `db.execute` with `COUNT(*) FILTER` — would need text interpolation of branchId; deferred), `medical-reports/*` (5 endpoints with multi-table joins, generate_series and big composite WHEREs — would require injecting an AND fragment into each subquery; OK for now since reports are admin-facing in practice). Document these as known limitations.
+- **Deploy to VPS**: code-only, `git pull && docker compose up -d --build app`. No migration.
+
+### Phase D5 — branch badges on list rows (✅ DONE)
+
+Tiny inline badge so admins viewing "All branches" can tell which row belongs to which branch at a glance.
+
+- **New component** `components/BranchBadge.tsx` — uses the same cached `["branches"]` query as `BranchPicker` (zero extra requests). Renders nothing when `branchId` is null/missing or the tenant has no branches. RTL-safe (auto-uses `nameAr` when language is AR).
+- **Wired into 4 list rows**: Tasks card (meta row, next to dueDate), Finance transaction row (category line), Medical Visits card (header right side), Medical Invoices row (next to status badge). Each one passes `branchId` from the record (`(record as any).branchId` since the OpenAPI codegen schemas don't yet include the field — same pragmatic cast used elsewhere).
+- **Deploy to VPS**: code-only, no migration, no extra workflow steps. Picked up automatically on next `docker compose up -d --build app`.
+
 **D2b (✅ this turn — 3 of 8 forms wired)**: Appointments, Tasks, Transactions (Finance) forms now have `<BranchSelect>`, default `branchId` to logged-in user's branch, and send `branchId` in the create payload. Transactions route extracts `branchId` from `req.body` manually (codegen Zod). Remaining 5 forms (Treatment Plans, Visits, Medical Invoices, Team, Products, Rentals) — same 3-line pattern, deferred to **D2c**.
 
 ## Phase D1 — Branches + roles foundation (✅ DONE, non-breaking)

@@ -18,13 +18,14 @@ import {
 const router: IRouter = Router();
 
 router.get("/transactions/summary", async (req, res): Promise<void> => {
-  const rows = await db
-    .select({
+  const bw = branchWhere(req, transactionsTable.branchId);
+  const q = db.select({
       type: transactionsTable.type,
       category: transactionsTable.category,
       total: sql<number>`cast(sum(amount) as float)`,
     })
-    .from(transactionsTable)
+    .from(transactionsTable).$dynamic();
+  const rows = await (bw ? q.where(bw) : q)
     .groupBy(transactionsTable.type, transactionsTable.category);
 
   let totalIncome = 0;

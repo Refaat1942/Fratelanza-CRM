@@ -73,19 +73,21 @@ router.get("/visits", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
-router.get("/visits/stats", async (_req, res): Promise<void> => {
+router.get("/visits/stats", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, visitsTable.branchId);
+  const w = (c: any) => bw ? and(c, bw)! : c;
   const [today] = await db
     .select({ c: sql<number>`cast(count(*) as int)` })
     .from(visitsTable)
-    .where(sql`${visitsTable.visitDate}::date = current_date`);
+    .where(w(sql`${visitsTable.visitDate}::date = current_date`));
   const [week] = await db
     .select({ c: sql<number>`cast(count(*) as int)` })
     .from(visitsTable)
-    .where(sql`${visitsTable.visitDate} >= now() - interval '7 days'`);
+    .where(w(sql`${visitsTable.visitDate} >= now() - interval '7 days'`));
   const [followUps] = await db
     .select({ c: sql<number>`cast(count(*) as int)` })
     .from(visitsTable)
-    .where(sql`${visitsTable.followUpDate} >= current_date`);
+    .where(w(sql`${visitsTable.followUpDate} >= current_date`));
   res.json({ today: today?.c ?? 0, week: week?.c ?? 0, upcomingFollowUps: followUps?.c ?? 0 });
 });
 

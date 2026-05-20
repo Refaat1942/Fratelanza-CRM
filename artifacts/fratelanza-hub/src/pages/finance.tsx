@@ -22,6 +22,7 @@ import { TrendingUp, TrendingDown, Plus, Trash2, Edit2, Wallet, ArrowUpRight, Ar
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
+import { BranchBadge } from "@/components/BranchBadge";
 import { useAuth } from "@/components/AuthProvider";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
@@ -364,6 +365,7 @@ export default function Finance() {
                             {tx.category}
                           </Badge>
                           <span className="text-xs text-muted-foreground">{tx.date}</span>
+                          <BranchBadge branchId={(tx as any).branchId} />
                         </div>
                       </div>
                     </div>

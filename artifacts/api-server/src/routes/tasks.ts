@@ -21,9 +21,10 @@ const router: IRouter = Router();
 const RECURRENCE = z.enum(["none", "daily", "weekly", "monthly"]).default("none");
 
 router.get("/tasks/stats", async (req, res): Promise<void> => {
-  const rows = await db
-    .select({ status: tasksTable.status, count: sql<number>`cast(count(*) as int)` })
-    .from(tasksTable).groupBy(tasksTable.status);
+  const bw = branchWhere(req, tasksTable.branchId);
+  const q = db.select({ status: tasksTable.status, count: sql<number>`cast(count(*) as int)` })
+    .from(tasksTable).$dynamic();
+  const rows = await (bw ? q.where(bw) : q).groupBy(tasksTable.status);
   const stats = { pending: 0, in_progress: 0, completed: 0, cancelled: 0 };
   for (const row of rows) {
     if (row.status in stats) stats[row.status as keyof typeof stats] = row.count;

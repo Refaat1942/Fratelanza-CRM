@@ -28,14 +28,13 @@ const PatientInput = z.object({
   branchId: z.number().int().positive().nullable().optional(),
 });
 
-router.get("/patients/stats", async (_req, res): Promise<void> => {
-  const [{ total }] = await db
-    .select({ total: sql<number>`cast(count(*) as int)` })
-    .from(patientsTable);
-  const [{ recent }] = await db
-    .select({ recent: sql<number>`cast(count(*) as int)` })
-    .from(patientsTable)
-    .where(sql`${patientsTable.createdAt} > now() - interval '30 days'`);
+router.get("/patients/stats", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, patientsTable.branchId);
+  const recentClause = sql`${patientsTable.createdAt} > now() - interval '30 days'`;
+  const totalQ = db.select({ total: sql<number>`cast(count(*) as int)` }).from(patientsTable).$dynamic();
+  const recentQ = db.select({ recent: sql<number>`cast(count(*) as int)` }).from(patientsTable).$dynamic();
+  const [{ total }] = await (bw ? totalQ.where(bw) : totalQ);
+  const [{ recent }] = await (bw ? recentQ.where(and(recentClause, bw)!) : recentQ.where(recentClause));
   res.json({ total, recent });
 });
 

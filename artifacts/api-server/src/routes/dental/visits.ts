@@ -97,13 +97,13 @@ router.delete("/dental-visits/:id", async (req, res): Promise<void> => {
   res.sendStatus(204);
 });
 
-router.get("/dental-visits/stats", async (_req, res): Promise<void> => {
-  const [{ count, revenue }] = await db
-    .select({
+router.get("/dental-visits/stats", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, dentalVisitsTable.branchId);
+  const q = db.select({
       count: sql<number>`COUNT(*)::int`,
       revenue: sql<number>`COALESCE(SUM(${dentalVisitsTable.cost}), 0)::float`,
-    })
-    .from(dentalVisitsTable);
+    }).from(dentalVisitsTable).$dynamic();
+  const [{ count, revenue }] = await (bw ? q.where(bw) : q);
   res.json({ count, revenue });
 });
 

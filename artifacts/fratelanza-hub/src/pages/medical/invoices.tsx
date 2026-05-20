@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
+import { BranchBadge } from "@/components/BranchBadge";
 import { useAuth as useAuthForBranch } from "@/components/AuthProvider";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null; phone?: string | null };
@@ -398,6 +399,7 @@ export default function MedicalInvoices() {
                       <p className="text-xs text-emerald-700">{t("paid", "مدفوع")}: {fmtEgp(inv.paidAmount)}</p>
                     )}
                   </div>
+                  <BranchBadge branchId={(inv as any).branchId} />
                   <Badge className={meta.color} variant="outline">{isAr ? meta.ar : meta.en}</Badge>
                   <Button variant="ghost" size="icon" onClick={() => viewMut.mutate(inv.id)}><Eye size={14} /></Button>
                   {inv.status !== "paid" && inv.status !== "cancelled" && (

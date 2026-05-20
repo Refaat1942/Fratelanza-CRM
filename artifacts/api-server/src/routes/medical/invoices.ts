@@ -76,7 +76,8 @@ router.get("/medical-invoices", async (req, res): Promise<void> => {
   res.json(rows);
 });
 
-router.get("/medical-invoices/stats", async (_req, res): Promise<void> => {
+router.get("/medical-invoices/stats", async (req, res): Promise<void> => {
+  const bw_ = branchWhere(req, medicalInvoicesTable.branchId);
   const [tot] = await db
     .select({
       total: sql<number>`COALESCE(SUM(${medicalInvoicesTable.total}),0)::float`,
@@ -84,11 +85,13 @@ router.get("/medical-invoices/stats", async (_req, res): Promise<void> => {
       count: sql<number>`COUNT(*)::int`,
     })
     .from(medicalInvoicesTable)
-    .where(sql`${medicalInvoicesTable.status} <> 'cancelled'`);
+    .where(bw_ ? and(sql`${medicalInvoicesTable.status} <> 'cancelled'`, bw_)! : sql`${medicalInvoicesTable.status} <> 'cancelled'`);
   const [thisMonth] = await db
     .select({ revenue: sql<number>`COALESCE(SUM(${medicalInvoicesTable.paidAmount}),0)::float` })
     .from(medicalInvoicesTable)
-    .where(sql`date_trunc('month', ${medicalInvoicesTable.invoiceDate}::date) = date_trunc('month', current_date) AND ${medicalInvoicesTable.status} <> 'cancelled'`);
+    .where(bw_
+      ? and(sql`date_trunc('month', ${medicalInvoicesTable.invoiceDate}::date) = date_trunc('month', current_date) AND ${medicalInvoicesTable.status} <> 'cancelled'`, bw_)!
+      : sql`date_trunc('month', ${medicalInvoicesTable.invoiceDate}::date) = date_trunc('month', current_date) AND ${medicalInvoicesTable.status} <> 'cancelled'`);
   res.json({
     total: tot?.total ?? 0,
     paid: tot?.paid ?? 0,

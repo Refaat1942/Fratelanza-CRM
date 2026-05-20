@@ -65,8 +65,11 @@ const RentalInput = z.object({
   notes: z.string().optional(),
 });
 
-router.get("/rentals/stats", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(rentalsTable);
+router.get("/rentals/stats", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, rentalsTable.branchId);
+  const rows = bw
+    ? await db.select().from(rentalsTable).where(bw)
+    : await db.select().from(rentalsTable);
   const stats = { new: 0, confirmed: 0, active: 0, returned: 0, cancelled: 0, total: rows.length };
   for (const r of rows) { if (r.status in stats) stats[r.status as keyof typeof stats] = (stats[r.status as keyof typeof stats] as number) + 1; }
   res.json(stats);
