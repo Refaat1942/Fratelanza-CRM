@@ -213,6 +213,36 @@ Sellable add-on for dentists/dental clinics. Admin-toggleable per tenant via the
 - **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` has dental tables appended (as `CREATE TABLE IF NOT EXISTS` since they were added after Phase A). New tenants get them automatically.
 - **Existing tenants migration**: `deploy/migrations/002-dental.sql` — idempotent `CREATE TABLE IF NOT EXISTS` + indices, wrapped in BEGIN/COMMIT, safe to re-run. Apply with `deploy/migrate-tenants.sh deploy/migrations/002-dental.sql`.
 
+## Phase C — Treatment Plans + sidebar scroll fix (✅ DONE)
+
+Sellable multi-visit treatment planner for clinics. Gated by existing `"medical"` feature flag (no new flag needed — treatment plans is part of the medical bundle). Permission also `"medical"`.
+
+- **Schema** (`lib/db/src/schema/treatmentPlans.ts`):
+  - `treatment_plans` — patient_id, doctor_id (nullable), title/title_ar, status (draft/active/completed/cancelled), notes/notes_ar, estimated_total (auto-recomputed from items), start_date, target_completion_date.
+  - `treatment_plan_items` — plan_id (CASCADE on delete via SQL FK), procedure_id (nullable — supports custom lines or catalog pick), description/description_ar, tooth_number (FDI), quantity, unit_price, total, status (planned/scheduled/done/cancelled), scheduled_date, completed_at, completed_visit_id.
+- **Backend** (`artifacts/api-server/src/routes/treatmentPlans.ts`):
+  - CRUD for plans (with patient + doctor joins for bilingual names), items CRUD nested under plan, `/treatment-plans-stats` (counts by status + planned/completed value).
+  - `recomputePlanTotal()` uses a **single atomic UPDATE with subquery** — no read-then-write race when concurrent items modify the same plan.
+  - Status transitions on items auto-set `completed_at` when marked `done`, clear it when reverted.
+- **Frontend** (`pages/medical/treatment-plans.tsx`):
+  - 4 KPI cards (Active / Draft / Completed / Planned value EGP), status filter chips, expandable plan rows.
+  - Each plan row expands to show item list with inline status select per item, progress bar (done / total non-cancelled), per-item delete, "Add item" dialog.
+  - Add-item dialog: pick from catalog (medical procedures + dental procedures merged) → auto-fills price + description, OR enter custom line. Tooth number, quantity, unit price, scheduled date.
+  - Strict per-language writes: only active-language column populated, display layer falls back.
+- **Tenant schema**: appended to `artifacts/fratelanza-admin/src/tenant-schema.sql` as `CREATE TABLE IF NOT EXISTS` (added after Phase B).
+- **Existing tenants migration**: `deploy/migrations/003-treatment-plans.sql` — idempotent BEGIN/COMMIT block. Apply with `deploy/migrate-tenants.sh deploy/migrations/003-treatment-plans.sql` (must type `yes`, not `y`).
+
+### Sidebar scroll bug fix
+- Symptom: clicking a Medical/Dental item scrolled the sidebar `<nav>` back to the top of General, so the Medical section appeared to "disappear" (it was just below the fold). Reported via screenshot on /dental/catalog.
+- Fix in `AppLayout.tsx`: added `desktopNavRef` / `mobileNavRef` refs on the `<nav>` element; `useEffect([location, expandedSubs])` calls `scrollIntoView({ block: "nearest" })` on the `[data-active="true"]` link via `requestAnimationFrame` (so the subgroup has expanded first). Subgroup auto-expand also moved to a `useEffect` so direct-URL navigation into a sub-item opens its parent group.
+
+## Pricing note (decided 2026-05-20)
+- User picked **rule-based "smart" features over paid AI** for Phase E roadmap. Plan: Basic 500 EGP/mo / Pro 900 EGP/mo / Enterprise 1500 EGP/mo. No OpenAI cost. Naming convention: call them "Smart" (not "AI") in the UI.
+
+## Roadmap (post-Phase C — pending build)
+- **Phase D — Multi-branch + Expanded roles**: per-branch data scope on every table, branch picker, per-user branch assignment + expanded roles (Doctor/Receptionist/Accountant/Assistant) with strict permissions per module. Touches auth + every list/create endpoint — biggest single change.
+- **Phase E — Smart (rule-based) features**: clinical notes templates, treatment recommendations from chart conditions, patient risk analysis (visit frequency, no-show rate, payment patterns), predictive follow-up (rule-based, e.g. "no cleaning in 6mo → flag"), revenue trend explanations, FAQ chatbot. All free, no LLM dependency.
+
 ## Gotchas
 
 - Use `pnpm --filter @workspace/db run push` after schema changes

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
@@ -75,6 +75,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/medical/visits", key: "medical", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
       { href: "/medical/procedures", key: "medical", icon: ListPlus, labelEn: "Procedures", labelAr: "الإجراءات" },
       { href: "/medical/invoices", key: "medical", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
+      { href: "/medical/treatment-plans", key: "medical", icon: ClipboardList, labelEn: "Treatment Plans", labelAr: "خطط العلاج" },
       { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
     ],
     subgroups: [
@@ -140,6 +141,39 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   });
   const toggleSub = (id: string) => setExpandedSubs(p => ({ ...p, [id]: !p[id] }));
 
+  // Auto-expand any subgroup that contains the active route (covers navigation
+  // straight into a sub-item via URL or in-app link).
+  useEffect(() => {
+    setExpandedSubs(prev => {
+      const next = { ...prev };
+      NAV_GROUPS.forEach(g => g.subgroups?.forEach(s => {
+        if (s.items.some(i => location === i.href || location.startsWith(i.href + "/"))) {
+          next[s.id] = true;
+        }
+      }));
+      return next;
+    });
+  }, [location]);
+
+  // Keep the active sidebar item visible after every navigation. Without this,
+  // clicking a Medical/Dental item scrolled the sidebar back to the top of the
+  // General list and looked like the section disappeared.
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+  const mobileNavRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const scrollActiveIntoView = (nav: HTMLElement | null) => {
+      if (!nav) return;
+      const active = nav.querySelector<HTMLElement>('[data-active="true"]');
+      if (active) active.scrollIntoView({ block: "nearest", inline: "nearest" });
+    };
+    // Run after paint so the expanded subgroup has rendered.
+    const id = window.requestAnimationFrame(() => {
+      scrollActiveIntoView(desktopNavRef.current);
+      scrollActiveIntoView(mobileNavRef.current);
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [location, expandedSubs]);
+
   const isActive = (href: string) =>
     href === "/" ? location === "/" : location === href || location.startsWith(href + "/");
 
@@ -175,6 +209,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         }`}
         data-testid={`nav-${item.labelEn.toLowerCase().replace(/\s+/g, "-")}`}
+        data-active={active ? "true" : "false"}
       >
         <Icon size={15} className={active ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/55 group-hover:text-sidebar-accent-foreground"} />
         <span className="truncate">{t(item.labelEn, item.labelAr)}</span>
@@ -227,7 +262,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const SidebarContent = ({ onNavClick }: { onNavClick?: () => void }) => (
+  const SidebarContent = ({ onNavClick, navRef }: { onNavClick?: () => void; navRef?: React.RefObject<HTMLElement | null> }) => (
     <>
       <div className="px-5 pt-5 pb-3 border-b border-sidebar-border">
         <div className="flex items-center gap-3">
@@ -243,7 +278,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <nav className="flex-1 px-2.5 pb-3 overflow-y-auto">
+      <nav ref={navRef} className="flex-1 px-2.5 pb-3 overflow-y-auto">
         {NAV_GROUPS.map(g => renderGroup(g, onNavClick))}
       </nav>
 
@@ -304,7 +339,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden" dir={isRtl ? "rtl" : "ltr"}>
       <aside className={`hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground ${isRtl ? "border-l" : "border-r"} border-sidebar-border`}>
-        <SidebarContent />
+        <SidebarContent navRef={desktopNavRef} />
       </aside>
 
       {mobileOpen && (
@@ -312,7 +347,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <aside className={`relative flex flex-col w-64 h-full bg-sidebar text-sidebar-foreground ${isRtl ? "border-l" : "border-r"} border-sidebar-border`}>
             <Button variant="ghost" size="icon" className="absolute top-3 right-3 z-10 text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMobileOpen(false)}><X size={18} /></Button>
-            <SidebarContent onNavClick={() => setMobileOpen(false)} />
+            <SidebarContent onNavClick={() => setMobileOpen(false)} navRef={mobileNavRef} />
           </aside>
         </div>
       )}

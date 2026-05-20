@@ -18,6 +18,7 @@ import purchaseOrdersRouter from "./purchaseOrders";
 import invoicesRouter from "./invoices";
 import medicalRouter from "./medical";
 import dentalRouter from "./dental";
+import treatmentPlansRouter from "./treatmentPlans";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
 
@@ -45,5 +46,6 @@ router.use(requireFeature("reports"), requirePermission("reports"), reportsRoute
 router.use(requireFeature("invoicing"), requirePermission("invoicing"), invoicesRouter);
 router.use(requireFeature("medical"), requirePermission("medical"), medicalRouter);
 router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
+router.use(requireFeature("medical"), requirePermission("medical"), treatmentPlansRouter);
 
 export default router;
