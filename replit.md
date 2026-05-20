@@ -161,7 +161,7 @@ Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via ne
 - **Slices delivered**:
   - ✅ T001: Foundation + Patients module (CRUD, EN/AR, search by name/phone/national ID, allergies/chronic conditions, blood type, emergency contact, WhatsApp from card).
   - ✅ T002: Appointments — `routes/medical/appointments.ts` with overlap conflict detection per doctor (returns 409 `doctor_conflict`), joined list (returns patient + doctor names so frontend doesn't N+1). Page at `/medical/appointments` with day navigator + 7-day overview strip, inline status select (scheduled/confirmed/completed/no_show/cancelled), and one-click WhatsApp reminder per appointment (bilingual message template).
-  - ⏳ T003: Visits (notes per visit linked to patient + doctor)
+  - ✅ T003: Visits — `routes/medical/visits.ts` with patient/doctor filter + `/visits/stats` (today, last 7 days, upcoming follow-ups). Page at `/medical/visits` with stats cards, patient filter (URL-synced via `?patient=`), per-visit card showing chief complaint / diagnosis / treatment in 3-col grid, follow-up date badge, edit + delete. Click patient name in any visit row to filter to just that patient's history.
   - ⏳ T004: Procedures catalog + medical invoices (bridges to existing Finance)
   - ⏳ T005: Medical reports + admin super-dashboard upgrades (live online/offline tracking, payment alerts)
   - ⏳ T006: Polish + e2e + Phase A docs
