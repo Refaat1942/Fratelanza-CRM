@@ -2,6 +2,8 @@ import express, { type Request, type Response, type NextFunction } from "express
 import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import bcrypt from "bcryptjs";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -65,14 +67,37 @@ function generatePassword(): string {
 }
 
 async function main() {
+  const isProd = process.env.NODE_ENV === "production";
+  if (isProd && (SESSION_SECRET === "dev-secret-change-me" || SESSION_SECRET.length < 32)) {
+    console.error("SESSION_SECRET must be set to a strong random value (32+ chars) in production");
+    process.exit(1);
+  }
+  // Hard-fail if the admin password is left at the well-known default in prod.
+  // The admin control plane is internet-facing (admin.fratelanza.com) — leaving
+  // admin/admin123 would mean total tenant takeover for anyone who finds the host.
+  if (isProd && (ADMIN_PASSWORD === "admin123" || ADMIN_PASSWORD.length < 10)) {
+    console.error("ADMIN_PASSWORD must be set to a strong value (10+ chars, not the default) in production");
+    process.exit(1);
+  }
+
   await initSchema();
   await seedAdmin(ADMIN_USERNAME, await bcrypt.hash(ADMIN_PASSWORD, 10));
 
   const app = express();
   app.set("view engine", "ejs");
   app.set("views", path.resolve(__dirname, "../views"));
-  app.use(express.urlencoded({ extended: true }));
-  app.use(express.json());
+  app.set("trust proxy", 1);
+
+  // Helmet security headers. CSP is loose because we use the Tailwind CDN.
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+  app.use(express.json({ limit: "2mb" }));
 
   const PgStore = connectPgSimple(session);
   app.use(
@@ -81,9 +106,24 @@ async function main() {
       secret: SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
-      cookie: { httpOnly: true, sameSite: "lax", maxAge: 1000 * 60 * 60 * 24 * 7 },
+      cookie: {
+        secure: isProd,
+        httpOnly: true,
+        sameSite: "lax",
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      },
     }),
   );
+
+  // Brute-force protection on the admin login endpoint.
+  const loginLimiter = rateLimit({
+    windowMs: 10 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test",
+  });
+  app.use("/login", loginLimiter);
 
   // Locals available to all templates + flash consumption.
   app.use((req, res, next) => {
@@ -109,6 +149,7 @@ async function main() {
 
   app.post("/login", async (req, res): Promise<void> => {
     const { username, password } = req.body as { username?: string; password?: string };
+    const ip = req.ip || req.socket.remoteAddress || "unknown";
     if (!username || !password) {
       res.status(400).render("login", { error: "Username and password are required." });
       return;
@@ -119,9 +160,11 @@ async function main() {
     );
     const user = rows[0];
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+      console.warn(`[admin] login_failed ip=${ip} username=${username}`);
       res.status(401).render("login", { error: "Invalid username or password." });
       return;
     }
+    console.info(`[admin] login_success ip=${ip} username=${username}`);
     req.session.userId = user.id;
     req.session.username = user.username;
     res.redirect("/");

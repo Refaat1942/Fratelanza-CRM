@@ -120,6 +120,24 @@ Self-contained Express + EJS multi-tenant control plane for selling the CRM as S
 - Manual deploy: `cd ~/Fratelanza-HUB && git pull origin main && docker compose up -d --build`
 - GitHub repo: https://github.com/Refaat1942/Fratelanza-HUB
 
+## Security hardening (Phase 6)
+
+Pre-launch hardening applied to both CRM (`api-server`) and admin (`fratelanza-admin`).
+
+- **Helmet** on both apps with safe defaults (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS in prod). CSP intentionally disabled — handled at the static host / nginx layer.
+- **Login rate limit**: `express-rate-limit` 10 attempts / 10 min per IP on `POST /api/auth/login` (CRM) and `POST /login` (admin). Returns 429 after threshold. Skipped when `NODE_ENV=test`.
+- **Session secret hard-fail in production**: both apps `process.exit(1)` if `NODE_ENV=production` and `SESSION_SECRET` is missing, equals the dev default, or is shorter than 32 chars.
+- **Cookie hardening**: `secure: true` in prod (HTTPS only), `httpOnly: true`, `sameSite: "lax"`. `trust proxy` set so secure cookies work behind nginx.
+- **Body size limits**: `express.json({ limit: "2mb" })` and same for `urlencoded` on both apps. Prevents resource-exhaustion DoS via huge payloads.
+- **File upload validation** (CRM rentals): allow-list of MIME + extension (PDF, JPG, JPEG, PNG, WEBP, DOC, DOCX), `files: 1` limit, `fileSize: 10MB`, filename sanitized to `[a-zA-Z0-9._-]` and capped at 80 chars to prevent path traversal.
+- **Audit logging on auth**: pino logs `login_success`, `login_failed`, `login_blocked_account`, `password_changed` with `ip`, `username`, `ua`. Admin app uses `console.info/warn` with same shape. These show up in `docker logs` on the VPS.
+- **Force password change for default admin**: when a user logs in with username `admin` and password `admin123`, the session is flagged `mustChangePassword=true`. `/api/auth/me` and the login response include the flag; the React `AuthProvider` renders a non-dismissable `<ForcePasswordChange>` modal until they change it. New password must be 8+ chars and cannot be the default.
+- **Global error handler** (CRM): returns `{ error: "internal_error", requestId }` to clients; full error + stack only goes to server logs. No stack traces leak to users.
+
+**Explicitly NOT done (documented choice):**
+- **CSRF tokens**: relying on `sameSite=lax` cookies + JSON content-type as defense (browsers block cross-site form submits, and the API only accepts JSON for state changes). For a SaaS CRM at this scale, this is the standard tradeoff. Revisit if adding webhook / public form endpoints.
+- **Data-at-rest disk encryption** on the VPS: not enabled at the Postgres / filesystem layer. Mitigated by Hostinger physical security + bcrypt for passwords. Revisit if onboarding customers with regulatory requirements (healthcare, finance).
+
 ## Gotchas
 
 - Use `pnpm --filter @workspace/db run push` after schema changes

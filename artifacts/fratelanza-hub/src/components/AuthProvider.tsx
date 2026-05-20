@@ -1,20 +1,43 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { ForcePasswordChange } from "./ForcePasswordChange";
 
-export type AuthUser = { id: number; username: string; role: string; permissions: string[]; displayName?: string } | null;
-type AuthCtx = { user: AuthUser; loading: boolean; login: (u: string, p: string) => Promise<void>; logout: () => Promise<void> };
+export type AuthUser = {
+  id: number;
+  username: string;
+  role: string;
+  permissions: string[];
+  displayName?: string;
+  mustChangePassword?: boolean;
+} | null;
+type AuthCtx = {
+  user: AuthUser;
+  loading: boolean;
+  login: (u: string, p: string) => Promise<void>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+};
 
-const AuthContext = createContext<AuthCtx>({ user: null, loading: true, login: async () => {}, logout: async () => {} });
+const AuthContext = createContext<AuthCtx>({
+  user: null,
+  loading: true,
+  login: async () => {},
+  logout: async () => {},
+  refresh: async () => {},
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include" })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { setUser(data); setLoading(false); })
-      .catch(() => setLoading(false));
+  const refresh = useCallback(async () => {
+    const r = await fetch("/api/auth/me", { credentials: "include" });
+    const data = r.ok ? await r.json() : null;
+    setUser(data);
   }, []);
+
+  useEffect(() => {
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
   const login = async (username: string, password: string) => {
     const res = await fetch("/api/auth/login", {
@@ -32,7 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  return <AuthContext.Provider value={{ user, loading, login, logout }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout, refresh }}>
+      {children}
+      {user?.mustChangePassword && (
+        <ForcePasswordChange onChanged={refresh} onLogout={logout} />
+      )}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() { return useContext(AuthContext); }

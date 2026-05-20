@@ -11,11 +11,40 @@ const router: IRouter = Router();
 const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
+// Allow-list of file types tenants may upload as rental documents.
+const ALLOWED_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+const ALLOWED_EXT = new Set([".pdf", ".jpg", ".jpeg", ".png", ".webp", ".doc", ".docx"]);
+
+function sanitizeFilename(name: string): string {
+  // Strip path separators and any character that isn't safe.
+  const base = path.basename(name).replace(/[^a-zA-Z0-9._-]/g, "_");
+  // Cap length to avoid filesystem issues.
+  return base.length > 80 ? base.slice(-80) : base;
+}
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname.replace(/\s/g, "_")}`),
+  filename: (_req, file, cb) => cb(null, `${Date.now()}-${sanitizeFilename(file.originalname)}`),
 });
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname || "").toLowerCase();
+    if (!ALLOWED_MIME.has(file.mimetype) || !ALLOWED_EXT.has(ext)) {
+      cb(new Error("Unsupported file type. Allowed: PDF, JPG, PNG, WEBP, DOC, DOCX."));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 const RentalInput = z.object({
   clientId: z.coerce.number().optional(),
