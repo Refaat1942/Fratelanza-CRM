@@ -21,6 +21,7 @@ export const FEATURE_KEYS = [
   "reports",
   "notifications",
   "medical",
+  "dental",
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -38,6 +39,7 @@ export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
   reports: { en: "Reports", ar: "التقارير" },
   notifications: { en: "Notifications", ar: "الإشعارات" },
   medical: { en: "Medical / Clinic", ar: "العيادة الطبية" },
+  dental: { en: "Dental Clinic", ar: "عيادة الأسنان" },
 };
 
 export function defaultFeatures(): Record<FeatureKey, boolean> {

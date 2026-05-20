@@ -4,7 +4,7 @@ import { getCurrentTenant } from "@workspace/db";
 const router: IRouter = Router();
 
 const ALL_FEATURES = [
-  "tasks","crm","finance","team","products","suppliers","purchase_orders","rentals","reports","notifications","invoicing","medical",
+  "tasks","crm","finance","team","products","suppliers","purchase_orders","rentals","reports","notifications","invoicing","medical","dental",
 ];
 
 router.get("/me/features", (_req: Request, res: Response) => {

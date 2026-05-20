@@ -181,6 +181,38 @@ Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via th
 - **Admin super-dashboard**: per-tenant heartbeat via tenant lookup endpoint, "Online now" stat (last 5 min, animated pulse), payment alerts banner (overdue + due-within-3-days, sorted overdue-first), live activity feed (last 8 tenants by recency).
 - **Reporting indices** (in `tenant-schema.sql`): visit_date, follow_up_date, patient_id, start_at, doctor_id on appointments, invoice_date / doctor_id / patient_id / status on invoices, invoice_id / procedure_id on invoice lines.
 
+## Phase B — Visual overhaul + Dental sub-module (✅ DONE)
+
+Bold corporate redesign + grouped sidebar + strict per-language forms + full Dental clinic module.
+
+- **Design tokens** (`artifacts/fratelanza-hub/src/index.css`): primary now deep cobalt blue `hsl(217 91% 42%)` (#1e40af), `--radius` reduced to 0.375rem, dark navy sidebar, denser table spacing. All existing pages picked up the new palette automatically.
+- **Grouped sidebar** (`components/layout/AppLayout.tsx`): two collapsible section headers — **General** (Dashboard / Tasks / CRM / Finance / Team / Products / Suppliers / Rentals / Reports) and **Medical / Clinic** (Patients / Appts / Visits / Procedures / Invoices / Reports) with a **nested "Dental" sub-group** (Catalog / Chart / Visits). Feature flags + permissions still gate every item.
+- **Polish components** (`components/ui-ext/`): `PageHeader`, `KpiCard` (tone: primary/success/warning/info/default), `EmptyState`, `SectionCard` — used across rewritten medical pages and all dental pages.
+- **Strict per-language forms** (`lib/lang-fields.ts` helper + `useLangField()` hook): when AR is active, only AR field renders; when EN active, only EN field renders. **Write policy: only the active-language column is populated, the other is left NULL.** Display layer falls back to the populated one (e.g. `isAr ? (p.nameAr || p.name) : (p.name || p.nameAr)`). Applied to patients form; dental forms also follow this pattern.
+- **Visual refresh applied** to `pages/medical/patients.tsx` (cards with hover actions, KPI strip, search) and `pages/medical/reports.tsx` (new KpiCard grid + line/area/bar charts in primary blue). The other 4 medical pages (appointments/visits/procedures/invoices) inherit the palette automatically; deeper polish pending.
+
+### Dental sub-module
+
+Sellable add-on for dentists/dental clinics. Admin-toggleable per tenant via the `"dental"` feature flag. Permission gate reuses the `"medical"` permission so any user with medical access can use dental.
+
+- **Schema** (`lib/db/src/schema/dental.ts`):
+  - `dental_procedures` — catalog with categories (cleaning/filling/root_canal/crown/braces/whitening/extraction/implant/bridge/other), EGP prices, active flag.
+  - `dental_chart_entries` — one row per (patient × tooth), condition (healthy/cavity/filled/crown/root_canal/missing/extracted/implant/bridge/other), notes. Unique index on (patient_id, tooth_number).
+  - `dental_visits` — tooth-specific treatment log with doctor, FDI tooth number, optional procedure FK, treatment description, materials used, cost (EGP), notes, follow-up date.
+- **Feature flag**: `"dental"` added to `FEATURE_KEYS` in admin `db.ts` (label "Dental Clinic" / "عيادة الأسنان") and `ALL_FEATURES` in `routes/me.ts`.
+- **Backend routes** (`artifacts/api-server/src/routes/dental/`):
+  - `procedures.ts` — CRUD + `POST /dental-procedures/seed` (idempotent — seeds 11 common dental procedures only when catalog is empty).
+  - `chart.ts` — `GET /patients/:id/dental-chart` returns all 32 FDI teeth (gaps filled with default "healthy"); `PUT /patients/:id/dental-chart/:tooth` upserts one tooth. Strict FDI validation (11-18, 21-28, 31-38, 41-48).
+  - `visits.ts` — CRUD with patient/doctor/procedure joins + `/dental-visits/stats` (count + revenue).
+  - Mounted in `routes/index.ts` with `requireFeature("dental")` + `requirePermission("medical")`.
+- **Frontend pages** (`artifacts/fratelanza-hub/src/pages/dental/`):
+  - `catalog.tsx` — table view with categories badges, EGP pricing, seed button when empty.
+  - `chart.tsx` — patient picker → interactive 32-tooth FDI diagram (upper/lower jaw split, colored by condition, click any tooth → modal to update). Chart always renders LTR regardless of language so dentists see standard left-to-right tooth layout.
+  - `visits.tsx` — table + form with patient/doctor/procedure dropdowns, tooth number (FDI), auto-fills cost from selected procedure.
+  - All routes registered in `App.tsx` under `/dental/*` and gated by `<FeatureGate feature="dental">`.
+- **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` has dental tables appended (as `CREATE TABLE IF NOT EXISTS` since they were added after Phase A). New tenants get them automatically.
+- **Existing tenants migration**: `deploy/migrations/002-dental.sql` — idempotent `CREATE TABLE IF NOT EXISTS` + indices, wrapped in BEGIN/COMMIT, safe to re-run. Apply with `deploy/migrate-tenants.sh deploy/migrations/002-dental.sql`.
+
 ## Gotchas
 
 - Use `pnpm --filter @workspace/db run push` after schema changes

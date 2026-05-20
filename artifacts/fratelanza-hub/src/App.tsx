@@ -27,6 +27,9 @@ import Visits from "@/pages/medical/visits";
 import Procedures from "@/pages/medical/procedures";
 import MedicalInvoices from "@/pages/medical/invoices";
 import MedicalReports from "@/pages/medical/reports";
+import DentalCatalog from "@/pages/dental/catalog";
+import DentalChart from "@/pages/dental/chart";
+import DentalVisits from "@/pages/dental/visits";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import BlockedPage from "@/pages/blocked";
@@ -48,14 +51,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function FeatureGate({ feature, children }: { feature: string; children: React.ReactNode }) {
+function FeatureGate({
+  feature, permission, children,
+}: { feature: string; permission?: string; children: React.ReactNode }) {
   const { features, loading } = useFeatures();
   const { user } = useAuth();
   if (loading) return null;
   // Tenant-level: feature must be enabled for the workspace.
   if (features[feature] === false) return <NotFound />;
   // User-level: non-admins need the permission in their assigned list.
-  if (user && user.role !== "admin" && !(user.permissions || []).includes(feature)) {
+  // `permission` defaults to `feature` but can be overridden (e.g. dental shares medical permission).
+  const permKey = permission ?? feature;
+  if (user && user.role !== "admin" && !(user.permissions || []).includes(permKey)) {
     return <NotFound />;
   }
   return <>{children}</>;
@@ -87,6 +94,9 @@ function AppRouter() {
               <Route path="/medical/procedures"><FeatureGate feature="medical"><Procedures /></FeatureGate></Route>
               <Route path="/medical/invoices"><FeatureGate feature="medical"><MedicalInvoices /></FeatureGate></Route>
               <Route path="/medical/reports"><FeatureGate feature="medical"><MedicalReports /></FeatureGate></Route>
+              <Route path="/dental/catalog"><FeatureGate feature="dental" permission="medical"><DentalCatalog /></FeatureGate></Route>
+              <Route path="/dental/chart"><FeatureGate feature="dental" permission="medical"><DentalChart /></FeatureGate></Route>
+              <Route path="/dental/visits"><FeatureGate feature="dental" permission="medical"><DentalVisits /></FeatureGate></Route>
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>

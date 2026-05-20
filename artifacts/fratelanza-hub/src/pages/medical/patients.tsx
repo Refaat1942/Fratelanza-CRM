@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
 import { apiFetch } from "@/lib/api";
+import { useLangField } from "@/lib/lang-fields";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
@@ -12,11 +12,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle, IdCard, AlertTriangle, Calendar,
+  Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle,
+  IdCard, AlertTriangle, Stethoscope, Search,
 } from "lucide-react";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { PageHeader } from "@/components/ui-ext/page-header";
+import { KpiCard } from "@/components/ui-ext/kpi-card";
+import { EmptyState } from "@/components/ui-ext/empty-state";
+import { SectionCard } from "@/components/ui-ext/section-card";
 
 type Patient = {
   id: number;
@@ -55,6 +60,7 @@ function calcAge(dob?: string | null): number | null {
 export default function Patients() {
   const { t, isRtl, language } = useLanguage();
   const isAr = language === "ar";
+  const lf = useLangField();
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
@@ -99,18 +105,38 @@ export default function Patients() {
     onError: (e: Error) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
   });
 
-  const openEdit = (p: Patient) => {
-    setEditing(p);
-    setForm({ ...EMPTY, ...p });
-  };
+  const openEdit = (p: Patient) => { setEditing(p); setForm({ ...EMPTY, ...p }); };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const data: Partial<Patient> = { ...form };
-    // Coerce empty strings to null for optional fields
-    for (const k of Object.keys(data) as (keyof Patient)[]) {
-      if (k === "id" || k === "firstName") continue;
-      if ((data as any)[k] === "") (data as any)[k] = null;
+    // Strict per-language form. Write policy:
+    //  - Always send the active-language fields.
+    //  - OMIT the inactive-language fields entirely so PATCH does not wipe them.
+    //  - On CREATE, mirror the active value into the required NOT NULL column.
+    const data: Partial<Patient> = {
+      gender: form.gender || null,
+      dateOfBirth: form.dateOfBirth || null,
+      nationalId: form.nationalId || null,
+      phone: form.phone || null,
+      email: form.email || null,
+      bloodType: form.bloodType || null,
+      allergies: form.allergies || null,
+      chronicConditions: form.chronicConditions || null,
+      emergencyContactName: form.emergencyContactName || null,
+      emergencyContactPhone: form.emergencyContactPhone || null,
+    };
+    if (isAr) {
+      data.firstNameAr = form.firstNameAr || "";
+      data.lastNameAr = form.lastNameAr || null;
+      data.addressAr = form.addressAr || null;
+      data.notesAr = form.notesAr || null;
+      // firstName is NOT NULL — on CREATE fall back to AR value; on UPDATE leave EN side untouched.
+      if (!editing) data.firstName = form.firstNameAr || "";
+    } else {
+      data.firstName = form.firstName;
+      data.lastName = form.lastName || null;
+      data.address = form.address || null;
+      data.notes = form.notes || null;
     }
     if (editing) updateMut.mutate({ id: editing.id, data });
     else createMut.mutate(data);
@@ -118,7 +144,7 @@ export default function Patients() {
 
   const fullName = (p: Patient) => {
     if (isAr) return `${p.firstNameAr || p.firstName} ${p.lastNameAr || p.lastName || ""}`.trim();
-    return `${p.firstName} ${p.lastName || ""}`.trim();
+    return `${p.firstName || p.firstNameAr || ""} ${p.lastName || p.lastNameAr || ""}`.trim();
   };
 
   const genderLabel = (g?: string | null) =>
@@ -128,23 +154,20 @@ export default function Patients() {
     <form onSubmit={handleSubmit}>
       <div className="grid gap-4 py-4 max-h-[65vh] overflow-y-auto pr-2">
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>{isAr ? "الاسم الأول *" : "First Name *"}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{isAr ? "الاسم الأول *" : "First Name *"}</Label>
             <Input
-              required dir={isAr ? "rtl" : "ltr"}
+              required dir={lf.dir}
               value={isAr ? (form.firstNameAr || "") : form.firstName}
               onChange={e => isAr
-                ? setForm({ ...form, firstNameAr: e.target.value, firstName: form.firstName || e.target.value })
+                ? setForm({ ...form, firstNameAr: e.target.value })
                 : setForm({ ...form, firstName: e.target.value })}
             />
-            {isAr && !form.firstName && (
-              <p className="text-xs text-amber-600">{t("Tip: also enter the English name in the EN view for search.", "تلميح: أدخل أيضًا الاسم بالإنجليزية للبحث.")}</p>
-            )}
           </div>
-          <div className="space-y-2">
-            <Label>{isAr ? "اسم العائلة" : "Last Name"}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{isAr ? "اسم العائلة" : "Last Name"}</Label>
             <Input
-              dir={isAr ? "rtl" : "ltr"}
+              dir={lf.dir}
               value={isAr ? (form.lastNameAr || "") : (form.lastName || "")}
               onChange={e => isAr
                 ? setForm({ ...form, lastNameAr: e.target.value })
@@ -154,8 +177,8 @@ export default function Patients() {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          <div className="space-y-2">
-            <Label>{t("Gender", "النوع")}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Gender", "النوع")}</Label>
             <Select value={form.gender || ""} onValueChange={v => setForm({ ...form, gender: (v || null) as any })}>
               <SelectTrigger><SelectValue placeholder={t("Select", "اختر")} /></SelectTrigger>
               <SelectContent>
@@ -165,12 +188,12 @@ export default function Patients() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>{t("Date of Birth", "تاريخ الميلاد")}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Date of Birth", "تاريخ الميلاد")}</Label>
             <Input type="date" value={form.dateOfBirth || ""} onChange={e => setForm({ ...form, dateOfBirth: e.target.value })} />
           </div>
-          <div className="space-y-2">
-            <Label>{t("Blood Type", "فصيلة الدم")}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Blood Type", "فصيلة الدم")}</Label>
             <Select value={form.bloodType || ""} onValueChange={v => setForm({ ...form, bloodType: v || null })}>
               <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
               <SelectContent>
@@ -181,57 +204,57 @@ export default function Patients() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>{t("Phone", "الهاتف")}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Phone", "الهاتف")}</Label>
             <Input dir="ltr" value={form.phone || ""} onChange={e => setForm({ ...form, phone: e.target.value })} />
           </div>
-          <div className="space-y-2">
-            <Label>{t("Email", "البريد الإلكتروني")}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Email", "البريد الإلكتروني")}</Label>
             <Input type="email" dir="ltr" value={form.email || ""} onChange={e => setForm({ ...form, email: e.target.value })} />
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>{t("National ID", "الرقم القومي")}</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">{t("National ID", "الرقم القومي")}</Label>
           <Input dir="ltr" value={form.nationalId || ""} onChange={e => setForm({ ...form, nationalId: e.target.value })} />
         </div>
 
-        <div className="space-y-2">
-          <Label>{t("Address", "العنوان")}</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">{t("Address", "العنوان")}</Label>
           <Textarea
-            rows={2} dir={isAr ? "rtl" : "ltr"}
+            rows={2} dir={lf.dir}
             value={isAr ? (form.addressAr || "") : (form.address || "")}
             onChange={e => isAr ? setForm({ ...form, addressAr: e.target.value }) : setForm({ ...form, address: e.target.value })}
           />
         </div>
 
-        <div className="space-y-2">
-          <Label className="flex items-center gap-1"><AlertTriangle size={14} className="text-amber-600"/>{t("Allergies", "الحساسية")}</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold flex items-center gap-1.5"><AlertTriangle size={13} className="text-amber-600"/>{t("Allergies", "الحساسية")}</Label>
           <Textarea rows={2} value={form.allergies || ""} onChange={e => setForm({ ...form, allergies: e.target.value })}
             placeholder={t("e.g. Penicillin, peanuts", "مثل: البنسلين، الفول السوداني")} />
         </div>
 
-        <div className="space-y-2">
-          <Label>{t("Chronic Conditions", "أمراض مزمنة")}</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">{t("Chronic Conditions", "أمراض مزمنة")}</Label>
           <Textarea rows={2} value={form.chronicConditions || ""} onChange={e => setForm({ ...form, chronicConditions: e.target.value })}
             placeholder={t("e.g. Diabetes, hypertension", "مثل: السكري، ضغط الدم")} />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label>{t("Emergency Contact", "جهة اتصال للطوارئ")}</Label>
-            <Input value={form.emergencyContactName || ""} onChange={e => setForm({ ...form, emergencyContactName: e.target.value })} />
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Emergency Contact", "جهة اتصال للطوارئ")}</Label>
+            <Input dir={lf.dir} value={form.emergencyContactName || ""} onChange={e => setForm({ ...form, emergencyContactName: e.target.value })} />
           </div>
-          <div className="space-y-2">
-            <Label>{t("Emergency Phone", "هاتف الطوارئ")}</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Emergency Phone", "هاتف الطوارئ")}</Label>
             <Input dir="ltr" value={form.emergencyContactPhone || ""} onChange={e => setForm({ ...form, emergencyContactPhone: e.target.value })} />
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label>{t("Notes", "ملاحظات")}</Label>
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">{t("Notes", "ملاحظات")}</Label>
           <Textarea
-            rows={2} dir={isAr ? "rtl" : "ltr"}
+            rows={2} dir={lf.dir}
             value={isAr ? (form.notesAr || "") : (form.notes || "")}
             onChange={e => isAr ? setForm({ ...form, notesAr: e.target.value }) : setForm({ ...form, notes: e.target.value })}
           />
@@ -239,7 +262,7 @@ export default function Patients() {
       </div>
       <DialogFooter>
         <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
-          {editing ? t("Save Changes", "حفظ التغييرات") : t("Save", "حفظ")}
+          {editing ? t("Save Changes", "حفظ التغييرات") : t("Save Patient", "حفظ المريض")}
         </Button>
       </DialogFooter>
     </form>
@@ -247,120 +270,137 @@ export default function Patients() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">{t("Patients", "المرضى")}</h2>
-          <p className="text-muted-foreground">{t("Manage your patient records", "إدارة سجلات المرضى")}</p>
-        </div>
-        <Dialog open={createOpen} onOpenChange={open => { setCreateOpen(open); if (!open) setForm(EMPTY); }}>
-          <DialogTrigger asChild>
-            <Button data-testid="btn-create-patient" className="shrink-0 gap-2"><Plus size={16}/>{t("New Patient", "مريض جديد")}</Button>
-          </DialogTrigger>
-          <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>
-            <DialogHeader><DialogTitle>{t("Add Patient", "إضافة مريض")}</DialogTitle></DialogHeader>
-            {PatientForm}
-          </DialogContent>
-        </Dialog>
-      </div>
+      <PageHeader
+        icon={<Users size={20} />}
+        title={t("Patients", "المرضى")}
+        description={t("Manage every patient record — bilingual, searchable, hardened.", "إدارة جميع سجلات المرضى — ثنائية اللغة، قابلة للبحث، آمنة.")}
+        actions={
+          <Dialog open={createOpen} onOpenChange={open => { setCreateOpen(open); if (!open) setForm(EMPTY); }}>
+            <DialogTrigger asChild>
+              <Button data-testid="btn-create-patient" className="gap-1.5 h-9"><Plus size={15}/>{t("New Patient", "مريض جديد")}</Button>
+            </DialogTrigger>
+            <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2"><UserPlus size={18} className="text-primary"/>{t("Add Patient", "إضافة مريض")}</DialogTitle>
+              </DialogHeader>
+              {PatientForm}
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="border-blue-200 dark:border-blue-900/30">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-800 dark:text-blue-500">{t("Total Patients", "إجمالي المرضى")}</p>
-              <h3 className="text-2xl font-bold mt-1">{stats?.total ?? "—"}</h3>
-            </div>
-            <Users className="w-8 h-8 text-blue-500/50" />
-          </CardContent>
-        </Card>
-        <Card className="border-emerald-200 dark:border-emerald-900/30">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-emerald-800 dark:text-emerald-500">{t("New (30 days)", "جدد (30 يوم)")}</p>
-              <h3 className="text-2xl font-bold mt-1">{stats?.recent ?? "—"}</h3>
-            </div>
-            <UserPlus className="w-8 h-8 text-emerald-500/50" />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="bg-card p-4 rounded-lg border border-border">
-        <Input
-          placeholder={t("Search by name, phone or national ID...", "بحث بالاسم أو الهاتف أو الرقم القومي...")}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-md"
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <KpiCard
+          label={t("Total Patients", "إجمالي المرضى")}
+          value={stats?.total ?? "—"}
+          icon={<Users size={18} />}
+          tone="primary"
+        />
+        <KpiCard
+          label={t("New (30 days)", "جدد (30 يوم)")}
+          value={stats?.recent ?? "—"}
+          icon={<UserPlus size={18} />}
+          tone="success"
+        />
+        <KpiCard
+          label={t("Active Filter", "بحث نشط")}
+          value={search ? t("Filtered", "مفلتر") : t("All", "الكل")}
+          icon={<Search size={18} />}
+          hint={search ? `"${search}"` : t("Showing every patient", "عرض جميع المرضى")}
         />
       </div>
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-48 w-full" />)}
-        </div>
-      ) : !patients || patients.length === 0 ? (
-        <div className="text-center py-12 border border-dashed rounded-lg bg-card/50">
-          <User className="w-10 h-10 mx-auto text-muted-foreground/40 mb-3" />
-          <p className="text-muted-foreground">{t("No patients yet. Add your first patient.", "لا يوجد مرضى. أضف أول مريض.")}</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {patients.map(p => {
-            const age = calcAge(p.dateOfBirth);
-            return (
-              <Card key={p.id} className="overflow-hidden hover:border-primary/50 transition-colors group" data-testid={`patient-${p.id}`}>
-                <CardHeader className="p-4 pb-2 border-b border-border bg-muted/20 flex flex-row items-start justify-between space-y-0">
-                  <div className="min-w-0">
-                    <CardTitle className="text-lg truncate">{fullName(p)}</CardTitle>
-                    <div className="flex items-center gap-2 flex-wrap mt-1">
-                      {genderLabel(p.gender) && <Badge variant="outline" className="text-xs">{genderLabel(p.gender)}</Badge>}
-                      {age !== null && <Badge variant="outline" className="text-xs">{age} {t("yrs", "سنة")}</Badge>}
-                      {p.bloodType && <Badge variant="outline" className="text-xs">{p.bloodType}</Badge>}
+      <SectionCard
+        title={t("All Patients", "كل المرضى")}
+        actions={
+          <div className="relative w-full sm:w-72">
+            <Search size={14} className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-2.5" : "left-2.5"} text-muted-foreground`} />
+            <Input
+              placeholder={t("Search by name, phone, national ID…", "بحث بالاسم، الهاتف، الرقم القومي…")}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className={`h-8 ${isRtl ? "pr-8" : "pl-8"}`}
+              dir={lf.dir}
+            />
+          </div>
+        }
+        noPadding
+      >
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+            {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-44 w-full rounded-md" />)}
+          </div>
+        ) : !patients || patients.length === 0 ? (
+          <EmptyState
+            icon={<User size={22} />}
+            title={t("No patients yet", "لا يوجد مرضى بعد")}
+            description={t("Add your first patient to start tracking visits, prescriptions, and invoices.", "أضف أول مريض لتبدأ تتبع الزيارات والوصفات والفواتير.")}
+            action={
+              <Button onClick={() => setCreateOpen(true)} className="gap-1.5"><Plus size={15}/>{t("Add Patient", "إضافة مريض")}</Button>
+            }
+          />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+            {patients.map(p => {
+              const age = calcAge(p.dateOfBirth);
+              return (
+                <div key={p.id}
+                  className="group bg-card border border-card-border rounded-md overflow-hidden hover:border-primary/60 hover:shadow-sm transition-all"
+                  data-testid={`patient-${p.id}`}>
+                  <div className="px-4 py-3 border-b border-card-border bg-secondary/50 flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-[15px] truncate text-foreground">{fullName(p)}</div>
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                        {genderLabel(p.gender) && <Badge variant="outline" className="text-[10px] h-5 px-1.5">{genderLabel(p.gender)}</Badge>}
+                        {age !== null && <Badge variant="outline" className="text-[10px] h-5 px-1.5">{age} {t("yrs", "سنة")}</Badge>}
+                        {p.bloodType && <Badge variant="outline" className="text-[10px] h-5 px-1.5 font-bold text-red-600 border-red-200">{p.bloodType}</Badge>}
+                      </div>
                     </div>
+                    <Stethoscope size={16} className="text-muted-foreground/60 shrink-0 mt-0.5" />
                   </div>
-                </CardHeader>
-                <CardContent className="p-4 space-y-2 text-sm">
-                  {p.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone size={14} className="shrink-0"/><span dir="ltr">{p.phone}</span></div>}
-                  {p.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail size={14} className="shrink-0"/><span className="truncate">{p.email}</span></div>}
-                  {p.nationalId && <div className="flex items-center gap-2 text-muted-foreground"><IdCard size={14} className="shrink-0"/><span dir="ltr" className="truncate">{p.nationalId}</span></div>}
-                  {p.allergies && (
-                    <div className="flex items-start gap-2 text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/20 rounded p-2 mt-2">
-                      <AlertTriangle size={14} className="shrink-0 mt-0.5"/>
-                      <span className="text-xs"><b>{t("Allergies", "حساسية")}:</b> {p.allergies}</span>
-                    </div>
-                  )}
-                  <div className="pt-3 flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {p.phone && (
-                      <Button variant="outline" size="sm"
-                        className="text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 border-emerald-200"
-                        onClick={() => openWhatsApp(p.phone!, isAr ? `السلام عليكم ${p.firstNameAr || p.firstName}،` : `Hello ${p.firstName},`)}
-                        title={t("Send WhatsApp", "إرسال واتساب")} data-testid={`btn-whatsapp-patient-${p.id}`}>
-                        <MessageCircle size={14} />
-                      </Button>
+                  <div className="p-4 space-y-1.5 text-[13px]">
+                    {p.phone && <div className="flex items-center gap-2 text-muted-foreground"><Phone size={13} className="shrink-0"/><span dir="ltr" className="truncate">{p.phone}</span></div>}
+                    {p.email && <div className="flex items-center gap-2 text-muted-foreground"><Mail size={13} className="shrink-0"/><span className="truncate">{p.email}</span></div>}
+                    {p.nationalId && <div className="flex items-center gap-2 text-muted-foreground"><IdCard size={13} className="shrink-0"/><span dir="ltr" className="truncate">{p.nationalId}</span></div>}
+                    {p.allergies && (
+                      <div className="flex items-start gap-1.5 text-amber-800 bg-amber-50 border border-amber-200 rounded p-2 mt-2">
+                        <AlertTriangle size={13} className="shrink-0 mt-0.5"/>
+                        <span className="text-[11px] leading-relaxed"><b>{t("Allergies", "حساسية")}:</b> {p.allergies}</span>
+                      </div>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => openEdit(p)} data-testid={`btn-edit-patient-${p.id}`}>
-                      <Edit2 size={14} className={isRtl ? "ml-1" : "mr-1"}/>{t("Edit", "تعديل")}
-                    </Button>
-                    <Button variant="outline" size="sm"
-                      className="text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
-                      onClick={() => confirmDelete({
-                        title: t("Delete patient?", "حذف المريض؟"),
-                        onConfirm: async () => deleteMut.mutate(p.id),
-                      })}
-                      data-testid={`btn-delete-patient-${p.id}`}>
-                      <Trash2 size={14} />
-                    </Button>
+                    <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {p.phone && (
+                        <Button variant="outline" size="sm" className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 border-emerald-200"
+                          onClick={() => openWhatsApp(p.phone!, isAr ? `السلام عليكم ${p.firstNameAr || p.firstName}،` : `Hello ${p.firstName},`)}
+                          title={t("Send WhatsApp", "إرسال واتساب")} data-testid={`btn-whatsapp-patient-${p.id}`}>
+                          <MessageCircle size={13} />
+                        </Button>
+                      )}
+                      <Button variant="outline" size="sm" className="h-7 px-2" onClick={() => openEdit(p)} data-testid={`btn-edit-patient-${p.id}`}>
+                        <Edit2 size={13} className={isRtl ? "ml-1" : "mr-1"}/>{t("Edit", "تعديل")}
+                      </Button>
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-destructive hover:bg-destructive hover:text-destructive-foreground border-destructive/30"
+                        onClick={() => confirmDelete({
+                          title: t("Delete patient?", "حذف المريض؟"),
+                          onConfirm: async () => deleteMut.mutate(p.id),
+                        })}
+                        data-testid={`btn-delete-patient-${p.id}`}>
+                        <Trash2 size={13} />
+                      </Button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
 
       <Dialog open={editing !== null} onOpenChange={open => { if (!open) { setEditing(null); setForm(EMPTY); } }}>
         <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>
-          <DialogHeader><DialogTitle>{t("Edit Patient", "تعديل بيانات المريض")}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Edit2 size={18} className="text-primary"/>{t("Edit Patient", "تعديل بيانات المريض")}</DialogTitle>
+          </DialogHeader>
           {PatientForm}
         </DialogContent>
       </Dialog>

@@ -17,6 +17,7 @@ import stockMovementsRouter from "./stockMovements";
 import purchaseOrdersRouter from "./purchaseOrders";
 import invoicesRouter from "./invoices";
 import medicalRouter from "./medical";
+import dentalRouter from "./dental";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
 
@@ -43,5 +44,6 @@ router.use(requireFeature("rentals"), requirePermission("rentals"), rentalsRoute
 router.use(requireFeature("reports"), requirePermission("reports"), reportsRouter);
 router.use(requireFeature("invoicing"), requirePermission("invoicing"), invoicesRouter);
 router.use(requireFeature("medical"), requirePermission("medical"), medicalRouter);
+router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
 
 export default router;
