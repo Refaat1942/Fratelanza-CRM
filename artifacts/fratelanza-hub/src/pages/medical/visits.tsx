@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FileText, Plus, User, Stethoscope, Calendar, Trash2, Edit, ClipboardList } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
@@ -55,6 +56,7 @@ const EMPTY = {
   treatmentAr: "",
   followUpDate: "",
   notes: "",
+  branchId: null as number | null,
 };
 
 function parseQuery(): URLSearchParams {
@@ -132,6 +134,7 @@ export default function Visits() {
       treatmentAr: v.treatmentAr || "",
       followUpDate: v.followUpDate || "",
       notes: v.notes || "",
+      branchId: (v as any).branchId ?? null,
     });
     setOpen(true);
   };
@@ -150,6 +153,7 @@ export default function Visits() {
         treatmentAr: form.treatmentAr || null,
         followUpDate: form.followUpDate || null,
         notes: form.notes || null,
+        branchId: form.branchId,
       };
       if (editing) {
         return apiFetch<Visit>(`/visits/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
@@ -381,6 +385,7 @@ export default function Visits() {
                 <Label>{t("Internal notes", "ملاحظات داخلية")}</Label>
                 <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
               </div>
+              <BranchSelect value={form.branchId} onChange={(id) => setForm({ ...form, branchId: id })} />
             </div>
             <DialogFooter>
               <Button type="submit" disabled={saveMut.isPending || !form.patientId}>

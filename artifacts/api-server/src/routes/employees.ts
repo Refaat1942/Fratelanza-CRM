@@ -39,8 +39,12 @@ router.get("/employees", async (_req, res): Promise<void> => {
 
 router.post("/employees", async (req, res): Promise<void> => {
   const parsed = EmployeeInput.safeParse(req.body);
+  const rawBranchId = (req.body as { branchId?: unknown })?.branchId;
+  const branchIdExtra: { branchId?: number | null } = typeof rawBranchId === "number" && Number.isInteger(rawBranchId) && rawBranchId > 0
+    ? { branchId: rawBranchId }
+    : rawBranchId === null ? { branchId: null } : {};
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [emp] = await db.insert(employeesTable).values(parsed.data).returning();
+  const [emp] = await db.insert(employeesTable).values({ ...parsed.data, ...branchIdExtra }).returning();
   res.status(201).json(emp);
 });
 
@@ -54,8 +58,12 @@ router.get("/employees/:id", async (req, res): Promise<void> => {
 router.patch("/employees/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id);
   const parsed = EmployeeInput.partial().safeParse(req.body);
+  const rawB = (req.body as { branchId?: unknown })?.branchId;
+  const bExtra: { branchId?: number | null } = typeof rawB === "number" && Number.isInteger(rawB) && rawB > 0
+    ? { branchId: rawB }
+    : rawB === null ? { branchId: null } : {};
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [emp] = await db.update(employeesTable).set(parsed.data).where(eq(employeesTable.id, id)).returning();
+  const [emp] = await db.update(employeesTable).set({ ...parsed.data, ...bExtra }).where(eq(employeesTable.id, id)).returning();
   if (!emp) { res.status(404).json({ error: "Not found" }); return; }
   res.json(emp);
 });

@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, Package, PackageCheck, PackageX, AlertTriangle, ArrowUpDown, History } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 
 type Product = {
   id: number; name: string; nameAr?: string; description?: string; descriptionAr?: string;
@@ -26,18 +28,19 @@ type StockMovement = {
   reason?: string; username?: string; createdAt: string;
 };
 
-const emptyForm = { name: "", nameAr: "", description: "", descriptionAr: "", price: 0, costPrice: 0, stock: 0, reorderPoint: 5, category: "", categoryAr: "", sku: "", status: "available" };
+const emptyForm = { name: "", nameAr: "", description: "", descriptionAr: "", price: 0, costPrice: 0, stock: 0, reorderPoint: 5, category: "", categoryAr: "", sku: "", status: "available", branchId: null as number | null };
 
 export default function Products() {
   const { t, isRtl, language } = useLanguage();
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
+  const { user } = useAuth();
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selected, setSelected] = useState<Product | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
+  const [form, setForm] = useState({ ...emptyForm, branchId: user?.branchId ?? null });
 
   const [adjustProduct, setAdjustProduct] = useState<Product | null>(null);
   const [adjustForm, setAdjustForm] = useState({ type: "in", quantity: 1, reason: "" });
@@ -88,7 +91,7 @@ export default function Products() {
     setSelected(p);
     setForm({ name: p.name || "", nameAr: p.nameAr || "", description: p.description || "", descriptionAr: p.descriptionAr || "",
       price: p.price, costPrice: p.costPrice || 0, stock: p.stock, reorderPoint: p.reorderPoint || 5,
-      category: p.category || "", categoryAr: p.categoryAr || "", sku: p.sku || "", status: p.status || "available" });
+      category: p.category || "", categoryAr: p.categoryAr || "", sku: p.sku || "", status: p.status || "available", branchId: (p as any).branchId ?? null });
     setIsEditOpen(true);
   };
 
@@ -127,6 +130,7 @@ export default function Products() {
           : <Input value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} />}
       </div>
       <div className="space-y-2"><Label>{t("SKU / Code", "كود المنتج")}</Label><Input value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} /></div>
+      <BranchSelect value={form.branchId} onChange={(id) => setForm({ ...form, branchId: id })} />
     </div>
   );
 

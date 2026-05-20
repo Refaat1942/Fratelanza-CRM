@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, FileText, Upload, CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 
 type Rental = {
   id: number; clientName?: string; employeeName?: string; productName?: string;
@@ -34,17 +36,18 @@ const STATUSES = [
   { value: "cancelled", en: "Cancelled", ar: "ملغى", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400" },
 ];
 
-const emptyForm = { clientName: "", employeeName: "", productName: "", quantity: 1, startDate: "", endDate: "", returnDate: "", dailyRate: 0, totalAmount: 0, depositAmount: 0, status: "new", notes: "" };
+const emptyForm = { clientName: "", employeeName: "", productName: "", quantity: 1, startDate: "", endDate: "", returnDate: "", dailyRate: 0, totalAmount: 0, depositAmount: 0, status: "new", notes: "", branchId: null as number | null };
 
 export default function Rentals() {
   const { t, isRtl, language } = useLanguage();
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
+  const { user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selected, setSelected] = useState<Rental | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
+  const [form, setForm] = useState({ ...emptyForm, branchId: user?.branchId ?? null });
   const [docFile, setDocFile] = useState<File | null>(null);
 
   const { data: rentals, isLoading } = useQuery<Rental[]>({ queryKey: ["rentals"], queryFn: () => apiFetch("/rentals") });
@@ -80,7 +83,7 @@ export default function Rentals() {
 
   const openEdit = (r: Rental) => {
     setSelected(r);
-    setForm({ clientName: r.clientName || "", employeeName: r.employeeName || "", productName: r.productName || "", quantity: r.quantity, startDate: r.startDate || "", endDate: r.endDate || "", returnDate: r.returnDate || "", dailyRate: r.dailyRate || 0, totalAmount: r.totalAmount || 0, depositAmount: r.depositAmount || 0, status: r.status, notes: r.notes || "" });
+    setForm({ clientName: r.clientName || "", employeeName: r.employeeName || "", productName: r.productName || "", quantity: r.quantity, startDate: r.startDate || "", endDate: r.endDate || "", returnDate: r.returnDate || "", dailyRate: r.dailyRate || 0, totalAmount: r.totalAmount || 0, depositAmount: r.depositAmount || 0, status: r.status, notes: r.notes || "", branchId: (r as any).branchId ?? null });
     setIsEditOpen(true);
   };
 
@@ -135,6 +138,7 @@ export default function Rentals() {
       <div className="space-y-2"><Label>{t("Notes", "ملاحظات")}</Label>
         <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} dir={isRtl ? "rtl" : "ltr"} />
       </div>
+      <BranchSelect value={form.branchId} onChange={(id) => setForm({ ...form, branchId: id })} />
       <div className="space-y-2">
         <Label>{t("Upload Document (Contract / ID)", "رفع مستند (عقد / هوية)")}</Label>
         <div className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors">

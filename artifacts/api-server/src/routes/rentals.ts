@@ -78,9 +78,17 @@ router.get("/rentals", async (_req, res): Promise<void> => {
 
 router.post("/rentals", upload.single("document"), async (req, res): Promise<void> => {
   const parsed = RentalInput.safeParse(req.body);
+  const rawBranchId = (req.body as { branchId?: unknown })?.branchId;
+  const bidNum = rawBranchId === "" || rawBranchId === null || rawBranchId === undefined
+    ? null
+    : Number(rawBranchId);
+  const branchIdVal: number | null | undefined = bidNum === null
+    ? null
+    : Number.isInteger(bidNum) && bidNum > 0 ? bidNum : undefined;
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data: any = { ...parsed.data };
   if (req.file) { data.documentPath = req.file.path; data.documentName = req.file.originalname; }
+  if (branchIdVal !== undefined) data.branchId = branchIdVal;
   const [rental] = await db.insert(rentalsTable).values(data).returning();
   res.status(201).json(rental);
 });
@@ -96,6 +104,10 @@ router.patch("/rentals/:id", upload.single("document"), async (req, res): Promis
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data: any = { ...parsed.data };
   if (req.file) { data.documentPath = req.file.path; data.documentName = req.file.originalname; }
+  const rawB = (req.body as { branchId?: unknown })?.branchId;
+  const bNum = rawB === "" || rawB === null || rawB === undefined ? null : Number(rawB);
+  if (bNum === null) data.branchId = null;
+  else if (Number.isInteger(bNum) && bNum > 0) data.branchId = bNum;
   const [r] = await db.update(rentalsTable).set(data).where(eq(rentalsTable.id, parseInt(String(req.params.id)))).returning();
   if (!r) { res.status(404).json({ error: "Not found" }); return; }
   res.json(r);

@@ -120,6 +120,10 @@ router.post("/medical-invoices", async (req, res): Promise<void> => {
   const parsed = InvoiceInput.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const d = parsed.data;
+  const rawBranchId = (req.body as { branchId?: unknown })?.branchId;
+  const invoiceBranchId: number | null = typeof rawBranchId === "number" && Number.isInteger(rawBranchId) && rawBranchId > 0
+    ? rawBranchId
+    : null;
 
   // Normalize lines: ensure description (EN) is always set even when only AR provided
   const normalizedLines = d.lines.map(l => {
@@ -149,6 +153,7 @@ router.post("/medical-invoices", async (req, res): Promise<void> => {
         paymentMethod: d.paymentMethod ?? null,
         notes: d.notes ?? null,
         notesAr: d.notesAr ?? null,
+        branchId: invoiceBranchId,
       }).returning();
 
       await tx.insert(medicalInvoiceLinesTable).values(

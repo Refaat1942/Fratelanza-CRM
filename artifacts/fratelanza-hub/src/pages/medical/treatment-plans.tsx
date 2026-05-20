@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth as useBranchAuth } from "@/components/AuthProvider";
 import { PageHeader } from "@/components/ui-ext/page-header";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
@@ -90,6 +92,7 @@ function fmtEgp(n: number) {
 }
 
 export default function TreatmentPlansPage() {
+  const { user: branchUser } = useBranchAuth();
   const { t, isRtl, language } = useLanguage();
   const isAr = language === "ar";
   const qc = useQueryClient();
@@ -148,6 +151,7 @@ export default function TreatmentPlansPage() {
     title: "", titleAr: "",
     notes: "", notesAr: "",
     startDate: "", targetCompletionDate: "",
+    branchId: branchUser?.branchId ?? null as number | null,
   });
 
   const createMut = useMutation({
@@ -157,7 +161,7 @@ export default function TreatmentPlansPage() {
       qc.invalidateQueries({ queryKey: ["treatment-plans"] });
       qc.invalidateQueries({ queryKey: ["treatment-plans-stats"] });
       setCreateOpen(false);
-      setNewPlan({ patientId: "", doctorId: "", title: "", titleAr: "", notes: "", notesAr: "", startDate: "", targetCompletionDate: "" });
+      setNewPlan({ patientId: "", doctorId: "", title: "", titleAr: "", notes: "", notesAr: "", startDate: "", targetCompletionDate: "", branchId: branchUser?.branchId ?? null });
       toast({ title: t("Plan created", "تم إنشاء الخطة") });
     },
     onError: (e: any) => toast({ title: e.message || "Error", variant: "destructive" }),
@@ -176,6 +180,7 @@ export default function TreatmentPlansPage() {
     // Strict per-language: write only the active-language column.
     if (isAr) { body.titleAr = newPlan.titleAr || null; body.notesAr = newPlan.notesAr || null; }
     else      { body.title   = newPlan.title   || null; body.notes   = newPlan.notes   || null; }
+    body.branchId = newPlan.branchId;
     createMut.mutate(body);
   };
 
@@ -265,6 +270,7 @@ export default function TreatmentPlansPage() {
                       <Textarea value={newPlan.notes} onChange={e => setNewPlan({ ...newPlan, notes: e.target.value })} rows={2} />
                     )}
                   </div>
+                  <BranchSelect value={newPlan.branchId} onChange={(id) => setNewPlan({ ...newPlan, branchId: id })} />
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={createMut.isPending || !newPlan.patientId} data-testid="btn-create-plan">

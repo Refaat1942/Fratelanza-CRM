@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth as useAuthForBranch } from "@/components/AuthProvider";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null; phone?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
@@ -77,6 +79,7 @@ export default function MedicalInvoices() {
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<"cash" | "card" | "transfer" | "other">("cash");
 
+  const { user } = useAuthForBranch();
   const initialForm = () => ({
     patientId: "",
     doctorId: "",
@@ -86,6 +89,7 @@ export default function MedicalInvoices() {
     notes: "",
     notesAr: "",
     lines: [] as InvoiceLine[],
+    branchId: user?.branchId ?? null as number | null,
   });
   const [form, setForm] = useState(initialForm);
 
@@ -151,6 +155,7 @@ export default function MedicalInvoices() {
         paidAmount: Number(form.paidNow) || 0,
         notes: form.notes || null,
         notesAr: form.notesAr || null,
+        branchId: form.branchId,
         lines: form.lines.map(l => ({
           procedureId: l.procedureId,
           description: l.description,
@@ -333,6 +338,7 @@ export default function MedicalInvoices() {
                     value={isAr ? form.notesAr : form.notes}
                     onChange={(e) => isAr ? setForm({ ...form, notesAr: e.target.value }) : setForm({ ...form, notes: e.target.value })} />
                 </div>
+                <BranchSelect value={form.branchId} onChange={(id) => setForm({ ...form, branchId: id })} />
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={createMut.isPending || !form.patientId || form.lines.length === 0}>

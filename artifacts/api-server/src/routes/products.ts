@@ -43,8 +43,12 @@ router.get("/products/low-stock", async (_req, res): Promise<void> => {
 
 router.post("/products", async (req, res): Promise<void> => {
   const parsed = ProductInput.safeParse(req.body);
+  const rawBranchId = (req.body as { branchId?: unknown })?.branchId;
+  const branchIdExtra: { branchId?: number | null } = typeof rawBranchId === "number" && Number.isInteger(rawBranchId) && rawBranchId > 0
+    ? { branchId: rawBranchId }
+    : rawBranchId === null ? { branchId: null } : {};
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [p] = await db.insert(productsTable).values(parsed.data).returning();
+  const [p] = await db.insert(productsTable).values({ ...parsed.data, ...branchIdExtra }).returning();
   res.status(201).json(p);
 });
 
@@ -56,8 +60,12 @@ router.get("/products/:id", async (req, res): Promise<void> => {
 
 router.patch("/products/:id", async (req, res): Promise<void> => {
   const parsed = ProductInput.partial().safeParse(req.body);
+  const rawB = (req.body as { branchId?: unknown })?.branchId;
+  const bExtra: { branchId?: number | null } = typeof rawB === "number" && Number.isInteger(rawB) && rawB > 0
+    ? { branchId: rawB }
+    : rawB === null ? { branchId: null } : {};
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [p] = await db.update(productsTable).set(parsed.data).where(eq(productsTable.id, parseInt(String(req.params.id)))).returning();
+  const [p] = await db.update(productsTable).set({ ...parsed.data, ...bExtra }).where(eq(productsTable.id, parseInt(String(req.params.id)))).returning();
   if (!p) { res.status(404).json({ error: "Not found" }); return; }
   res.json(p);
 });

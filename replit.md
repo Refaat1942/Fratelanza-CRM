@@ -223,6 +223,14 @@ Tags every transactional record with an optional branch. No filtering yet (that'
 - **Backend write paths accept `branchId`** (zod `.number().int().positive().nullable().optional()`) on: `patients` (POST/PATCH via shared input schema), `medical/appointments` (POST insert), `treatment-plans` (POST/PATCH), `tasks` (POST + PATCH — extracted from `req.body` manually since `CreateTaskBody`/`UpdateTaskBody` come from Orval codegen and shouldn't be edited by hand).
 - **Reusable `<BranchSelect>`** (`artifacts/fratelanza-hub/src/components/BranchSelect.tsx`) — fetches `/branches` once (5-min staleTime), filters to active branches, renders nothing if the tenant has no branches (so single-branch tenants see no UI clutter). Includes a "— No branch —" option.
 - **Patients form wired**: new patient defaults `branchId` to `user.branchId`; field is editable in the form. Edit dialog respects the existing value. Other forms (Appointments, Treatment Plans, Tasks, Invoices, etc.) — same pattern, will wire in **D2b** next turn.
+
+### Phase D2c — remaining forms + backend wired (✅ DONE)
+
+All transactional records now accept and persist `branchId` end-to-end. No list filtering yet (that's D3).
+
+- **Backend write paths**: `visits` (POST+PATCH), `employees` (POST+PATCH), `products` (POST+PATCH), `rentals` (POST+PATCH multipart — `Number()`-coerces FormData string), `medical-invoices` POST. Pattern: `branchId` is extracted from `req.body` manually (not in the Orval/zod schemas, so it's spread into `.values`/`.set` only when valid: positive integer → set, `null` → clear, otherwise ignore).
+- **Frontend forms wired**: `team`, `products`, `rentals`, `medical/visits`, `medical/invoices`, `medical/treatment-plans`. Each form: new records default to `user.branchId`, edit dialog preserves existing value, `<BranchSelect>` rendered (auto-hides for single-branch tenants).
+- **Next (D3)**: filter list endpoints by `req.session.branchId` for non-admin users + admin branch picker in topbar to override the filter.
 - **Deploy to VPS**: `git pull && docker compose up -d --build app` then `bash deploy/migrate-tenants.sh deploy/migrations/005-branch-id-on-records.sql` (type `yes`).
 
 **D2b (✅ this turn — 3 of 8 forms wired)**: Appointments, Tasks, Transactions (Finance) forms now have `<BranchSelect>`, default `branchId` to logged-in user's branch, and send `branchId` in the create payload. Transactions route extracts `branchId` from `req.body` manually (codegen Zod). Remaining 5 forms (Treatment Plans, Visits, Medical Invoices, Team, Products, Rentals) — same 3-line pattern, deferred to **D2c**.

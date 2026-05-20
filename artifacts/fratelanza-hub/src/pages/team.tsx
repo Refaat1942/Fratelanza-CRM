@@ -13,6 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, Users, UserCheck, Coffee } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 
 type Employee = {
   id: number; name: string; nameAr?: string; email?: string; phone?: string;
@@ -27,6 +29,7 @@ const emptyForm = {
   name: "", nameAr: "", email: "", phone: "",
   department: "", departmentAr: "", role: "", roleAr: "",
   status: "active", salary: "", joinDate: "", notes: "",
+  branchId: null as number | null,
 };
 
 export default function Team() {
@@ -34,10 +37,11 @@ export default function Team() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
+  const { user } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selected, setSelected] = useState<Employee | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
+  const [form, setForm] = useState({ ...emptyForm, branchId: user?.branchId ?? null });
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["employees-stats"],
@@ -69,7 +73,7 @@ export default function Team() {
 
   const openEdit = (emp: Employee) => {
     setSelected(emp);
-    setForm({ name: emp.name || "", nameAr: emp.nameAr || "", email: emp.email || "", phone: emp.phone || "", department: emp.department || "", departmentAr: emp.departmentAr || "", role: emp.role || "", roleAr: emp.roleAr || "", status: emp.status || "active", salary: emp.salary || "", joinDate: emp.joinDate || "", notes: emp.notes || "" });
+    setForm({ name: emp.name || "", nameAr: emp.nameAr || "", email: emp.email || "", phone: emp.phone || "", department: emp.department || "", departmentAr: emp.departmentAr || "", role: emp.role || "", roleAr: emp.roleAr || "", status: emp.status || "active", salary: emp.salary || "", joinDate: emp.joinDate || "", notes: emp.notes || "", branchId: (emp as any).branchId ?? null });
     setIsEditOpen(true);
   };
 
@@ -149,6 +153,7 @@ export default function Team() {
         <Label>{t("Notes", "ملاحظات")}</Label>
         <Textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} dir={isAr ? "rtl" : "ltr"} />
       </div>
+      <BranchSelect value={form.branchId} onChange={(id) => setForm({ ...form, branchId: id })} />
     </div>
   );
 

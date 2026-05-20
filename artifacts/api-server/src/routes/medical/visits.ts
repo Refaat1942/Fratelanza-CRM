@@ -96,6 +96,10 @@ router.get("/visits/:id", async (req, res): Promise<void> => {
 
 router.post("/visits", async (req, res): Promise<void> => {
   const parsed = VisitInput.safeParse(req.body);
+  const rawBranchId = (req.body as { branchId?: unknown })?.branchId;
+  const branchIdVal = typeof rawBranchId === "number" && Number.isInteger(rawBranchId) && rawBranchId > 0
+    ? rawBranchId
+    : (rawBranchId === null ? null : undefined);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const values: any = { ...parsed.data };
   if (parsed.data.visitDate) {
@@ -103,6 +107,7 @@ router.post("/visits", async (req, res): Promise<void> => {
     if (isNaN(d.getTime())) { res.status(400).json({ error: "Invalid visitDate" }); return; }
     values.visitDate = d;
   }
+  if (branchIdVal !== undefined) values.branchId = branchIdVal;
   // followUpDate is a date column — keep as YYYY-MM-DD string
   const [visit] = await db.insert(visitsTable).values(values).returning();
   res.status(201).json(visit);
@@ -114,6 +119,9 @@ router.patch("/visits/:id", async (req, res): Promise<void> => {
   const parsed = VisitInput.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const values: any = { ...parsed.data };
+  const rawB = (req.body as { branchId?: unknown })?.branchId;
+  if (typeof rawB === "number" && Number.isInteger(rawB) && rawB > 0) values.branchId = rawB;
+  else if (rawB === null) values.branchId = null;
   if (parsed.data.visitDate) {
     const d = new Date(parsed.data.visitDate);
     if (isNaN(d.getTime())) { res.status(400).json({ error: "Invalid visitDate" }); return; }
