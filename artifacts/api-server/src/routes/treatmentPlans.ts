@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, sql, and } from "drizzle-orm";
-import { branchWhere } from "../lib/branchScope";
+import { branchWhere, branchWhereFragment, effectiveBranchId } from "../lib/branchScope";
 import {
   db,
   treatmentPlansTable,
@@ -188,20 +188,27 @@ router.delete("/treatment-plan-items/:id", async (req, res): Promise<void> => {
 });
 
 // ---------- Stats ----------
-router.get("/treatment-plans-stats", async (_req, res): Promise<void> => {
+router.get("/treatment-plans-stats", async (req, res): Promise<void> => {
+  const planWhere = branchWhereFragment(req, "branch_id");
+  const itemWhere = (() => {
+    const bid = effectiveBranchId(req);
+    return typeof bid === "number"
+      ? sql` WHERE plan_id IN (SELECT id FROM treatment_plans WHERE branch_id = ${bid})`
+      : sql``;
+  })();
   const [counts] = await db.execute<{ total: string; active: string; completed: string; draft: string }>(
     sql`SELECT
       COUNT(*)::text AS total,
       COUNT(*) FILTER (WHERE status='active')::text AS active,
       COUNT(*) FILTER (WHERE status='completed')::text AS completed,
       COUNT(*) FILTER (WHERE status='draft')::text AS draft
-    FROM treatment_plans`,
+    FROM treatment_plans${planWhere}`,
   ) as unknown as [{ total: string; active: string; completed: string; draft: string }];
   const [totals] = await db.execute<{ planned_value: string; completed_value: string }>(
     sql`SELECT
       COALESCE(SUM(total) FILTER (WHERE status IN ('planned','scheduled')),0)::text AS planned_value,
       COALESCE(SUM(total) FILTER (WHERE status='done'),0)::text AS completed_value
-    FROM treatment_plan_items`,
+    FROM treatment_plan_items${itemWhere}`,
   ) as unknown as [{ planned_value: string; completed_value: string }];
   res.json({
     total: Number(counts?.total ?? 0),

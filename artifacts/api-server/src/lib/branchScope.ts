@@ -1,5 +1,5 @@
 import type { Request } from "express";
-import { eq, type SQL } from "drizzle-orm";
+import { eq, sql, type SQL } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 
 /**
@@ -25,4 +25,26 @@ export function effectiveBranchId(req: Request): number | undefined {
 export function branchWhere(req: Request, col: PgColumn): SQL | undefined {
   const bid = effectiveBranchId(req);
   return typeof bid === "number" ? eq(col, bid) : undefined;
+}
+
+/**
+ * Returns ` AND <qualified_column> = <bid>` for use inside raw `sql\`\`` queries
+ * that already have a WHERE clause, OR an empty fragment when no scope applies.
+ * `qualifiedColumn` should be a SQL-safe column reference (e.g. `mi.branch_id`,
+ * `visits.branch_id`). Caller is responsible for using only trusted identifiers.
+ */
+export function branchAndFragment(req: Request, qualifiedColumn: string): SQL {
+  const bid = effectiveBranchId(req);
+  if (typeof bid !== "number") return sql``;
+  return sql` AND ${sql.raw(qualifiedColumn)} = ${bid}`;
+}
+
+/**
+ * Like {@link branchAndFragment} but emits ` WHERE ... = X` instead of ` AND ... = X`.
+ * Use for subqueries that have no existing WHERE clause.
+ */
+export function branchWhereFragment(req: Request, qualifiedColumn: string): SQL {
+  const bid = effectiveBranchId(req);
+  if (typeof bid !== "number") return sql``;
+  return sql` WHERE ${sql.raw(qualifiedColumn)} = ${bid}`;
 }
