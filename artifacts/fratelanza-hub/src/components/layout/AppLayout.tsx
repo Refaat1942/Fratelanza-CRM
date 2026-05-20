@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
-  Truck, FileText, Receipt
+  Truck, FileText, Receipt, Stethoscope
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ const ALL_NAV_ITEMS = [
   { href: "/purchase-orders", key: "purchase_orders", icon: FileText, labelEn: "Purchase Orders", labelAr: "أوامر الشراء" },
   { href: "/invoices", key: "invoicing", icon: Receipt, labelEn: "Invoices", labelAr: "الفواتير" },
   { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
+  { href: "/medical/patients", key: "medical", icon: Stethoscope, labelEn: "Patients", labelAr: "المرضى" },
   { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
 ];
 

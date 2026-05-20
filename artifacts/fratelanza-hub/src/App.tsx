@@ -21,6 +21,7 @@ import Rentals from "@/pages/rentals";
 import Suppliers from "@/pages/suppliers";
 import PurchaseOrders from "@/pages/purchase-orders";
 import Invoices from "@/pages/invoices";
+import Patients from "@/pages/medical/patients";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import BlockedPage from "@/pages/blocked";
@@ -75,6 +76,7 @@ function AppRouter() {
               <Route path="/suppliers"><FeatureGate feature="suppliers"><Suppliers /></FeatureGate></Route>
               <Route path="/purchase-orders"><FeatureGate feature="purchase_orders"><PurchaseOrders /></FeatureGate></Route>
               <Route path="/invoices"><FeatureGate feature="invoicing"><Invoices /></FeatureGate></Route>
+              <Route path="/medical/patients"><FeatureGate feature="medical"><Patients /></FeatureGate></Route>
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>

@@ -148,6 +148,24 @@ Off-VPS automated backups to Google Drive via `rclone`. Setup is in `deploy/BACK
 - **`docker-compose.yml` fix bundled with this:** CRM uploads now use a bind mount (`./uploads:/app/uploads`) instead of being lost inside the container on every `docker compose up --build`. Existing deployments must `docker compose down && docker compose up -d --build` once to pick up the new volume layout (uploads dir starts empty after the migration — pre-existing rental docs would have been lost on the prior rebuild anyway since they were never persisted).
 - Disaster-recovery drill documented in `deploy/BACKUPS.md` — restore onto a fresh test VPS once per quarter.
 
+## Medical module (Phase A — in progress)
+
+Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via new `"medical"` feature flag.
+
+- **Schema** (`lib/db/src/schema/medical.ts`): `patients`, `medical_appointments`, `visits`, `medical_procedures` (catalog), `prescriptions`. Bilingual fields where relevant (`*_ar`).
+- **Feature flag**: `"medical"` added to `FEATURE_KEYS` in `artifacts/fratelanza-admin/src/db.ts` (label: "Medical / Clinic" / "العيادة الطبية") and `ALL_FEATURES` in `artifacts/api-server/src/routes/me.ts`.
+- **Routes**: `artifacts/api-server/src/routes/medical/` — gated by `requireFeature("medical")` + `requirePermission("medical")` in `routes/index.ts`. Uses plain `zod` (not `zod/v4`) since not in codegen spec.
+- **Frontend**: `artifacts/fratelanza-hub/src/pages/medical/patients.tsx`. Route at `/medical/patients`, sidebar nav with Stethoscope icon, gated by `<FeatureGate feature="medical">`.
+- **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` regenerated via `cd lib/db && npx drizzle-kit export --dialect=postgresql --schema=./src/schema/index.ts` — new tenants get medical tables automatically.
+- **Existing tenants migration**: Run `psql $TENANT_DB_URL -f <(node -e "...")` or re-provision. The medical tables are additive (no destructive changes to existing tables) — safe to apply with `CREATE TABLE IF NOT EXISTS`.
+- **Slices delivered**:
+  - ✅ T001: Foundation + Patients module (CRUD, EN/AR, search by name/phone/national ID, allergies/chronic conditions, blood type, emergency contact, WhatsApp from card).
+  - ⏳ T002: Appointments (calendar + WhatsApp reminders)
+  - ⏳ T003: Visits (notes per visit linked to patient + doctor)
+  - ⏳ T004: Procedures catalog + medical invoices (bridges to existing Finance)
+  - ⏳ T005: Medical reports + admin super-dashboard upgrades (live online/offline tracking, payment alerts)
+  - ⏳ T006: Polish + e2e + Phase A docs
+
 ## Gotchas
 
 - Use `pnpm --filter @workspace/db run push` after schema changes

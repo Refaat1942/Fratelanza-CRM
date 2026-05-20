@@ -217,9 +217,84 @@ CREATE TABLE "invoices" (
 	CONSTRAINT "invoices_invoice_number_unique" UNIQUE("invoice_number")
 );
 
+CREATE TABLE "medical_appointments" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"patient_id" integer NOT NULL,
+	"doctor_id" integer,
+	"start_at" timestamp with time zone NOT NULL,
+	"end_at" timestamp with time zone,
+	"status" text DEFAULT 'scheduled' NOT NULL,
+	"reason" text,
+	"reason_ar" text,
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "medical_procedures" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"name_ar" text,
+	"category" text,
+	"price" real DEFAULT 0 NOT NULL,
+	"active" text DEFAULT 'true' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "patients" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"first_name" text NOT NULL,
+	"first_name_ar" text,
+	"last_name" text,
+	"last_name_ar" text,
+	"gender" text,
+	"date_of_birth" date,
+	"national_id" text,
+	"phone" text,
+	"email" text,
+	"address" text,
+	"address_ar" text,
+	"blood_type" text,
+	"allergies" text,
+	"chronic_conditions" text,
+	"emergency_contact_name" text,
+	"emergency_contact_phone" text,
+	"notes" text,
+	"notes_ar" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "prescriptions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"visit_id" integer NOT NULL,
+	"medicine_name" text NOT NULL,
+	"medicine_name_ar" text,
+	"dosage" text,
+	"frequency" text,
+	"duration_days" integer,
+	"instructions" text,
+	"instructions_ar" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "visits" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"patient_id" integer NOT NULL,
+	"appointment_id" integer,
+	"doctor_id" integer,
+	"visit_date" timestamp with time zone DEFAULT now() NOT NULL,
+	"chief_complaint" text,
+	"chief_complaint_ar" text,
+	"diagnosis" text,
+	"diagnosis_ar" text,
+	"treatment" text,
+	"treatment_ar" text,
+	"follow_up_date" date,
+	"notes" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoice_id_invoices_id_fk" FOREIGN KEY ("invoice_id") REFERENCES "public"."invoices"("id") ON DELETE cascade ON UPDATE no action;
-npm notice
-npm notice New minor version of npm available! 11.6.2 -> 11.14.1
-npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1
-npm notice To update run: npm install -g npm@11.14.1
-npm notice
