@@ -138,6 +138,16 @@ Pre-launch hardening applied to both CRM (`api-server`) and admin (`fratelanza-a
 - **CSRF tokens**: relying on `sameSite=lax` cookies + JSON content-type as defense (browsers block cross-site form submits, and the API only accepts JSON for state changes). For a SaaS CRM at this scale, this is the standard tradeoff. Revisit if adding webhook / public form endpoints.
 - **Data-at-rest disk encryption** on the VPS: not enabled at the Postgres / filesystem layer. Mitigated by Hostinger physical security + bcrypt for passwords. Revisit if onboarding customers with regulatory requirements (healthcare, finance).
 
+## Backups (Phase 7)
+
+Off-VPS automated backups to Google Drive via `rclone`. Setup is in `deploy/BACKUPS.md` — written for non-technical operator.
+
+- `deploy/backup.sh` — dumps both Postgres containers with `pg_dumpall --clean --if-exists` (so it captures every tenant DB), tars `./uploads/`, uploads to `gdrive:FratelanzaBackups/<UTC-timestamp>/`, prunes local >7 days and remote >30 days. Idempotent, safe to re-run.
+- `deploy/restore.sh <backup-dir>` — interactive (requires typing `RESTORE`), restores both DBs and uploads, restarts app + admin-app.
+- Cron: `0 3 * * * /bin/bash /root/Fratelanza-HUB/deploy/backup.sh >> /var/log/fratelanza-backup.log 2>&1`.
+- **`docker-compose.yml` fix bundled with this:** CRM uploads now use a bind mount (`./uploads:/app/uploads`) instead of being lost inside the container on every `docker compose up --build`. Existing deployments must `docker compose down && docker compose up -d --build` once to pick up the new volume layout (uploads dir starts empty after the migration — pre-existing rental docs would have been lost on the prior rebuild anyway since they were never persisted).
+- Disaster-recovery drill documented in `deploy/BACKUPS.md` — restore onto a fresh test VPS once per quarter.
+
 ## Gotchas
 
 - Use `pnpm --filter @workspace/db run push` after schema changes
