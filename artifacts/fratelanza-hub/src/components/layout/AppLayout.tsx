@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
-  Truck, FileText, Receipt, Stethoscope
+  Truck, FileText, Receipt, Stethoscope, CalendarClock
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ const ALL_NAV_ITEMS = [
   { href: "/invoices", key: "invoicing", icon: Receipt, labelEn: "Invoices", labelAr: "الفواتير" },
   { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
   { href: "/medical/patients", key: "medical", icon: Stethoscope, labelEn: "Patients", labelAr: "المرضى" },
+  { href: "/medical/appointments", key: "medical", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
   { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
 ];
 

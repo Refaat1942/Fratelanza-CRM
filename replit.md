@@ -160,7 +160,7 @@ Sellable medical MVP for doctors and clinics. Admin-toggleable per tenant via ne
 - **Existing tenants migration**: Run `psql $TENANT_DB_URL -f <(node -e "...")` or re-provision. The medical tables are additive (no destructive changes to existing tables) — safe to apply with `CREATE TABLE IF NOT EXISTS`.
 - **Slices delivered**:
   - ✅ T001: Foundation + Patients module (CRUD, EN/AR, search by name/phone/national ID, allergies/chronic conditions, blood type, emergency contact, WhatsApp from card).
-  - ⏳ T002: Appointments (calendar + WhatsApp reminders)
+  - ✅ T002: Appointments — `routes/medical/appointments.ts` with overlap conflict detection per doctor (returns 409 `doctor_conflict`), joined list (returns patient + doctor names so frontend doesn't N+1). Page at `/medical/appointments` with day navigator + 7-day overview strip, inline status select (scheduled/confirmed/completed/no_show/cancelled), and one-click WhatsApp reminder per appointment (bilingual message template).
   - ⏳ T003: Visits (notes per visit linked to patient + doctor)
   - ⏳ T004: Procedures catalog + medical invoices (bridges to existing Finance)
   - ⏳ T005: Medical reports + admin super-dashboard upgrades (live online/offline tracking, payment alerts)
