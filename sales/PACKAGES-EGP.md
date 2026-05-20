@@ -11,7 +11,7 @@
 ### 1. Starter / المبتدئ
 **EGP 499 / month** — أو **5,499 / السنة** (وفّر شهرين)
 
-- Up to **3 users**
+- **Unlimited users**
 - Dashboard, Tasks, CRM (Clients), Notifications, Reports
 - 1 GB file storage
 - Email support, response within 48 hours
@@ -25,7 +25,7 @@
 **EGP 999 / month** — أو **10,999 / السنة** (وفّر شهرين)
 
 Everything in Starter, plus:
-- Up to **10 users**
+- **Unlimited users**
 - Finance, Team/HR, Products/Inventory, Suppliers, Purchase Orders, Invoicing, Rentals
 - **Multi-branch** support (per-branch reports)
 - 5 GB file storage
@@ -41,7 +41,7 @@ Everything in Starter, plus:
 
 Everything in Business, plus:
 - **Medical module**: Patients, Appointments, Visits, Procedures catalog, Medical Invoices, Treatment Plans, Medical Reports
-- Up to **15 users** (doctors + receptionists)
+- **Unlimited users** (doctors + receptionists)
 - WhatsApp appointment reminders
 - Medical reports auto-feed into Finance — no double entry
 
@@ -66,7 +66,7 @@ Everything in Clinic, plus:
 **Starting at EGP 4,999 / month** — تواصل معنا للتفاصيل
 
 Everything above, plus:
-- **Unlimited users**
+- **Unlimited users** (same as all other plans)
 - Dedicated database server (not shared)
 - White-label option (your brand, your domain)
 - On-premise installation on customer's own VPS
@@ -108,7 +108,7 @@ Everything above, plus:
 | | Starter | Business | Clinic | Dental | Enterprise |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Monthly (EGP) | 499 | 999 | 1,499 | 1,799 | 4,999+ |
-| Users | 3 | 10 | 15 | 15 | ∞ |
+| Users | ∞ | ∞ | ∞ | ∞ | ∞ |
 | Storage | 1 GB | 5 GB | 5 GB | 5 GB | Unlimited |
 | Dashboard / Tasks / CRM | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Finance / HR / Products / Rentals | — | ✅ | ✅ | ✅ | ✅ |
