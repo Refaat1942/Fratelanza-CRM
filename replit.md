@@ -225,7 +225,7 @@ Tags every transactional record with an optional branch. No filtering yet (that'
 - **Patients form wired**: new patient defaults `branchId` to `user.branchId`; field is editable in the form. Edit dialog respects the existing value. Other forms (Appointments, Treatment Plans, Tasks, Invoices, etc.) — same pattern, will wire in **D2b** next turn.
 - **Deploy to VPS**: `git pull && docker compose up -d --build app` then `bash deploy/migrate-tenants.sh deploy/migrations/005-branch-id-on-records.sql` (type `yes`).
 
-**D2b (next turn)**: wire `<BranchSelect>` into Appointments, Treatment Plans, Tasks, Medical Invoices, Transactions, Employees, Products, Rentals forms. Mechanical.
+**D2b (✅ this turn — 3 of 8 forms wired)**: Appointments, Tasks, Transactions (Finance) forms now have `<BranchSelect>`, default `branchId` to logged-in user's branch, and send `branchId` in the create payload. Transactions route extracts `branchId` from `req.body` manually (codegen Zod). Remaining 5 forms (Treatment Plans, Visits, Medical Invoices, Team, Products, Rentals) — same 3-line pattern, deferred to **D2c**.
 
 ## Phase D1 — Branches + roles foundation (✅ DONE, non-breaking)
 

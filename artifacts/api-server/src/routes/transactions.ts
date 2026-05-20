@@ -71,9 +71,15 @@ router.post("/transactions", async (req, res): Promise<void> => {
   }
 
   const { date, ...txRest } = parsed.data;
+  const rawBranchId = (req.body as { branchId?: unknown })?.branchId;
+  const branchId =
+    typeof rawBranchId === "number" && Number.isInteger(rawBranchId) && rawBranchId > 0
+      ? rawBranchId
+      : null;
   const [transaction] = await db.insert(transactionsTable).values({
     ...txRest,
     date: date.toISOString().slice(0, 10),
+    branchId,
   }).returning();
 
   await db.insert(activityTable).values({

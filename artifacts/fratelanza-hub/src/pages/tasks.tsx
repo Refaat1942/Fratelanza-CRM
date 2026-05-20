@@ -18,6 +18,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus, Clock, CheckCircle2, AlertCircle, PlayCircle, Trash2, Edit2, Activity, LayoutList, Columns, RepeatIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 
 type Task = {
   id: number; title: string; titleAr?: string | null; description?: string | null;
@@ -50,6 +52,7 @@ const recurrenceOptions = [
 const emptyForm = {
   title: "", titleAr: "", description: "", descriptionAr: "",
   status: "pending", priority: "medium", dueDate: "", assignee: "", recurrence: "none",
+  branchId: null as number | null,
 };
 
 export default function Tasks() {
@@ -63,7 +66,8 @@ export default function Tasks() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [formData, setFormData] = useState({ ...emptyForm });
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({ ...emptyForm, branchId: user?.branchId ?? null });
 
   const { data: stats, isLoading: isStatsLoading } = useGetTaskStats();
   const { data: tasks, isLoading: isTasksLoading } = useListTasks(
@@ -153,6 +157,7 @@ export default function Tasks() {
       status: task.status || "pending", priority: task.priority || "medium",
       dueDate: task.dueDate || "", assignee: task.assignee || "",
       recurrence: task.recurrence || "none",
+      branchId: (task as any).branchId ?? null,
     });
     setIsEditOpen(true);
   };
@@ -240,6 +245,8 @@ export default function Tasks() {
           </Select>
         </div>
       </div>
+
+      <BranchSelect value={formData.branchId} onChange={(id) => setFormData({ ...formData, branchId: id })} />
     </div>
   );
 

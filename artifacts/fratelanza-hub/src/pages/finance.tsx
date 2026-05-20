@@ -21,6 +21,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { TrendingUp, TrendingDown, Plus, Trash2, Edit2, Wallet, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 export default function Finance() {
@@ -35,6 +37,7 @@ export default function Finance() {
   const [selectedTx, setSelectedTx] = useState<any>(null);
 
   const { language } = useLanguage();
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
     titleAr: "",
@@ -42,7 +45,8 @@ export default function Finance() {
     amount: 0,
     type: "income",
     category: "Services",
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    branchId: (user?.branchId ?? null) as number | null,
   });
 
   const { data: summary, isLoading: isSummaryLoading } = useGetFinancialSummary();
@@ -117,7 +121,8 @@ export default function Finance() {
       amount: tx.amount || 0,
       type: tx.type || "income",
       category: tx.category || "",
-      date: tx.date || new Date().toISOString().split('T')[0]
+      date: tx.date || new Date().toISOString().split('T')[0],
+      branchId: tx.branchId ?? null,
     });
     setIsEditOpen(true);
   };
@@ -130,7 +135,8 @@ export default function Finance() {
       amount: 0,
       type: "income",
       category: "Services",
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      branchId: null,
     });
     setSelectedTx(null);
   };
@@ -204,6 +210,7 @@ export default function Finance() {
                   <Label>{t("Category", "الفئة")}</Label>
                   <Input required value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})} />
                 </div>
+                <BranchSelect value={formData.branchId} onChange={(id) => setFormData({ ...formData, branchId: id })} />
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={createTransaction.isPending}>{t("Save", "حفظ")}</Button>

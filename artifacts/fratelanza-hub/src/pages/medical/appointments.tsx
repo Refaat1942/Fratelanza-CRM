@@ -18,6 +18,8 @@ import {
 import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { BranchSelect } from "@/components/BranchSelect";
+import { useAuth } from "@/components/AuthProvider";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null; phone?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
@@ -65,6 +67,7 @@ const EMPTY_FORM = {
   reason: "",
   reasonAr: "",
   notes: "",
+  branchId: null as number | null,
 };
 
 export default function Appointments() {
@@ -74,9 +77,10 @@ export default function Appointments() {
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
 
+  const { user } = useAuth();
   const [day, setDay] = useState<Date>(startOfDay(new Date()));
   const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [form, setForm] = useState({ ...EMPTY_FORM, branchId: user?.branchId ?? null });
 
   const from = day;
   const to = addDays(day, 1);
@@ -132,6 +136,7 @@ export default function Appointments() {
           reason: form.reason || null,
           reasonAr: form.reasonAr || null,
           notes: form.notes || null,
+          branchId: form.branchId ?? null,
         }),
       });
     },
@@ -200,9 +205,9 @@ export default function Appointments() {
           <h2 className="text-2xl font-bold">{t("Appointments", "المواعيد")}</h2>
           <p className="text-muted-foreground">{t("Schedule and manage patient visits", "جدولة وإدارة مواعيد المرضى")}</p>
         </div>
-        <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setForm({ ...EMPTY_FORM, date: ymd(day) }); }}>
+        <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) setForm({ ...EMPTY_FORM, date: ymd(day), branchId: user?.branchId ?? null }); }}>
           <DialogTrigger asChild>
-            <Button data-testid="btn-create-appointment" className="shrink-0 gap-2" onClick={() => setForm({ ...EMPTY_FORM, date: ymd(day) })}>
+            <Button data-testid="btn-create-appointment" className="shrink-0 gap-2" onClick={() => setForm({ ...EMPTY_FORM, date: ymd(day), branchId: user?.branchId ?? null })}>
               <Plus size={16}/>{t("New Appointment", "موعد جديد")}
             </Button>
           </DialogTrigger>
@@ -265,6 +270,8 @@ export default function Appointments() {
                   <Label>{t("Internal notes", "ملاحظات داخلية")}</Label>
                   <Textarea rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                 </div>
+
+                <BranchSelect value={form.branchId} onChange={(id) => setForm({ ...form, branchId: id })} />
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={createMut.isPending || !form.patientId}>{t("Book", "حجز")}</Button>
