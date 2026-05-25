@@ -316,8 +316,13 @@ router.post("/medical-invoices/:id/cancel", async (req, res): Promise<void> => {
   }
 });
 
-// Hard delete is only allowed for invoices that never received a payment
-// (preserves audit trail for anything that touched Finance).
+// Hard delete is allowed when:
+//   (a) the invoice never received a payment (nothing posted to Finance), OR
+//   (b) the invoice is already cancelled — in which case Finance has both the
+//       original payment row AND a compensating negative reversal row that
+//       already net to zero, so deleting the invoice has no effect on the
+//       ledger. The two transactions stay in Finance for audit.
+// Active invoices with payments must be cancelled first (not hard-deleted).
 router.delete("/medical-invoices/:id", async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
@@ -325,7 +330,9 @@ router.delete("/medical-invoices/:id", async (req, res): Promise<void> => {
     await db.transaction(async (tx) => {
       const [inv] = await tx.select().from(medicalInvoicesTable).where(eq(medicalInvoicesTable.id, id));
       if (!inv) throw new Error("not_found");
-      if (Number(inv.paidAmount) > 0 || inv.transactionId) {
+      const hasPayments = Number(inv.paidAmount) > 0 || inv.transactionId;
+      const isCancelled = inv.status === "cancelled";
+      if (hasPayments && !isCancelled) {
         throw new Error("has_payments");
       }
       await tx.delete(medicalInvoiceLinesTable).where(eq(medicalInvoiceLinesTable.invoiceId, id));
@@ -336,7 +343,7 @@ router.delete("/medical-invoices/:id", async (req, res): Promise<void> => {
     const msg = (err as Error).message;
     if (msg === "not_found") { res.status(404).json({ error: "Invoice not found" }); return; }
     if (msg === "has_payments") {
-      res.status(409).json({ error: "has_payments", message: "Cancel paid invoices instead of deleting to preserve Finance audit trail." });
+      res.status(409).json({ error: "has_payments", message: "Cancel this invoice first, then you can delete it." });
       return;
     }
     req.log?.error({ err }, "delete medical invoice failed");
