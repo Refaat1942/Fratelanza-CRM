@@ -484,3 +484,8 @@ CREATE TABLE IF NOT EXISTS tenant_settings (
   CONSTRAINT tenant_settings_singleton CHECK (id = 1)
 );
 INSERT INTO tenant_settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+-- Phase D3: medical visits - materials & tooth tracking
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS materials_used TEXT;
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS materials_used_ar TEXT;
+ALTER TABLE visits ADD COLUMN IF NOT EXISTS tooth_number TEXT;

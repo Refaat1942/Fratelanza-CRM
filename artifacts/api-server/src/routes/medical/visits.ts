@@ -17,6 +17,9 @@ const VisitInput = z.object({
   diagnosisAr: z.string().nullable().optional(),
   treatment: z.string().nullable().optional(),
   treatmentAr: z.string().nullable().optional(),
+  materialsUsed: z.string().nullable().optional(),
+  materialsUsedAr: z.string().nullable().optional(),
+  toothNumber: z.string().nullable().optional(),
   followUpDate: z.string().nullable().optional(), // YYYY-MM-DD
   notes: z.string().nullable().optional(),
 });
@@ -36,6 +39,9 @@ async function selectVisits(where?: any) {
       diagnosisAr: visitsTable.diagnosisAr,
       treatment: visitsTable.treatment,
       treatmentAr: visitsTable.treatmentAr,
+      materialsUsed: visitsTable.materialsUsed,
+      materialsUsedAr: visitsTable.materialsUsedAr,
+      toothNumber: visitsTable.toothNumber,
       followUpDate: visitsTable.followUpDate,
       notes: visitsTable.notes,
       createdAt: visitsTable.createdAt,

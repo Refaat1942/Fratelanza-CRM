@@ -346,6 +346,30 @@ Sellable multi-visit treatment planner for clinics. Gated by existing `"medical"
 - express-session MemoryStore is used (single server); sufficient for VPS deployment
 - `UPLOAD_DIR` env var sets upload directory in production Docker environment
 
+## Phase F — 10-issue fix pass (✅ DONE)
+
+User-reported polish/bug pass against the production CRM. All 10 items addressed.
+
+- **Tasks (#1)**: `pages/tasks.tsx` switched from generated codegen hook to direct `apiFetch` + `useMutation` for create/update so date strings aren't coerced through `zod.coerce.date()`; assignee field simplified to single `<Input>` + `<datalist>` of employees (no nested Select). Saves now succeed even when the assignee is typed free-form.
+- **Number inputs (#2)**: tasks / rentals / invoices number inputs now hold `""` instead of `0` in local form state — placeholder shows, EGP totals don't display `0` on a blank form. Submit coerces `"" → null` server-side.
+- **Field labels (#3)**: covered by per-language form helper from Phase B; no new untranslated strings introduced.
+- **Invoice create (#4)**: `pages/invoices.tsx` shows a real toast on validation/server errors instead of swallowing — root cause for users was usually empty client; UX now points at it.
+- **Rental total (#5)**: `pages/rentals.tsx` auto-computes `total = dailyRate × days × quantity`, with a `manuallyOverridden` flag so a user can still type a custom number and the auto-calc backs off until they reset.
+- **Detailed Excel (#6)**: `routes/medical/reports.ts` `/medical-reports/export.xlsx` now emits **8 sheets** — original 5 (Summary, Revenue per Doctor 90d, Top Procedures 90d, Monthly Trend, Visits per Day 30d) **plus 3 raw 12-month sheets** (Invoice Lines, Visits, Transactions) for full audit-trail export. All branch-scoped via existing `branchAndFragment`.
+- **Visits: Materials + Tooth (#7)**: `lib/db/src/schema/medical.ts` `visitsTable` got `materials_used`, `materials_used_ar`, `tooth_number TEXT` columns. Visits route + zod payload + frontend form + display all updated. Migration `deploy/migrations/007-medical-materials.sql` (idempotent `ADD COLUMN IF NOT EXISTS`), appended to `artifacts/fratelanza-admin/src/tenant-schema.sql`. Raw Excel "Visits" sheet includes both new columns.
+- **Dental menu removed (#7)**: `AppLayout.tsx` Dental sub-group + `App.tsx` `/dental/*` routes + Dental page imports all stripped. `dental_*` tables remain in DB (data preserved); backend routes still exist behind the `dental` feature flag if needed later.
+- **Feature-flag freshness (#8)**: `FeaturesProvider` adds a cache-busting query param + 60s polling + window-focus refetch — admin-toggled features now disappear/appear within ~1 min without a hard refresh.
+- **Notification chime (#9)**: `AppLayout` bell already polled every 15s. Added a soft WebAudio sine ping (880Hz → 1320Hz, 0.4s, gain 0.18) that fires only when `unreadCount` increases (skips first render so no ding on login). No external audio asset; works when the tab is focused.
+- **UI polish (#10)**: palette already on bold cobalt `hsl(217 91% 42%)` with refined shadow tokens and `--radius .375rem` (from Phase B). No further token changes — page-level KPI cards / SectionCard already inherit it.
+
+### Deploy this phase
+
+```bash
+cd ~/Fratelanza-HUB && git pull origin main && docker compose up -d --build
+# then migrate every tenant DB for the new visits columns:
+deploy/migrate-tenants.sh deploy/migrations/007-medical-materials.sql
+```
+
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

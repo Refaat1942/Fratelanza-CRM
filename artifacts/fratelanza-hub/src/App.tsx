@@ -29,9 +29,6 @@ import Procedures from "@/pages/medical/procedures";
 import MedicalInvoices from "@/pages/medical/invoices";
 import MedicalReports from "@/pages/medical/reports";
 import TreatmentPlans from "@/pages/medical/treatment-plans";
-import DentalCatalog from "@/pages/dental/catalog";
-import DentalChart from "@/pages/dental/chart";
-import DentalVisits from "@/pages/dental/visits";
 import Branches from "@/pages/branches";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -98,9 +95,6 @@ function AppRouter() {
               <Route path="/medical/invoices"><FeatureGate feature="medical"><MedicalInvoices /></FeatureGate></Route>
               <Route path="/medical/reports"><FeatureGate feature="medical"><MedicalReports /></FeatureGate></Route>
               <Route path="/medical/treatment-plans"><FeatureGate feature="medical"><TreatmentPlans /></FeatureGate></Route>
-              <Route path="/dental/catalog"><FeatureGate feature="dental" permission="medical"><DentalCatalog /></FeatureGate></Route>
-              <Route path="/dental/chart"><FeatureGate feature="dental" permission="medical"><DentalChart /></FeatureGate></Route>
-              <Route path="/dental/visits"><FeatureGate feature="dental" permission="medical"><DentalVisits /></FeatureGate></Route>
               <Route path="/branches" component={Branches} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />

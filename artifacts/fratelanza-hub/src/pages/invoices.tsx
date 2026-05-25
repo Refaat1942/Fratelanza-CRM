@@ -100,7 +100,10 @@ export default function Invoices() {
       setCreateOpen(false); resetForm();
       toast({ title: t("Invoice created", "تم إنشاء الفاتورة") });
     },
-    onError: () => toast({ title: t("Error", "خطأ"), variant: "destructive" }),
+    onError: (err: any) => {
+      const msg = err?.message || (isAr ? "تعذر إنشاء الفاتورة. تأكد من اختيار العميل وإضافة بند واحد على الأقل." : "Could not create invoice. Make sure a client is selected and at least one line item has a description.");
+      toast({ title: t("Could not create invoice", "تعذر إنشاء الفاتورة"), description: msg, variant: "destructive" });
+    },
   });
 
   const updateStatus = useMutation({
@@ -184,8 +187,9 @@ export default function Invoices() {
                   </div>
                   <div className="space-y-2">
                     <Label>{t("Tax Rate %", "نسبة الضريبة %")}</Label>
-                    <Input type="number" min="0" max="100" step="0.01" value={form.taxRate}
-                      onChange={e => setForm({ ...form, taxRate: Number(e.target.value) })} />
+                    <Input type="number" min="0" max="100" step="0.01" placeholder="0"
+                      value={form.taxRate || ""}
+                      onChange={e => setForm({ ...form, taxRate: e.target.value === "" ? 0 : Number(e.target.value) })} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -227,13 +231,15 @@ export default function Invoices() {
                         </div>
                         <div className="col-span-2 space-y-1">
                           <Label className="text-xs">{t("Qty", "الكمية")}</Label>
-                          <Input type="number" min="0" step="0.01" value={it.quantity}
-                            onChange={e => { const next = [...form.items]; next[idx].quantity = Number(e.target.value); setForm({ ...form, items: next }); }} />
+                          <Input type="number" min="0" step="0.01" placeholder="1"
+                            value={it.quantity || ""}
+                            onChange={e => { const next = [...form.items]; next[idx].quantity = e.target.value === "" ? 1 : Number(e.target.value); setForm({ ...form, items: next }); }} />
                         </div>
                         <div className="col-span-3 space-y-1">
                           <Label className="text-xs">{t("Unit Price", "السعر")}</Label>
-                          <Input type="number" min="0" step="0.01" value={it.unitPrice}
-                            onChange={e => { const next = [...form.items]; next[idx].unitPrice = Number(e.target.value); setForm({ ...form, items: next }); }} />
+                          <Input type="number" min="0" step="0.01" placeholder="0"
+                            value={it.unitPrice || ""}
+                            onChange={e => { const next = [...form.items]; next[idx].unitPrice = e.target.value === "" ? 0 : Number(e.target.value); setForm({ ...form, items: next }); }} />
                         </div>
                         <div className="col-span-1 text-xs text-muted-foreground self-center pt-4">
                           {((Number(it.quantity) || 0) * (Number(it.unitPrice) || 0)).toFixed(2)}

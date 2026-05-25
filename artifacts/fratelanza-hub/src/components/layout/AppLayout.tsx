@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
-  Wallet, LineChart, ChevronDown, ChevronRight, Smile, Grid3x3, Building2
+  Wallet, LineChart, ChevronDown, ChevronRight, Building2
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -81,22 +81,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/medical/treatment-plans", key: "medical", icon: ClipboardList, labelEn: "Treatment Plans", labelAr: "خطط العلاج" },
       { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
     ],
-    subgroups: [
-      {
-        id: "dental",
-        featureKey: "dental",
-        labelEn: "Dental",
-        labelAr: "الأسنان",
-        icon: Smile,
-        items: [
-          // Permission gate uses "medical" (dental reuses medical permission),
-          // but tenant feature gate uses "dental" so the items appear only when the dental flag is on.
-          { href: "/dental/catalog", key: "medical", featureKey: "dental", icon: ListPlus, labelEn: "Dental Catalog", labelAr: "قائمة علاجات الأسنان" },
-          { href: "/dental/chart",   key: "medical", featureKey: "dental", icon: Grid3x3,  labelEn: "Dental Chart",   labelAr: "خريطة الأسنان" },
-          { href: "/dental/visits",  key: "medical", featureKey: "dental", icon: ClipboardList, labelEn: "Dental Visits", labelAr: "زيارات الأسنان" },
-        ],
-      },
-    ],
   },
 ];
 
@@ -121,6 +105,33 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     refetchInterval: 15000,
   });
   const unreadCount = notifications?.filter(n => !n.isRead).length ?? 0;
+
+  // Soft chime when unread count increases (skip first render so we don't ding on login).
+  const prevUnreadRef = useRef<number | null>(null);
+  useEffect(() => {
+    const prev = prevUnreadRef.current;
+    prevUnreadRef.current = unreadCount;
+    if (prev === null) return;
+    if (unreadCount > prev) {
+      try {
+        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+        if (!Ctx) return;
+        const ctx = new Ctx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+        setTimeout(() => ctx.close().catch(() => {}), 600);
+      } catch { /* audio blocked — silently ignore */ }
+    }
+  }, [unreadCount]);
 
   const isAdmin = user?.role === "admin";
   const userPerms = user?.permissions ?? [];

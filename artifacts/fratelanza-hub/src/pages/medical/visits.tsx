@@ -33,6 +33,9 @@ type Visit = {
   diagnosisAr: string | null;
   treatment: string | null;
   treatmentAr: string | null;
+  materialsUsed: string | null;
+  materialsUsedAr: string | null;
+  toothNumber: string | null;
   followUpDate: string | null;
   notes: string | null;
   patientFirstName: string | null;
@@ -55,6 +58,9 @@ const EMPTY = {
   diagnosisAr: "",
   treatment: "",
   treatmentAr: "",
+  materialsUsed: "",
+  materialsUsedAr: "",
+  toothNumber: "",
   followUpDate: "",
   notes: "",
   branchId: null as number | null,
@@ -133,6 +139,9 @@ export default function Visits() {
       diagnosisAr: v.diagnosisAr || "",
       treatment: v.treatment || "",
       treatmentAr: v.treatmentAr || "",
+      materialsUsed: v.materialsUsed || "",
+      materialsUsedAr: v.materialsUsedAr || "",
+      toothNumber: v.toothNumber || "",
       followUpDate: v.followUpDate || "",
       notes: v.notes || "",
       branchId: (v as any).branchId ?? null,
@@ -152,6 +161,9 @@ export default function Visits() {
         diagnosisAr: form.diagnosisAr || null,
         treatment: form.treatment || null,
         treatmentAr: form.treatmentAr || null,
+        materialsUsed: form.materialsUsed || null,
+        materialsUsedAr: form.materialsUsedAr || null,
+        toothNumber: form.toothNumber || null,
         followUpDate: form.followUpDate || null,
         notes: form.notes || null,
         branchId: form.branchId,
@@ -309,6 +321,20 @@ export default function Visits() {
                       <p>{tx || <span className="text-muted-foreground/50">—</span>}</p>
                     </div>
                   </div>
+                  {(v.materialsUsed || v.materialsUsedAr || v.toothNumber) && (
+                    <div className="mt-3 pt-3 border-t grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                      <div className="md:col-span-2">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{t("Materials used", "المواد المستخدمة")}</p>
+                        <p>{(isAr ? (v.materialsUsedAr || v.materialsUsed) : (v.materialsUsed || v.materialsUsedAr)) || <span className="text-muted-foreground/50">—</span>}</p>
+                      </div>
+                      {v.toothNumber && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{t("Tooth #", "رقم السن")}</p>
+                          <p dir="ltr">{v.toothNumber}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {v.notes && (
                     <div className="mt-3 pt-3 border-t">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{t("Notes", "ملاحظات")}</p>
@@ -381,6 +407,22 @@ export default function Visits() {
                 <Textarea rows={3} dir={isAr ? "rtl" : "ltr"}
                   value={isAr ? form.treatmentAr : form.treatment}
                   onChange={(e) => isAr ? setForm({ ...form, treatmentAr: e.target.value }) : setForm({ ...form, treatment: e.target.value })} />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="space-y-2 col-span-2">
+                  <Label>{t("Materials used", "المواد المستخدمة")}</Label>
+                  <Textarea rows={2} dir={isAr ? "rtl" : "ltr"}
+                    value={isAr ? form.materialsUsedAr : form.materialsUsed}
+                    onChange={(e) => isAr ? setForm({ ...form, materialsUsedAr: e.target.value }) : setForm({ ...form, materialsUsed: e.target.value })}
+                    placeholder={t("e.g. composite filling, anesthetic, etc.", "مثلاً: حشو كومبوزيت، مخدر، إلخ.")} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("Tooth # (optional)", "رقم السن (اختياري)")}</Label>
+                  <Input dir="ltr" value={form.toothNumber}
+                    onChange={(e) => setForm({ ...form, toothNumber: e.target.value })}
+                    placeholder="e.g. 11, 24" />
+                </div>
               </div>
 
               <div className="space-y-2">

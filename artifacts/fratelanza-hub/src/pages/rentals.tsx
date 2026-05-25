@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -49,6 +49,23 @@ export default function Rentals() {
   const [selected, setSelected] = useState<Rental | null>(null);
   const [form, setForm] = useState({ ...emptyForm, branchId: user?.branchId ?? null });
   const [docFile, setDocFile] = useState<File | null>(null);
+  const [totalManuallyEdited, setTotalManuallyEdited] = useState(false);
+
+  // Auto-calculate Total = dailyRate × days × quantity (unless user manually edited it)
+  useEffect(() => {
+    if (totalManuallyEdited) return;
+    const rate = Number(form.dailyRate) || 0;
+    const qty = Number(form.quantity) || 1;
+    if (!form.startDate || !form.endDate || rate <= 0) {
+      if (form.totalAmount !== 0) setForm(f => ({ ...f, totalAmount: 0 }));
+      return;
+    }
+    const start = new Date(form.startDate);
+    const end = new Date(form.endDate);
+    const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / 86400000));
+    const computed = +(rate * days * qty).toFixed(2);
+    if (computed !== form.totalAmount) setForm(f => ({ ...f, totalAmount: computed }));
+  }, [form.dailyRate, form.quantity, form.startDate, form.endDate, totalManuallyEdited]);
 
   const { data: rentals, isLoading } = useQuery<Rental[]>({ queryKey: ["rentals"], queryFn: () => apiFetch("/rentals") });
   const { data: employees } = useQuery<Employee[]>({ queryKey: ["employees"], queryFn: () => apiFetch("/employees") });
@@ -117,16 +134,37 @@ export default function Rentals() {
           </Select>
           <Input value={form.productName} onChange={e => setForm({ ...form, productName: e.target.value })} placeholder={t("Or type item name", "أو اكتب اسم العنصر")} />
         </div>
-        <div className="space-y-2"><Label>{t("Quantity", "الكمية")}</Label><Input type="number" min={1} value={form.quantity} onChange={e => setForm({ ...form, quantity: Number(e.target.value) })} /></div>
+        <div className="space-y-2"><Label>{t("Quantity", "الكمية")}</Label>
+          <Input type="number" min={1} placeholder="1"
+            value={form.quantity || ""}
+            onChange={e => setForm({ ...form, quantity: e.target.value === "" ? 1 : Number(e.target.value) })} />
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2"><Label>{t("Start Date", "تاريخ البدء")}</Label><Input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} required /></div>
         <div className="space-y-2"><Label>{t("Expected End Date", "تاريخ الانتهاء المتوقع")}</Label><Input type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-2"><Label>{t("Daily Rate (EGP)", "السعر اليومي (ج.م)")}</Label><Input type="number" min={0} value={form.dailyRate} onChange={e => setForm({ ...form, dailyRate: Number(e.target.value) })} /></div>
-        <div className="space-y-2"><Label>{t("Total (EGP)", "الإجمالي (ج.م)")}</Label><Input type="number" min={0} value={form.totalAmount} onChange={e => setForm({ ...form, totalAmount: Number(e.target.value) })} /></div>
-        <div className="space-y-2"><Label>{t("Deposit (EGP)", "التأمين (ج.م)")}</Label><Input type="number" min={0} value={form.depositAmount} onChange={e => setForm({ ...form, depositAmount: Number(e.target.value) })} /></div>
+        <div className="space-y-2"><Label>{t("Daily Rate (EGP)", "السعر اليومي (ج.م)")}</Label>
+          <Input type="number" min={0} placeholder="0"
+            value={form.dailyRate || ""}
+            onChange={e => setForm({ ...form, dailyRate: e.target.value === "" ? 0 : Number(e.target.value) })} />
+        </div>
+        <div className="space-y-2">
+          <Label className="flex items-center gap-1">{t("Total (EGP)", "الإجمالي (ج.م)")}
+            {!totalManuallyEdited && <span className="text-[10px] text-muted-foreground">({t("auto", "تلقائي")})</span>}
+          </Label>
+          <Input type="number" min={0} placeholder="0"
+            value={form.totalAmount || ""}
+            onChange={e => { setTotalManuallyEdited(true); setForm({ ...form, totalAmount: e.target.value === "" ? 0 : Number(e.target.value) }); }}
+            className={!totalManuallyEdited ? "bg-muted/40" : ""}
+          />
+        </div>
+        <div className="space-y-2"><Label>{t("Deposit (EGP)", "التأمين (ج.م)")}</Label>
+          <Input type="number" min={0} placeholder="0"
+            value={form.depositAmount || ""}
+            onChange={e => setForm({ ...form, depositAmount: e.target.value === "" ? 0 : Number(e.target.value) })} />
+        </div>
       </div>
       <div className="space-y-2">
         <Label>{t("Status", "الحالة")}</Label>

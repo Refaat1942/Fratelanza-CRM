@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useLanguage } from "../components/LanguageProvider";
 import {
-  useListTasks, useGetTaskStats, useCreateTask, useUpdateTask, useDeleteTask,
+  useListTasks, useGetTaskStats, useDeleteTask,
   getListTasksQueryKey, getGetTaskStatsQueryKey
 } from "@workspace/api-client-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,8 +76,13 @@ export default function Tasks() {
   );
   const { data: employees } = useQuery<Employee[]>({ queryKey: ["employees"], queryFn: () => apiFetch("/employees") });
 
-  const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
+  const createTask = useMutation({
+    mutationFn: (data: any) => apiFetch("/tasks", { method: "POST", body: JSON.stringify(data) }),
+  });
+  const updateTask = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      apiFetch(`/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  });
   const deleteTask = useDeleteTask();
 
   const invalidate = () => {
@@ -101,7 +106,7 @@ export default function Tasks() {
     e.preventDefault();
     try {
       const payload = buildPayload();
-      await createTask.mutateAsync({ data: payload as any });
+      await createTask.mutateAsync(payload);
       invalidate();
       setIsCreateOpen(false);
       setFormData({ ...emptyForm });
@@ -114,7 +119,7 @@ export default function Tasks() {
     if (!selectedTask) return;
     try {
       const payload = buildPayload();
-      await updateTask.mutateAsync({ id: selectedTask.id, data: payload as any });
+      await updateTask.mutateAsync({ id: selectedTask.id, data: payload });
       invalidate();
       setIsEditOpen(false);
       setFormData({ ...emptyForm });
@@ -145,7 +150,7 @@ export default function Tasks() {
 
   const handleQuickStatus = async (task: Task, newStatus: string) => {
     try {
-      await updateTask.mutateAsync({ id: task.id, data: { status: newStatus } as any });
+      await updateTask.mutateAsync({ id: task.id, data: { status: newStatus } });
       invalidate();
     } catch { toast({ title: t("Error", "خطأ"), variant: "destructive" }); }
   };
@@ -220,23 +225,18 @@ export default function Tasks() {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>{t("Assign To", "تعيين إلى")}</Label>
-          <Select value={formData.assignee || "__none__"} onValueChange={v => setFormData({ ...formData, assignee: v === "__none__" ? "" : v })}>
-            <SelectTrigger><SelectValue placeholder={t("Select employee", "اختر موظفاً")} /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">{t("— Unassigned —", "— غير مُعيَّن —")}</SelectItem>
-              {employees?.map(emp => (
-                <SelectItem key={emp.id} value={isRtl ? (emp.nameAr || emp.name) : emp.name}>
-                  {isRtl ? (emp.nameAr || emp.name) : emp.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Input
+            list="task-assignee-options"
             value={formData.assignee}
             onChange={e => setFormData({ ...formData, assignee: e.target.value })}
-            placeholder={t("Or type a name", "أو اكتب اسماً")}
+            placeholder={t("Type or pick an employee", "اكتب أو اختر موظفاً")}
             dir={language === "ar" ? "rtl" : "ltr"}
           />
+          <datalist id="task-assignee-options">
+            {employees?.map(emp => (
+              <option key={emp.id} value={isRtl ? (emp.nameAr || emp.name) : emp.name} />
+            ))}
+          </datalist>
         </div>
         <div className="space-y-2">
           <Label className="flex items-center gap-1.5"><RepeatIcon size={13} />{t("Recurrence", "التكرار")}</Label>

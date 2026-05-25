@@ -227,6 +227,95 @@ router.get("/medical-reports/export.xlsx", async (req, res): Promise<void> => {
   s5.getRow(1).eachCell(c => Object.assign(c, headerStyle));
   (daily.rows ?? []).forEach((r: any) => s5.addRow(r));
 
+  // ===== Detailed raw-data sheets (last 12 months) — full audit trail =====
+  const bMiRaw = branchAndFragment(req, "mi.branch_id");
+  const bVRaw  = branchAndFragment(req, "v.branch_id");
+  const bTxRaw = branchAndFragment(req, "t.branch_id");
+  const [invLines, allVisits, allTx] = await Promise.all([
+    db.execute<any>(sql`
+      SELECT mi.id AS invoice_id, mi.invoice_date, mi.status, mi.total AS invoice_total, mi.paid_amount,
+             COALESCE(p.first_name || ' ' || COALESCE(p.last_name,''), '') AS patient_name,
+             COALESCE(e.name, 'Unassigned') AS doctor_name,
+             COALESCE(pr.name, mil.description) AS procedure_name,
+             mil.quantity, mil.unit_price, mil.total AS line_total
+      FROM medical_invoice_lines mil
+      JOIN medical_invoices mi ON mi.id = mil.invoice_id
+      LEFT JOIN patients p ON p.id = mi.patient_id
+      LEFT JOIN employees e ON e.id = mi.doctor_id
+      LEFT JOIN medical_procedures pr ON pr.id = mil.procedure_id
+      WHERE mi.invoice_date >= current_date - INTERVAL '12 months'${bMiRaw}
+      ORDER BY mi.invoice_date DESC, mi.id DESC
+    `),
+    db.execute<any>(sql`
+      SELECT v.id, v.visit_date,
+             COALESCE(p.first_name || ' ' || COALESCE(p.last_name,''), '') AS patient_name,
+             COALESCE(e.name, '') AS doctor_name,
+             v.chief_complaint, v.diagnosis, v.treatment,
+             v.materials_used, v.tooth_number, v.follow_up_date, v.notes
+      FROM visits v
+      LEFT JOIN patients p ON p.id = v.patient_id
+      LEFT JOIN employees e ON e.id = v.doctor_id
+      WHERE v.visit_date >= current_date - INTERVAL '12 months'${bVRaw}
+      ORDER BY v.visit_date DESC
+    `),
+    db.execute<any>(sql`
+      SELECT t.id, t.date, t.type, t.category, t.amount, t.description, t.created_at
+      FROM transactions t
+      WHERE t.date >= current_date - INTERVAL '12 months'${bTxRaw}
+      ORDER BY t.date DESC, t.id DESC
+    `),
+  ]);
+
+  // Sheet 6: Invoice Lines (raw, 12 months)
+  const s6 = wb.addWorksheet("Invoice Lines (raw)");
+  s6.columns = [
+    { header: "Invoice #", key: "invoice_id", width: 10 },
+    { header: "Date", key: "invoice_date", width: 12 },
+    { header: "Status", key: "status", width: 10 },
+    { header: "Patient", key: "patient_name", width: 24 },
+    { header: "Doctor", key: "doctor_name", width: 20 },
+    { header: "Procedure / Item", key: "procedure_name", width: 32 },
+    { header: "Qty", key: "quantity", width: 8 },
+    { header: "Unit Price (EGP)", key: "unit_price", width: 16 },
+    { header: "Line Total (EGP)", key: "line_total", width: 16 },
+    { header: "Invoice Total (EGP)", key: "invoice_total", width: 18 },
+    { header: "Paid (EGP)", key: "paid_amount", width: 14 },
+  ];
+  s6.getRow(1).eachCell(c => Object.assign(c, headerStyle));
+  (invLines.rows ?? []).forEach((r: any) => s6.addRow(r));
+
+  // Sheet 7: Visits (raw, 12 months) — includes new materials + tooth columns
+  const s7 = wb.addWorksheet("Visits (raw)");
+  s7.columns = [
+    { header: "Visit #", key: "id", width: 10 },
+    { header: "Date", key: "visit_date", width: 18 },
+    { header: "Patient", key: "patient_name", width: 24 },
+    { header: "Doctor", key: "doctor_name", width: 20 },
+    { header: "Chief Complaint", key: "chief_complaint", width: 32 },
+    { header: "Diagnosis", key: "diagnosis", width: 32 },
+    { header: "Treatment", key: "treatment", width: 32 },
+    { header: "Materials Used", key: "materials_used", width: 28 },
+    { header: "Tooth #", key: "tooth_number", width: 10 },
+    { header: "Follow-up", key: "follow_up_date", width: 14 },
+    { header: "Notes", key: "notes", width: 28 },
+  ];
+  s7.getRow(1).eachCell(c => Object.assign(c, headerStyle));
+  (allVisits.rows ?? []).forEach((r: any) => s7.addRow(r));
+
+  // Sheet 8: Transactions (raw, 12 months) — full finance ledger incl. medical bridge
+  const s8 = wb.addWorksheet("Transactions (raw)");
+  s8.columns = [
+    { header: "ID", key: "id", width: 8 },
+    { header: "Date", key: "date", width: 12 },
+    { header: "Type", key: "type", width: 10 },
+    { header: "Category", key: "category", width: 14 },
+    { header: "Amount (EGP)", key: "amount", width: 14 },
+    { header: "Description", key: "description", width: 40 },
+    { header: "Created At", key: "created_at", width: 22 },
+  ];
+  s8.getRow(1).eachCell(c => Object.assign(c, headerStyle));
+  (allTx.rows ?? []).forEach((r: any) => s8.addRow(r));
+
   const filename = `medical-report-${new Date().toISOString().slice(0, 10)}.xlsx`;
   res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
