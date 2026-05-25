@@ -21,7 +21,12 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
       throw new Error(`Feature disabled: ${body.feature}`);
     }
   }
-  if (!res.ok) throw new Error(`API error ${res.status}`);
+  if (!res.ok) {
+    // Try to surface the real server error message instead of a generic "API error 500".
+    const detail = await res.clone().json().catch(() => null) as any;
+    const msg = detail?.error || detail?.message || (typeof detail?.details === "string" ? detail.details : null);
+    throw new Error(msg ? `${msg} (${res.status})` : `API error ${res.status}`);
+  }
   if (res.status === 204) return undefined as T;
   return res.json();
 }

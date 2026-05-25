@@ -18,7 +18,8 @@ import purchaseOrdersRouter from "./purchaseOrders";
 import invoicesRouter from "./invoices";
 import medicalRouter from "./medical";
 import dentalRouter from "./dental";
-import treatmentPlansRouter from "./treatmentPlans";
+// Phase F2: Treatment Plans module removed from UI; backend route also unmounted.
+// `treatment_plans` table is retained in the DB for data preservation.
 import branchesRouter from "./branches";
 import tenantSettingsRouter from "./tenantSettings";
 import { requireFeature } from "../middleware/feature";
@@ -50,6 +51,5 @@ router.use(requireFeature("reports"), requirePermission("reports"), reportsRoute
 router.use(requireFeature("invoicing"), requirePermission("invoicing"), invoicesRouter);
 router.use(requireFeature("medical"), requirePermission("medical"), medicalRouter);
 router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
-router.use(requireFeature("medical"), requirePermission("medical"), treatmentPlansRouter);
 
 export default router;

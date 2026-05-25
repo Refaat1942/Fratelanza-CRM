@@ -213,6 +213,21 @@ Sellable add-on for dentists/dental clinics. Admin-toggleable per tenant via the
 - **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` has dental tables appended (as `CREATE TABLE IF NOT EXISTS` since they were added after Phase A). New tenants get them automatically.
 - **Existing tenants migration**: `deploy/migrations/002-dental.sql` — idempotent `CREATE TABLE IF NOT EXISTS` + indices, wrapped in BEGIN/COMMIT, safe to re-run. Apply with `deploy/migrate-tenants.sh deploy/migrations/002-dental.sql`.
 
+## Phase F2 — Round 2 fixes + Materials Inventory (✅ DONE)
+
+Round 2 user fixes on top of Phase F:
+
+- **Number input focus loss** — root cause: `FeaturesProvider` 60s poll was creating a fresh `state` object every cycle, even when the response was identical. That re-rendered every consumer (including `AppLayout` → page tree → open dialogs), stealing focus from `<Input>` elements mid-typing. Fixed by shallow-comparing `features` keys + `tenant` in `setState(prev => ...)` and short-circuiting when unchanged; also wrapped the context `value` in `useMemo`.
+- **Invoice 500** — server `POST /api/invoices` now wraps the body in try/catch and returns `{ error, code }` with the real message instead of crashing into the generic 500 handler. Activity-log insert is best-effort (logged at WARN, doesn't fail the request). Frontend `apiFetch` now reads `error`/`message` from the response body so toasts show the real reason instead of "API error 500".
+- **Removed `/medical/procedures`** — nav item + route + import. DB table `medical_procedures` kept (no data loss). `procedures.ts` route file kept (unused; safe to delete later).
+- **Removed `/medical/treatment-plans`** — nav item + route + import. DB table `treatment_plans` kept.
+- **New Materials Inventory module** at `/medical/materials`:
+  - Schema: `medical_materials` (name/nameAr, sku, category, unit, qty/reorder/price in EGP, supplier, branch_id, active, timestamps).
+  - Route: `artifacts/api-server/src/routes/medical/materials.ts` — list (with `?search=`), stats (total/lowStock/outOfStock/totalValue), create, patch, delete, and `POST /:id/adjust` for quick +1/-1 stock changes. Gated by `requireFeature("medical") + requirePermission("medical")`.
+  - Page: `artifacts/fratelanza-hub/src/pages/medical/materials.tsx` — KPI strip, search, card list with low-stock/out-of-stock badges, inline +/- adjust, edit/delete, per-language form (only AR or only EN field rendered).
+  - Tenant schema: appended to `artifacts/fratelanza-admin/src/tenant-schema.sql`.
+  - Migration for existing tenants: `deploy/migrations/008-medical-materials-inventory.sql` (idempotent `CREATE TABLE IF NOT EXISTS` + indices). Apply with `deploy/migrate-tenants.sh deploy/migrations/008-medical-materials-inventory.sql`.
+
 ## Phase D2 — branch_id on records + first form wired (✅ DONE, non-breaking)
 
 Tags every transactional record with an optional branch. No filtering yet (that's D3) — D2 is just the columns + form plumbing.

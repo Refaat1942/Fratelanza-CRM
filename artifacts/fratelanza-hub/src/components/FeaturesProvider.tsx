@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 
 type FeaturesState = {
   features: Record<string, boolean>;
@@ -48,9 +48,21 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
         tenant: { subdomain: string; status: "active" | "blocked" } | null;
         features: Record<string, boolean>;
       };
-      setState({ features: data.features || {}, tenant: data.tenant, blocked: false, loading: false });
+      const nextFeatures = data.features || {};
+      setState(prev => {
+        // Avoid creating a fresh object (and re-rendering every consumer) when the
+        // poll returns identical data — that was stealing focus from inputs every 60s.
+        const sameFeatures =
+          Object.keys(nextFeatures).length === Object.keys(prev.features).length &&
+          Object.keys(nextFeatures).every(k => prev.features[k] === nextFeatures[k]);
+        const sameTenant =
+          (prev.tenant?.subdomain ?? null) === (data.tenant?.subdomain ?? null) &&
+          (prev.tenant?.status ?? null) === (data.tenant?.status ?? null);
+        if (sameFeatures && sameTenant && !prev.blocked && !prev.loading) return prev;
+        return { features: nextFeatures, tenant: data.tenant, blocked: false, loading: false };
+      });
     } catch {
-      setState(s => ({ ...s, loading: false }));
+      setState(s => (s.loading ? { ...s, loading: false } : s));
     }
   }, []);
 
@@ -67,7 +79,9 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
     };
   }, [refresh]);
 
-  return <FeaturesContext.Provider value={state}>{children}</FeaturesContext.Provider>;
+  // Memo the context value so identical state references don't trigger consumer re-renders.
+  const value = useMemo(() => state, [state]);
+  return <FeaturesContext.Provider value={value}>{children}</FeaturesContext.Provider>;
 }
 
 export function useFeatures() {

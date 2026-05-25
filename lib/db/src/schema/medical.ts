@@ -139,3 +139,26 @@ export const medicalInvoiceLinesTable = pgTable("medical_invoice_lines", {
 });
 
 export type MedicalInvoiceLine = typeof medicalInvoiceLinesTable.$inferSelect;
+
+// =============== Medical Materials Inventory ===============
+// Clinic supplies/stock (gloves, syringes, composites, anesthetics, etc.)
+export const medicalMaterialsTable = pgTable("medical_materials", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  nameAr: text("name_ar"),
+  sku: text("sku"),
+  category: text("category"), // 'consumable' | 'dental' | 'medication' | 'equipment' | 'other'
+  unit: text("unit"), // 'pcs' | 'box' | 'tube' | 'ml' | 'g' ...
+  quantityInStock: real("quantity_in_stock").notNull().default(0),
+  reorderLevel: real("reorder_level").notNull().default(0),
+  unitPrice: real("unit_price").notNull().default(0), // EGP
+  supplier: text("supplier"),
+  notes: text("notes"),
+  notesAr: text("notes_ar"),
+  branchId: integer("branch_id"),
+  active: integer("active").notNull().default(1), // 1 = active, 0 = archived
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type MedicalMaterial = typeof medicalMaterialsTable.$inferSelect;

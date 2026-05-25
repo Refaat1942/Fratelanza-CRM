@@ -91,39 +91,49 @@ router.post("/invoices", async (req: Request, res: Response): Promise<void> => {
   if (!parsed.success) { res.status(400).json({ error: "Invalid data", details: parsed.error.flatten() }); return; }
   const { clientId, issueDate, dueDate, taxRate, notes, notesAr, items } = parsed.data;
 
-  let clientNameSnapshot: string | null = null;
-  let clientPhoneSnapshot: string | null = null;
-  if (clientId) {
-    const [c] = await db.select().from(clientsTable).where(eq(clientsTable.id, clientId));
-    if (c) { clientNameSnapshot = c.name; clientPhoneSnapshot = c.phone || null; }
+  try {
+    let clientNameSnapshot: string | null = null;
+    let clientPhoneSnapshot: string | null = null;
+    if (clientId) {
+      const [c] = await db.select().from(clientsTable).where(eq(clientsTable.id, clientId));
+      if (c) { clientNameSnapshot = c.name; clientPhoneSnapshot = c.phone || null; }
+    }
+
+    const totals = recompute(items, taxRate);
+    const invoiceNumber = await generateInvoiceNumber();
+
+    const [invoice] = await db.insert(invoicesTable).values({
+      invoiceNumber, clientId: clientId || null,
+      clientNameSnapshot, clientPhoneSnapshot,
+      issueDate: issueDate || new Date().toISOString().slice(0, 10),
+      dueDate: dueDate || null,
+      taxRate, ...totals, notes: notes || null, notesAr: notesAr || null,
+    }).returning();
+
+    if (items.length > 0) {
+      await db.insert(invoiceItemsTable).values(items.map((it, i) => ({
+        invoiceId: invoice.id, description: it.description, descriptionAr: it.descriptionAr || null,
+        quantity: it.quantity, unitPrice: it.unitPrice,
+        total: +(it.quantity * it.unitPrice).toFixed(2), sortOrder: i,
+      })));
+    }
+
+    // Activity log is best-effort — never fail the invoice over it.
+    try {
+      await db.insert(activityTable).values({
+        type: "invoice_created",
+        description: `Invoice ${invoice.invoiceNumber} created`,
+        descriptionAr: `تم إنشاء فاتورة ${invoice.invoiceNumber}`,
+      });
+    } catch (logErr) {
+      (req as any).log?.warn?.({ err: logErr }, "activity_log_failed");
+    }
+
+    res.status(201).json(invoice);
+  } catch (err: any) {
+    (req as any).log?.error?.({ err, body: req.body }, "invoice_create_failed");
+    res.status(500).json({ error: err?.message || "invoice_create_failed", code: err?.code });
   }
-
-  const totals = recompute(items, taxRate);
-  const invoiceNumber = await generateInvoiceNumber();
-
-  const [invoice] = await db.insert(invoicesTable).values({
-    invoiceNumber, clientId: clientId || null,
-    clientNameSnapshot, clientPhoneSnapshot,
-    issueDate: issueDate || new Date().toISOString().slice(0, 10),
-    dueDate: dueDate || null,
-    taxRate, ...totals, notes: notes || null, notesAr: notesAr || null,
-  }).returning();
-
-  if (items.length > 0) {
-    await db.insert(invoiceItemsTable).values(items.map((it, i) => ({
-      invoiceId: invoice.id, description: it.description, descriptionAr: it.descriptionAr || null,
-      quantity: it.quantity, unitPrice: it.unitPrice,
-      total: +(it.quantity * it.unitPrice).toFixed(2), sortOrder: i,
-    })));
-  }
-
-  await db.insert(activityTable).values({
-    type: "invoice_created",
-    description: `Invoice ${invoice.invoiceNumber} created`,
-    descriptionAr: `تم إنشاء فاتورة ${invoice.invoiceNumber}`,
-  });
-
-  res.status(201).json(invoice);
 });
 
 router.patch("/invoices/:id", async (req: Request, res: Response): Promise<void> => {
