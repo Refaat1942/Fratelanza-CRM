@@ -4,7 +4,7 @@ import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
-  Wallet, LineChart, ChevronDown, ChevronRight, Building2
+  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,8 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/medical/patients", key: "medical", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
       { href: "/medical/appointments", key: "medical", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
       { href: "/medical/visits", key: "medical", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
+      { href: "/medical/prescriptions", key: "medical", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
+      { href: "/medical/treatment-plans", key: "medical", icon: ClipboardCheck, labelEn: "Treatment Plans", labelAr: "خطط العلاج" },
       { href: "/medical/materials", key: "medical", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
       { href: "/medical/invoices", key: "medical", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
       { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
@@ -138,6 +140,42 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const isAr = language === "ar";
   const companyName = useCompanyName(isAr);
   const { branding } = useBranding();
+
+  // Workspace toggle: "general" or "medical". Persisted per-user in localStorage.
+  // Auto-defaults: if tenant only has medical (no tasks/crm/finance enabled),
+  // default to medical; otherwise default to general. Auto-switches if the
+  // current route belongs to the other workspace (so a direct URL keeps working).
+  const hasGeneralFeatures = features["tasks"] !== false || features["crm"] !== false || features["finance"] !== false;
+  const hasMedicalFeatures = features["medical"] !== false || features["dental"] !== false;
+  const [workspace, setWorkspaceState] = useState<"general" | "medical">(() => {
+    try {
+      const stored = localStorage.getItem("workspace");
+      if (stored === "general" || stored === "medical") return stored;
+    } catch { /* ignore */ }
+    // Auto-default by location, then by feature mix.
+    if (location.startsWith("/medical") || location.startsWith("/dental")) return "medical";
+    if (!hasGeneralFeatures && hasMedicalFeatures) return "medical";
+    return "general";
+  });
+  const setWorkspace = (w: "general" | "medical") => {
+    setWorkspaceState(w);
+    try { localStorage.setItem("workspace", w); } catch { /* ignore */ }
+  };
+  // One-way auto-switch: if the user navigates straight into a medical/dental
+  // route via URL or in-app link, surface the medical sidebar so the active
+  // item is visible. We never auto-switch back to "general" — that would fight
+  // the user's explicit toggle choice when they're sitting on the dashboard.
+  useEffect(() => {
+    if ((location.startsWith("/medical") || location.startsWith("/dental")) && workspace !== "medical") {
+      setWorkspaceState("medical");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+
+  const showWorkspaceToggle = hasGeneralFeatures && hasMedicalFeatures;
+  // When toggle is hidden (single-workspace tenant), default what we show.
+  const effectiveWorkspace: "general" | "medical" =
+    showWorkspaceToggle ? workspace : (hasMedicalFeatures && !hasGeneralFeatures ? "medical" : "general");
 
   const canSee = (item: NavItem) => {
     const featKey = item.featureKey ?? item.key;
@@ -298,8 +336,43 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
+      {showWorkspaceToggle && (
+        <div className="px-3 pt-3 pb-1">
+          <div className="grid grid-cols-2 gap-1 p-1 bg-sidebar-accent/40 rounded-md">
+            <button
+              type="button"
+              onClick={() => setWorkspace("general")}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-semibold transition-colors ${
+                effectiveWorkspace === "general"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
+              }`}
+              data-testid="workspace-toggle-general"
+            >
+              <Briefcase size={12} />
+              {t("General", "عام")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkspace("medical")}
+              className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-semibold transition-colors ${
+                effectiveWorkspace === "medical"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
+              }`}
+              data-testid="workspace-toggle-medical"
+            >
+              <Stethoscope size={12} />
+              {t("Medical", "طبي")}
+            </button>
+          </div>
+        </div>
+      )}
+
       <nav ref={navRef} className="flex-1 px-2.5 pb-3 overflow-y-auto">
-        {NAV_GROUPS.map(g => renderGroup(g, onNavClick))}
+        {NAV_GROUPS
+          .filter(g => effectiveWorkspace === "general" ? g.id !== "medical" : g.id === "medical")
+          .map(g => renderGroup(g, onNavClick))}
       </nav>
 
       <div className="p-2.5 border-t border-sidebar-border space-y-0.5">

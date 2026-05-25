@@ -5,6 +5,8 @@ import visitsRouter from "./visits";
 import medicalInvoicesRouter from "./invoices";
 import reportsRouter from "./reports";
 import materialsRouter from "./materials";
+import prescriptionsRouter from "./prescriptions";
+import alertsRouter from "./alerts";
 // Phase F2: Procedures module removed from UI; backend route also unmounted.
 // Catalog table `medical_procedures` is retained in the DB for data preservation.
 
@@ -16,5 +18,7 @@ router.use(visitsRouter);
 router.use(medicalInvoicesRouter);
 router.use(reportsRouter);
 router.use(materialsRouter);
+router.use(prescriptionsRouter);
+router.use(alertsRouter);
 
 export default router;

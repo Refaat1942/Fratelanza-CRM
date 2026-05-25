@@ -28,6 +28,8 @@ import Visits from "@/pages/medical/visits";
 import MedicalMaterials from "@/pages/medical/materials";
 import MedicalInvoices from "@/pages/medical/invoices";
 import MedicalReports from "@/pages/medical/reports";
+import Prescriptions from "@/pages/medical/prescriptions";
+import TreatmentPlans from "@/pages/medical/treatment-plans";
 import Branches from "@/pages/branches";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -91,6 +93,8 @@ function AppRouter() {
               <Route path="/medical/appointments"><FeatureGate feature="medical"><Appointments /></FeatureGate></Route>
               <Route path="/medical/visits"><FeatureGate feature="medical"><Visits /></FeatureGate></Route>
               <Route path="/medical/materials"><FeatureGate feature="medical"><MedicalMaterials /></FeatureGate></Route>
+              <Route path="/medical/prescriptions"><FeatureGate feature="medical"><Prescriptions /></FeatureGate></Route>
+              <Route path="/medical/treatment-plans"><FeatureGate feature="medical"><TreatmentPlans /></FeatureGate></Route>
               <Route path="/medical/invoices"><FeatureGate feature="medical"><MedicalInvoices /></FeatureGate></Route>
               <Route path="/medical/reports"><FeatureGate feature="medical"><MedicalReports /></FeatureGate></Route>
               <Route path="/branches" component={Branches} />
