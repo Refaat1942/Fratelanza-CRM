@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle,
-  IdCard, AlertTriangle, Stethoscope, Search,
+  IdCard, AlertTriangle, Stethoscope, Search, Sparkles,
 } from "lucide-react";
+import { AiSummaryDialog } from "@/components/medical/AiSummaryDialog";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
@@ -74,6 +75,7 @@ export default function Patients() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState<Patient>(EMPTY);
+  const [aiSummaryFor, setAiSummaryFor] = useState<Patient | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["patients-stats"],
@@ -382,6 +384,11 @@ export default function Patients() {
                       </div>
                     )}
                     <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-violet-700 hover:bg-violet-50 hover:text-violet-800 border-violet-200"
+                        onClick={() => setAiSummaryFor(p)}
+                        title={t("AI Summary", "ملخص ذكاء اصطناعي")} data-testid={`btn-ai-summary-${p.id}`}>
+                        <Sparkles size={13} />
+                      </Button>
                       {p.phone && (
                         <Button variant="outline" size="sm" className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 border-emerald-200"
                           onClick={() => openWhatsApp(p.phone!, isAr ? `السلام عليكم ${p.firstNameAr || p.firstName}،` : `Hello ${p.firstName},`)}
@@ -408,6 +415,15 @@ export default function Patients() {
           </div>
         )}
       </SectionCard>
+
+      {aiSummaryFor && (
+        <AiSummaryDialog
+          patientId={aiSummaryFor.id}
+          patientName={fullName(aiSummaryFor)}
+          open={aiSummaryFor !== null}
+          onOpenChange={(v) => { if (!v) setAiSummaryFor(null); }}
+        />
+      )}
 
       <Dialog open={editing !== null} onOpenChange={open => { if (!open) { setEditing(null); setForm(EMPTY); } }}>
         <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>

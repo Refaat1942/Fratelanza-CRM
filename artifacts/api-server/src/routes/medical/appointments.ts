@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, gte, lt, ne, sql, asc } from "drizzle-orm";
 import { db, medicalAppointmentsTable, patientsTable, employeesTable } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
+import { isWithinAvailability } from "../../lib/availability";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -105,6 +106,10 @@ router.post("/appointments", async (req, res): Promise<void> => {
     endAt = new Date(startAt.getTime() + 30 * 60 * 1000); // default 30 min
   }
   if (parsed.data.doctorId) {
+    if (!(await isWithinAvailability(parsed.data.doctorId, startAt, endAt))) {
+      res.status(409).json({ error: "outside_hours", message: "Appointment is outside the doctor's availability window" });
+      return;
+    }
     if (await hasConflict(parsed.data.doctorId, startAt, endAt)) {
       res.status(409).json({ error: "doctor_conflict", message: "Doctor already has an overlapping appointment" });
       return;
@@ -143,9 +148,15 @@ router.patch("/appointments/:id", async (req, res): Promise<void> => {
     const newEnd: Date = update.endAt ?? existing.endAt ?? new Date(newStart.getTime() + 30 * 60 * 1000);
     const newDoctor = parsed.data.doctorId !== undefined ? parsed.data.doctorId : existing.doctorId;
     const newStatus = parsed.data.status ?? existing.status;
-    if (newDoctor && newStatus !== "cancelled" && await hasConflict(newDoctor, newStart, newEnd, id)) {
-      res.status(409).json({ error: "doctor_conflict" });
-      return;
+    if (newDoctor && newStatus !== "cancelled") {
+      if (!(await isWithinAvailability(newDoctor, newStart, newEnd))) {
+        res.status(409).json({ error: "outside_hours" });
+        return;
+      }
+      if (await hasConflict(newDoctor, newStart, newEnd, id)) {
+        res.status(409).json({ error: "doctor_conflict" });
+        return;
+      }
     }
   }
 

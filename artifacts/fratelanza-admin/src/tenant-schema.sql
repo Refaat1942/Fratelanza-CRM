@@ -513,3 +513,16 @@ CREATE INDEX IF NOT EXISTS idx_medical_materials_name      ON medical_materials(
 CREATE INDEX IF NOT EXISTS idx_medical_materials_sku       ON medical_materials(sku);
 CREATE INDEX IF NOT EXISTS idx_medical_materials_branch    ON medical_materials(branch_id);
 CREATE INDEX IF NOT EXISTS idx_medical_materials_low_stock ON medical_materials(quantity_in_stock, reorder_level);
+
+-- Phase H: Doctor Availability Windows
+CREATE TABLE IF NOT EXISTS doctor_availability (
+  id           SERIAL PRIMARY KEY,
+  doctor_id    INTEGER NOT NULL,
+  day_of_week  INTEGER NOT NULL,
+  start_time   TEXT NOT NULL,
+  end_time     TEXT NOT NULL,
+  branch_id    INTEGER,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS doctor_availability_doctor_idx     ON doctor_availability(doctor_id);
+CREATE INDEX IF NOT EXISTS doctor_availability_doctor_day_idx ON doctor_availability(doctor_id, day_of_week);

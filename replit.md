@@ -388,3 +388,37 @@ deploy/migrate-tenants.sh deploy/migrations/007-medical-materials.sql
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+
+## Phase H — AI Medical Summary + Doctor Availability (✅ DONE)
+
+Two sellable additions on top of Phase G. Both are tenant-feature-gated (reuse the existing `"medical"` flag so no admin migration needed).
+
+### AI Medical Summary (on-demand)
+
+- **Provider**: Anthropic via Replit AI Integrations (zero-config — env vars `AI_INTEGRATIONS_ANTHROPIC_API_KEY` + `AI_INTEGRATIONS_ANTHROPIC_BASE_URL` auto-provisioned). Model: `claude-sonnet-4-6`, max_tokens 8192. Skill ref: `.local/skills/ai-integrations-anthropic/SKILL.md`.
+- **Endpoint**: `POST /api/medical/patients/:id/ai-summary` body `{ language: "en" | "ar" }`. Mounted inside the medical router so it inherits `requireFeature("medical")` + `requirePermission("medical")` gating from `routes/index.ts`.
+- **Rate limit**: `express-rate-limit` 10 requests / 5 min per IP via `handler` (returns 429 `rate_limited`). Skipped when `NODE_ENV=test`.
+- **Prompt injection defense**: All patient-supplied free text (allergies, chronic conditions, visit notes) is wrapped in `<chart>...</chart>` XML tags, with system prompt instructing the model to treat tag contents as data only. Output rendered as text via `whitespace-pre-wrap` (no HTML).
+- **Bilingual disclaimer**: Every response includes a non-dismissable EN+AR disclaimer that the summary is for reference only, not a diagnosis. Banner renders even before the summary arrives.
+- **UI**: `<AiSummaryDialog>` (`components/medical/AiSummaryDialog.tsx`) — auto-fires the mutation in a `useEffect` keyed on `open` (NOT during render — would double-fire in StrictMode). Sparkles button on each patient card opens it.
+- **Data scope**: Joined chart data — patient demographics + last 20 visits + last 20 prescriptions (joined through `visits` since `prescriptions.visit_id` is the FK, not patient_id) + last 10 appointments. All queries go through tenant ALS db proxy, so cross-tenant leakage is impossible.
+
+### Doctor Availability Windows
+
+- **Schema** (`lib/db/src/schema/doctorAvailability.ts`): `doctor_availability(id, doctor_id, day_of_week 0–6, start_time HH:MM, end_time HH:MM, branch_id?, created_at)`. Indexed on `doctor_id` and `(doctor_id, day_of_week)`.
+- **Routes** (`routes/medical/doctor-availability.ts`): GET/POST/PATCH/DELETE + bulk PUT. Strict HH:MM regex validation. PATCH uses `InputBase.partial()` + explicit start<end check (Zod refine breaks `.partial()` chaining).
+- **Appointment enforcement** (`lib/availability.ts` `isWithinAvailability()`): called from `POST /appointments` AND `PATCH /appointments/:id` BEFORE the existing conflict check. Returns 409 `outside_hours` if doctor has windows defined but the slot falls outside any of them. Backward-compat: if a doctor has zero rows, all slots are allowed (opt-in restriction model).
+- **Timezone handling**: Uses `Intl.DateTimeFormat` with `timeZone: "Africa/Cairo"` (hardcoded — all Fratelanza tenants are Egyptian clinics; overridable via `CLINIC_TIMEZONE` env). Both day-of-week and HH:MM are computed in clinic-local time so the check works correctly regardless of where the server runs (UTC on Hostinger, local in Replit dev). Previously used `getHours()/getMinutes()/getDay()` which would be off by 2–3 hours in production.
+- **UI**: `pages/medical/doctor-availability.tsx` — doctor picker (filters employees by role regex `doctor|طبيب`, falls back to all staff if none match), add-window form, 7-day grid showing existing windows with delete buttons. Nav item "Doctor Hours / ساعات الأطباء" in the Medical group.
+
+### Deploy
+
+- **New migration**: `deploy/migrations/010-doctor-availability.sql` — idempotent `CREATE TABLE IF NOT EXISTS` + indices. Apply with `deploy/migrate-tenants.sh deploy/migrations/010-doctor-availability.sql`.
+- **Tenant baseline**: `artifacts/fratelanza-admin/src/tenant-schema.sql` appended with the same table (IF NOT EXISTS) — new tenants get it automatically.
+- **New dep**: `@anthropic-ai/sdk` ^0.32.1 on api-server.
+- **New CRM env (optional)**: `CLINIC_TIMEZONE` (default `Africa/Cairo`).
+- **New CRM env (auto-provisioned)**: `AI_INTEGRATIONS_ANTHROPIC_API_KEY`, `AI_INTEGRATIONS_ANTHROPIC_BASE_URL` — handled by Replit AI Integrations on dev; for VPS, set both manually or proxy through their own Anthropic key.
+
+### Known issue (pre-existing, NOT Phase H)
+
+`routes/medical/alerts.ts` periodic missed-appointments scan logs `column reference "first_name" is ambiguous` every minute. Pre-dates Phase H. Fix in next pass: alias `p.first_name` / `p.last_name` in the SELECT inside `stale_appts` CTE.
