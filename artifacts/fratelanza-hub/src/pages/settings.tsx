@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { Switch } from "@/components/ui/switch";
 import { useBranding } from "@/components/BrandingProvider";
-import { Upload, Image as ImageIcon, Trash2 as Trash } from "lucide-react";
+import { Upload, Image as ImageIcon, Trash2 as Trash, FileSignature } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 type AppUser = {
   id: number;
@@ -160,6 +161,7 @@ export default function Settings() {
       </div>
 
       <BrandingCard />
+      <PrescriptionHeaderCard />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-3">
@@ -337,6 +339,135 @@ export default function Settings() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function PrescriptionHeaderCard() {
+  const { t } = useLanguage();
+  const { user: me } = useAuth();
+  const { toast } = useToast();
+  const [data, setData] = React.useState<any>({
+    clinicPhone: "", clinicAddress: "", clinicAddressAr: "",
+    doctorTitle: "", doctorTitleAr: "", doctorLicense: "",
+    prescriptionFooter: "", prescriptionFooterAr: "",
+  });
+  const [saving, setSaving] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    if (me?.role !== "admin") return;
+    apiFetch("/settings/branding").then((row: any) => {
+      setData({
+        clinicPhone: row?.clinicPhone || "",
+        clinicAddress: row?.clinicAddress || "",
+        clinicAddressAr: row?.clinicAddressAr || "",
+        doctorTitle: row?.doctorTitle || "",
+        doctorTitleAr: row?.doctorTitleAr || "",
+        doctorLicense: row?.doctorLicense || "",
+        prescriptionFooter: row?.prescriptionFooter || "",
+        prescriptionFooterAr: row?.prescriptionFooterAr || "",
+      });
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, [me?.role]);
+
+  if (me?.role !== "admin") return null;
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      // Server merges by ownProperty — only the fields below are touched;
+      // companyName / logoUrl / primaryColor (managed by BrandingCard) are
+      // preserved automatically.
+      await apiFetch("/settings/branding", {
+        method: "PUT",
+        body: JSON.stringify({
+          clinicPhone: data.clinicPhone.trim() || null,
+          clinicAddress: data.clinicAddress.trim() || null,
+          clinicAddressAr: data.clinicAddressAr.trim() || null,
+          doctorTitle: data.doctorTitle.trim() || null,
+          doctorTitleAr: data.doctorTitleAr.trim() || null,
+          doctorLicense: data.doctorLicense.trim() || null,
+          prescriptionFooter: data.prescriptionFooter.trim() || null,
+          prescriptionFooterAr: data.prescriptionFooterAr.trim() || null,
+        }),
+      });
+      toast({ title: t("Prescription header saved", "تم حفظ ترويسة الوصفة") });
+    } catch (e: any) {
+      toast({ title: e?.message || t("Error", "خطأ"), variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <FileSignature size={18} className="text-primary" />
+          {t("Prescription Header", "ترويسة الوصفة الطبية")}
+        </CardTitle>
+        <CardDescription>
+          {t(
+            "These details appear on every printed prescription, along with your logo and the doctor's name from the visit.",
+            "تظهر هذه البيانات على كل وصفة مطبوعة، مع الشعار واسم الطبيب من الزيارة."
+          )}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {!loaded ? (
+          <div className="text-sm text-muted-foreground">{t("Loading…", "جاري التحميل…")}</div>
+        ) : (
+          <>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("Clinic phone", "هاتف العيادة")}</Label>
+                <Input dir="ltr" value={data.clinicPhone} onChange={e => setData({ ...data, clinicPhone: e.target.value })} placeholder="+20 100 000 0000" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("Doctor license #", "رقم ترخيص الطبيب")}</Label>
+                <Input dir="ltr" value={data.doctorLicense} onChange={e => setData({ ...data, doctorLicense: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("Clinic address (English)", "عنوان العيادة (إنجليزي)")}</Label>
+                <Input value={data.clinicAddress} onChange={e => setData({ ...data, clinicAddress: e.target.value })} placeholder="12 Tahrir St., Cairo" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("Clinic address (Arabic)", "عنوان العيادة (عربي)")}</Label>
+                <Input dir="rtl" value={data.clinicAddressAr} onChange={e => setData({ ...data, clinicAddressAr: e.target.value })} placeholder="١٢ شارع التحرير، القاهرة" />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("Doctor title (English)", "لقب الطبيب (إنجليزي)")}</Label>
+                <Input value={data.doctorTitle} onChange={e => setData({ ...data, doctorTitle: e.target.value })} placeholder="Consultant, Internal Medicine" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("Doctor title (Arabic)", "لقب الطبيب (عربي)")}</Label>
+                <Input dir="rtl" value={data.doctorTitleAr} onChange={e => setData({ ...data, doctorTitleAr: e.target.value })} placeholder="استشاري الباطنة العامة" />
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("Footer note (English)", "ملاحظة التذييل (إنجليزي)")}</Label>
+                <Textarea rows={2} value={data.prescriptionFooter} onChange={e => setData({ ...data, prescriptionFooter: e.target.value })} placeholder="Working hours: Sat–Thu, 4 PM – 9 PM" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("Footer note (Arabic)", "ملاحظة التذييل (عربي)")}</Label>
+                <Textarea rows={2} dir="rtl" value={data.prescriptionFooterAr} onChange={e => setData({ ...data, prescriptionFooterAr: e.target.value })} placeholder="مواعيد العمل: السبت–الخميس، ٤–٩ مساءً" />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={save} disabled={saving}>
+                {saving ? t("Saving…", "جاري الحفظ…") : t("Save Header", "حفظ الترويسة")}
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

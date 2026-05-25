@@ -526,3 +526,31 @@ CREATE TABLE IF NOT EXISTS doctor_availability (
 );
 CREATE INDEX IF NOT EXISTS doctor_availability_doctor_idx     ON doctor_availability(doctor_id);
 CREATE INDEX IF NOT EXISTS doctor_availability_doctor_day_idx ON doctor_availability(doctor_id, day_of_week);
+
+-- Phase F3: Clinic Staff + prescription header fields on tenant_settings.
+CREATE TABLE IF NOT EXISTS clinic_staff (
+  id              SERIAL PRIMARY KEY,
+  name            TEXT,
+  name_ar         TEXT,
+  role            TEXT NOT NULL DEFAULT 'doctor',
+  specialty       TEXT,
+  specialty_ar    TEXT,
+  license_number  TEXT,
+  phone           TEXT,
+  email           TEXT,
+  notes           TEXT,
+  active          BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_clinic_staff_active ON clinic_staff(active);
+CREATE INDEX IF NOT EXISTS idx_clinic_staff_role   ON clinic_staff(role);
+
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS clinic_phone            TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS clinic_address          TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS clinic_address_ar       TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS doctor_title            TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS doctor_title_ar         TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS doctor_license          TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS prescription_footer     TEXT;
+ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS prescription_footer_ar  TEXT;

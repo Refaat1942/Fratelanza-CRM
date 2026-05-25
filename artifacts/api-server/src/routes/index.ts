@@ -17,8 +17,11 @@ import stockMovementsRouter from "./stockMovements";
 import purchaseOrdersRouter from "./purchaseOrders";
 import invoicesRouter from "./invoices";
 import medicalRouter from "./medical";
-import dentalRouter from "./dental";
-import treatmentPlansRouter from "./treatmentPlans";
+import clinicStaffRouter from "./clinicStaff";
+// Dental + Treatment Plans removed from UI by user request (Phase F3).
+// Routers + DB tables kept intact for data preservation. Re-enable here if needed.
+// import dentalRouter from "./dental";
+// import treatmentPlansRouter from "./treatmentPlans";
 import branchesRouter from "./branches";
 import tenantSettingsRouter from "./tenantSettings";
 import { requireFeature } from "../middleware/feature";
@@ -49,7 +52,8 @@ router.use(requireFeature("rentals"), requirePermission("rentals"), rentalsRoute
 router.use(requireFeature("reports"), requirePermission("reports"), reportsRouter);
 router.use(requireFeature("invoicing"), requirePermission("invoicing"), invoicesRouter);
 router.use(requireFeature("medical"), requirePermission("medical"), medicalRouter);
-router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
-router.use(requireFeature("medical"), requirePermission("medical"), treatmentPlansRouter);
+router.use(requireFeature("clinic_staff"), requirePermission("medical"), clinicStaffRouter);
+// router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
+// router.use(requireFeature("medical"), requirePermission("medical"), treatmentPlansRouter);
 
 export default router;

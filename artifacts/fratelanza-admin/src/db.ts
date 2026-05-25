@@ -21,7 +21,7 @@ export const FEATURE_KEYS = [
   "reports",
   "notifications",
   "medical",
-  "dental",
+  "clinic_staff",
   "branches",
 ] as const;
 
@@ -41,7 +41,7 @@ export const FEATURE_GROUPS: { id: string; en: string; ar: string; keys: Feature
     id: "medical",
     en: "Medical / Clinic",
     ar: "العيادة الطبية",
-    keys: ["medical", "dental"],
+    keys: ["medical", "clinic_staff"],
   },
 ];
 
@@ -57,8 +57,8 @@ export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
   rentals: { en: "Rentals", ar: "الإيجارات" },
   reports: { en: "Reports", ar: "التقارير" },
   notifications: { en: "Notifications", ar: "الإشعارات" },
-  medical: { en: "Medical / Clinic", ar: "العيادة الطبية" },
-  dental: { en: "Dental Clinic", ar: "عيادة الأسنان" },
+  medical: { en: "Medical core (Patients · Visits · Invoices)", ar: "النظام الطبي (المرضى · الزيارات · الفواتير)" },
+  clinic_staff: { en: "Clinic Staff (doctors / nurses)", ar: "طاقم العيادة (أطباء / تمريض)" },
   branches: { en: "Multi-branch", ar: "تعدد الفروع" },
 };
 

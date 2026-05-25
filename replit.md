@@ -422,3 +422,32 @@ Two sellable additions on top of Phase G. Both are tenant-feature-gated (reuse t
 ### Known issue (pre-existing, NOT Phase H)
 
 `routes/medical/alerts.ts` periodic missed-appointments scan logs `column reference "first_name" is ambiguous` every minute. Pre-dates Phase H. Fix in next pass: alias `p.first_name` / `p.last_name` in the SELECT inside `stale_appts` CTE.
+
+## Phase F3 — Dental/Treatment-Plans removal + Clinic Staff + Prescription print (✅ DONE)
+
+Round-3 user fixes after live-clinic feedback:
+
+1. **Dental removed from UI** — sidebar entries, App.tsx routes, and `routes/index.ts` mounts commented out. DB tables (`dental_*`) + schema files + page files preserved untouched (zero-data-loss). To re-enable: uncomment the imports + router mounts + add `dental` back to `ALL_FEATURES` (me.ts) and `FEATURE_KEYS` (admin db.ts).
+2. **Treatment Plans removed from UI** — same approach as dental. User found the workflow unsuitable; tables + code preserved.
+3. **Renamed duplicate "Medical/Clinic" inner checkbox** — admin feature label `medical` is now `"Medical core (Patients · Visits · Invoices)"` / `"النظام الطبي (المرضى · الزيارات · الفواتير)"` to distinguish from the group header.
+4. **Clinic Staff page** — new sellable feature flag `"clinic_staff"` (own admin toggle, reuses `medical` permission). New table `clinic_staff` (name/nameAr, role enum: doctor/nurse/assistant/receptionist/technician/other, specialty, license #, phone, email, active). New routes `/api/clinic-staff` (CRUD), new page `/medical/clinic-staff` (role filter chips, hover-action cards, click-to-call/email). Kept separate from Team/HR `employees` table on purpose so a clinic operator can manage just their clinical roster.
+5. **Prescription print design** — extended `tenant_settings` with 8 new fields: `clinic_phone`, `clinic_address` (+ AR), `doctor_title` (+ AR), `doctor_license`, `prescription_footer` (+ AR). New `PrescriptionHeaderCard` in Settings page lets admin fill these once. New `Print` button on every prescription opens a styled new window with: clinic logo, clinic name, address, phone, date, doctor name (auto-pulled from the linked visit's assigned doctor — already joined server-side), doctor title + license, classic ℞ mark, patient block, medicine card with dosage/frequency/duration, instructions callout, two signature lines, footer note. RTL-aware (border accent flips, fonts swap, ar-EG date locale). Auto-triggers `window.print()` after a 250ms paint settle.
+
+### Files added / changed
+
+- **Schema**: `lib/db/src/schema/clinicStaff.ts` (NEW), `lib/db/src/schema/tenantSettings.ts` (extended), `lib/db/src/schema/index.ts` (export).
+- **API**: `artifacts/api-server/src/routes/clinicStaff.ts` (NEW), `routes/tenantSettings.ts` (extended BrandingInput + PUT), `routes/index.ts` (mount + commented dental/treatment-plans), `routes/me.ts` (`clinic_staff` in `ALL_FEATURES`).
+- **Admin**: `artifacts/fratelanza-admin/src/db.ts` (`clinic_staff` in `FEATURE_KEYS`, `FEATURE_GROUPS.medical.keys`, `FEATURE_LABELS`; relabeled `medical`).
+- **Frontend**: `artifacts/fratelanza-hub/src/pages/medical/clinic-staff.tsx` (NEW), `App.tsx` (route + import), `components/layout/AppLayout.tsx` (sidebar item), `pages/medical/prescriptions.tsx` (Print button + `printPrescription()` window template + `useBranding` + `/settings/branding` query), `pages/settings.tsx` (`PrescriptionHeaderCard` rendered after `BrandingCard`).
+- **Tenant schema**: `artifacts/fratelanza-admin/src/tenant-schema.sql` — appended `clinic_staff` table + 8 new tenant_settings columns (as `CREATE TABLE IF NOT EXISTS` + `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, safe).
+- **Existing tenants migration**: `deploy/migrations/004-clinic-staff-and-prescription-settings.sql` (idempotent, wrapped in BEGIN/COMMIT). Apply with `deploy/migrate-tenants.sh deploy/migrations/004-clinic-staff-and-prescription-settings.sql`.
+
+### Deploy
+
+```bash
+git pull origin main
+docker compose up -d --build app admin-app
+bash deploy/migrate-tenants.sh deploy/migrations/004-clinic-staff-and-prescription-settings.sql
+```
+
+Admin must then enable the `Clinic Staff (doctors / nurses)` checkbox per customer that wants it.

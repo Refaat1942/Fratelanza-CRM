@@ -76,19 +76,39 @@ const BrandingInput = z.object({
   companyName: z.string().trim().max(120).optional().nullable(),
   companyNameAr: z.string().trim().max(120).optional().nullable(),
   primaryColor: z.string().trim().regex(/^#[0-9a-fA-F]{6}$/, "primary_color must be #rrggbb").optional().nullable(),
+  clinicPhone: z.string().trim().max(40).optional().nullable(),
+  clinicAddress: z.string().trim().max(300).optional().nullable(),
+  clinicAddressAr: z.string().trim().max(300).optional().nullable(),
+  doctorTitle: z.string().trim().max(120).optional().nullable(),
+  doctorTitleAr: z.string().trim().max(120).optional().nullable(),
+  doctorLicense: z.string().trim().max(80).optional().nullable(),
+  prescriptionFooter: z.string().trim().max(500).optional().nullable(),
+  prescriptionFooterAr: z.string().trim().max(500).optional().nullable(),
 });
 
 router.put("/settings/branding", requireAdmin, async (req, res) => {
   const parsed = BrandingInput.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "invalid_input", issues: parsed.error.issues }); return; }
   await ensureRow();
-  await db.update(tenantSettingsTable)
-    .set({
-      companyName: parsed.data.companyName ?? null,
-      companyNameAr: parsed.data.companyNameAr ?? null,
-      primaryColor: parsed.data.primaryColor ?? null,
-    })
-    .where(eq(tenantSettingsTable.id, 1));
+  // Merge: only update fields actually present in the request body. This lets
+  // the two settings cards (BrandingCard and PrescriptionHeaderCard) save
+  // independently without clobbering each other's fields.
+  const sent = (k: string) => Object.prototype.hasOwnProperty.call(req.body ?? {}, k);
+  const update: Partial<typeof tenantSettingsTable.$inferInsert> = {};
+  if (sent("companyName"))         update.companyName         = parsed.data.companyName         ?? null;
+  if (sent("companyNameAr"))       update.companyNameAr       = parsed.data.companyNameAr       ?? null;
+  if (sent("primaryColor"))        update.primaryColor        = parsed.data.primaryColor        ?? null;
+  if (sent("clinicPhone"))         update.clinicPhone         = parsed.data.clinicPhone         ?? null;
+  if (sent("clinicAddress"))       update.clinicAddress       = parsed.data.clinicAddress       ?? null;
+  if (sent("clinicAddressAr"))     update.clinicAddressAr     = parsed.data.clinicAddressAr     ?? null;
+  if (sent("doctorTitle"))         update.doctorTitle         = parsed.data.doctorTitle         ?? null;
+  if (sent("doctorTitleAr"))       update.doctorTitleAr       = parsed.data.doctorTitleAr       ?? null;
+  if (sent("doctorLicense"))       update.doctorLicense       = parsed.data.doctorLicense       ?? null;
+  if (sent("prescriptionFooter"))  update.prescriptionFooter  = parsed.data.prescriptionFooter  ?? null;
+  if (sent("prescriptionFooterAr"))update.prescriptionFooterAr= parsed.data.prescriptionFooterAr?? null;
+  if (Object.keys(update).length > 0) {
+    await db.update(tenantSettingsTable).set(update).where(eq(tenantSettingsTable.id, 1));
+  }
   const row = await getSettings();
   res.json(row);
 });

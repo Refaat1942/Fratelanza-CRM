@@ -17,3 +17,4 @@ export * from "./treatmentPlans";
 export * from "./doctorAvailability";
 export * from "./branches";
 export * from "./tenantSettings";
+export * from "./clinicStaff";

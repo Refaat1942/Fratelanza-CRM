@@ -77,11 +77,11 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/medical/appointments", key: "medical", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
       { href: "/medical/visits", key: "medical", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
       { href: "/medical/prescriptions", key: "medical", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
-      { href: "/medical/treatment-plans", key: "medical", icon: ClipboardCheck, labelEn: "Treatment Plans", labelAr: "خطط العلاج" },
       { href: "/medical/materials", key: "medical", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
       { href: "/medical/invoices", key: "medical", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
       { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
       { href: "/medical/doctor-availability", key: "medical", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
+      { href: "/medical/clinic-staff", key: "medical", featureKey: "clinic_staff", icon: Stethoscope, labelEn: "Clinic Staff", labelAr: "طاقم العيادة" },
     ],
   },
 ];
