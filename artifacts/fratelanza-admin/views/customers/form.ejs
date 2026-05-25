@@ -107,17 +107,83 @@
       </div>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-xl p-6">
-      <h2 class="font-semibold text-slate-800 mb-3">Enabled features</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <% featureKeys.forEach(function(k) { %>
-          <label class="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
-            <input type="checkbox" name="feature_<%= k %>" <%= features[k] ? 'checked' : '' %> class="w-4 h-4" />
-            <span class="text-sm"><%= featureLabels[k].en %> <span class="text-slate-400">· <%= featureLabels[k].ar %></span></span>
-          </label>
-        <% }) %>
-      </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+      <h2 class="font-semibold text-slate-800">Enabled features</h2>
+      <p class="text-xs text-slate-500 -mt-3">Use the section toggle to enable or disable a whole section at once, or pick individual features.</p>
+
+      <% featureGroups.forEach(function(group) {
+           var groupChecked = group.keys.every(function(k){ return features[k]; });
+           var groupPartial = !groupChecked && group.keys.some(function(k){ return features[k]; });
+      %>
+        <div class="border border-slate-200 rounded-lg overflow-hidden" data-feature-group="<%= group.id %>">
+          <div class="flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">
+            <label class="flex items-center gap-3 cursor-pointer flex-1">
+              <input
+                type="checkbox"
+                class="w-5 h-5 accent-slate-900"
+                data-group-master="<%= group.id %>"
+                <%= groupChecked ? 'checked' : '' %>
+                <% if (groupPartial) { %> data-indeterminate="true"<% } %>
+              />
+              <span class="font-medium text-slate-800"><%= group.en %> <span class="text-slate-400 font-normal">· <%= group.ar %></span></span>
+              <span class="ml-auto text-xs text-slate-500" data-group-count="<%= group.id %>"></span>
+            </label>
+            <div class="flex items-center gap-1.5">
+              <button type="button" data-group-action="enable" data-group-target="<%= group.id %>" class="text-xs px-2 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100">Enable all</button>
+              <button type="button" data-group-action="disable" data-group-target="<%= group.id %>" class="text-xs px-2 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100">Disable all</button>
+            </div>
+          </div>
+          <div class="p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+            <% group.keys.forEach(function(k) { %>
+              <label class="flex items-center gap-3 px-3 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+                <input type="checkbox" name="feature_<%= k %>" <%= features[k] ? 'checked' : '' %> class="w-4 h-4" data-group-member="<%= group.id %>" />
+                <span class="text-sm"><%= featureLabels[k].en %> <span class="text-slate-400">· <%= featureLabels[k].ar %></span></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      <% }) %>
     </div>
+
+    <script>
+      (function () {
+        function members(groupId) {
+          return Array.prototype.slice.call(document.querySelectorAll('[data-group-member="' + groupId + '"]'));
+        }
+        function syncMaster(groupId) {
+          var master = document.querySelector('[data-group-master="' + groupId + '"]');
+          var mems = members(groupId);
+          var on = mems.filter(function (m) { return m.checked; }).length;
+          if (master) {
+            master.checked = on === mems.length && mems.length > 0;
+            master.indeterminate = on > 0 && on < mems.length;
+          }
+          var count = document.querySelector('[data-group-count="' + groupId + '"]');
+          if (count) count.textContent = on + ' / ' + mems.length + ' enabled';
+        }
+        document.querySelectorAll('[data-feature-group]').forEach(function (el) {
+          var groupId = el.getAttribute('data-feature-group');
+          var master = el.querySelector('[data-group-master="' + groupId + '"]');
+          if (master && master.getAttribute('data-indeterminate') === 'true') master.indeterminate = true;
+          if (master) master.addEventListener('change', function () {
+            members(groupId).forEach(function (m) { m.checked = master.checked; });
+            syncMaster(groupId);
+          });
+          members(groupId).forEach(function (m) {
+            m.addEventListener('change', function () { syncMaster(groupId); });
+          });
+          syncMaster(groupId);
+        });
+        document.querySelectorAll('[data-group-action]').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var groupId = btn.getAttribute('data-group-target');
+            var on = btn.getAttribute('data-group-action') === 'enable';
+            members(groupId).forEach(function (m) { m.checked = on; });
+            syncMaster(groupId);
+          });
+        });
+      })();
+    </script>
 
     <div class="pt-2 flex items-center gap-3">
       <button class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2 rounded-lg"><%= mode === 'new' ? 'Create customer' : 'Save changes' %></button>

@@ -27,6 +27,24 @@ export const FEATURE_KEYS = [
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 
+// Feature groups for admin UI — lets the operator enable/disable a whole section
+// (e.g. all Medical features) with one click instead of toggling each individually.
+// Storage in admin_customers.features is still per-key; this is presentation only.
+export const FEATURE_GROUPS: { id: string; en: string; ar: string; keys: FeatureKey[] }[] = [
+  {
+    id: "general",
+    en: "General",
+    ar: "عام",
+    keys: ["tasks", "crm", "finance", "team", "products", "suppliers", "purchase_orders", "invoicing", "rentals", "reports", "notifications", "branches"],
+  },
+  {
+    id: "medical",
+    en: "Medical / Clinic",
+    ar: "العيادة الطبية",
+    keys: ["medical", "dental"],
+  },
+];
+
 export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
   tasks: { en: "Tasks", ar: "المهام" },
   crm: { en: "CRM / Clients", ar: "إدارة العملاء" },
