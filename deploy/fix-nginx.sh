@@ -20,8 +20,8 @@ echo "==> CRM port $CRM_PORT, Admin port $ADMIN_PORT"
 
 # Other enabled sites were stealing admin.fratelanza.com or using dead upstreams.
 for f in /etc/nginx/sites-enabled/fratelanza /etc/nginx/sites-enabled/fratelanza-console; do
-  if [[ -e "$f" ]] && grep -q 'admin\.fratelanza\.com\|proxy_pass' "$f" 2>/dev/null; then
-    echo "==> Disabling conflicting site: $f"
+  if [[ -e "$f" ]] && grep -q 'admin\.fratelanza\.com' "$f" 2>/dev/null; then
+    echo "==> Disabling conflicting site (had admin.fratelanza.com): $f"
     mv -f "$f" "${f}.disabled-by-fratelanza-hub" 2>/dev/null || rm -f "$f"
   fi
 done
