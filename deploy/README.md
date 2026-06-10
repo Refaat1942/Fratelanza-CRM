@@ -146,11 +146,14 @@ needed for new customers.**
 On your laptop:
 1. Edit in Replit, push to GitHub via the Git panel (one click).
 
-On the VPS:
+On the VPS (use this every time — rebuilds apps **and** fixes nginx ports from `.env`):
 ```bash
-cd ~/Fratelanza-HUB
-git pull
-   docker compose -p fratelanza up -d --build
+cd ~/Fratelanza-HUB && git pull && docker compose -p fratelanza up -d --build && sudo bash deploy/fix-nginx.sh
+```
+
+If you only changed nginx ports or admin shows **502** while `curl http://127.0.0.1:2026/login` works:
+```bash
+cd ~/Fratelanza-HUB && git pull && sudo bash deploy/fix-nginx.sh
 ```
 
 That's it for both apps. They share the same git checkout.

@@ -212,8 +212,10 @@ router.delete("/physio-sessions/:id", async (req, res): Promise<void> => {
 router.get("/physio-plans", async (req, res): Promise<void> => {
   const bw = branchWhere(req, physioTreatmentPlansTable.branchId);
   const status = typeof req.query.status === "string" ? req.query.status : "";
+  const patientId = parseInt(String(req.query.patientId || ""), 10);
   const conds = [];
   if (bw) conds.push(bw);
+  if (Number.isFinite(patientId)) conds.push(eq(physioTreatmentPlansTable.patientId, patientId));
   if (status) conds.push(eq(physioTreatmentPlansTable.status, status));
   let q = db.select().from(physioTreatmentPlansTable).$dynamic();
   if (conds.length) q = q.where(and(...conds));

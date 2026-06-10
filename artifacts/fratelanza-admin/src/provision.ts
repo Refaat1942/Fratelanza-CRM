@@ -26,8 +26,10 @@ const ALL_PERMISSIONS = [
 ];
 
 async function seedEgyptCatalog(client: pg.PoolClient): Promise<void> {
+  const seedSql = loadEgyptCatalogSeedSql();
+  if (!seedSql.trim()) return;
   try {
-    await client.query(EGYPT_CATALOG_SEED_SQL);
+    await client.query(seedSql);
   } catch (err: unknown) {
     const code = (err as { code?: string } | null)?.code;
     // Older tenant schemas may not have physio/nutrition tables yet — skip seed then.

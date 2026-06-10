@@ -36,6 +36,14 @@ Fratelanza is designed to coexist on a shared VPS **without overlapping** ports,
 
 ## Updating without affecting other projects
 
+**Standard deploy (pull + rebuild + nginx fix):**
+
+```bash
+cd ~/Fratelanza-HUB && git pull && docker compose -p fratelanza up -d --build && sudo bash deploy/fix-nginx.sh
+```
+
+Legacy manual steps:
+
 ```bash
 cd ~/Fratelanza-HUB
 git pull origin main
