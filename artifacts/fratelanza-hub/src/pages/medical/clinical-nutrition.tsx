@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
 import { apiFetch } from "@/lib/api";
@@ -15,6 +15,10 @@ import { MedicalDataTable, MedicalListToolbar } from "@/components/medical/Medic
 import { Apple, ClipboardList, Salad, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { PatientSearchSelect } from "@/components/medical/PatientSearchSelect";
+import { SearchableSelect } from "@/components/medical/SearchableSelect";
+import { useEgyptMedicalCatalog } from "@/hooks/useEgyptMedicalCatalog";
+import { toSearchableOptions } from "@/lib/catalogHelpers";
 
 type Assessment = {
   id: number; patientId: number; assessmentDate: string;
@@ -55,6 +59,17 @@ export default function ClinicalNutritionPage() {
   const isAr = language === "ar";
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { catalog } = useEgyptMedicalCatalog();
+  const activityOptions = useMemo(
+    () => toSearchableOptions(catalog?.activityLevels ?? ACTIVITY_LEVELS),
+    [catalog?.activityLevels],
+  );
+  const foodCategoryOptions = useMemo(
+    () => toSearchableOptions(
+      FOOD_CATEGORIES.map((c) => ({ en: c.en, ar: c.ar, value: c.value })),
+    ),
+    [],
+  );
 
   const [tab, setTab] = useState("assessments");
   const [search, setSearch] = useState("");
@@ -295,14 +310,10 @@ export default function ClinicalNutritionPage() {
           <div className="grid gap-3">
             <div>
               <Label>{t("Patient", "المريض")}</Label>
-              <Select value={assessForm.patientId} onValueChange={(v) => setAssessForm((f) => ({ ...f, patientId: v }))}>
-                <SelectTrigger><SelectValue placeholder={t("Select patient", "اختر المريض")} /></SelectTrigger>
-                <SelectContent>
-                  {(patients ?? []).map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.firstName} {p.lastName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PatientSearchSelect
+                value={assessForm.patientId}
+                onChange={(v) => setAssessForm((f) => ({ ...f, patientId: v }))}
+              />
             </div>
             <div>
               <Label>{t("Date", "التاريخ")}</Label>
@@ -319,14 +330,12 @@ export default function ClinicalNutritionPage() {
             </div>
             <div>
               <Label>{t("Activity level", "مستوى النشاط")}</Label>
-              <Select value={assessForm.activityLevel} onValueChange={(v) => setAssessForm((f) => ({ ...f, activityLevel: v }))}>
-                <SelectTrigger><SelectValue placeholder={t("Select", "اختر")} /></SelectTrigger>
-                <SelectContent>
-                  {ACTIVITY_LEVELS.map((a) => (
-                    <SelectItem key={a.value} value={a.value}>{isAr ? a.ar : a.en}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={activityOptions}
+                value={assessForm.activityLevel}
+                onChange={(v) => setAssessForm((f) => ({ ...f, activityLevel: v }))}
+                placeholder={{ en: "Search activity level…", ar: "ابحث عن مستوى النشاط…" }}
+              />
             </div>
             <div>
               <Label>{t("Goals", "الأهداف")}</Label>

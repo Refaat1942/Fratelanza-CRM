@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
 import { apiFetch } from "@/lib/api";
@@ -13,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Edit, Trash2, ListPlus, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
+import { SearchableSelect } from "@/components/medical/SearchableSelect";
+import { useEgyptMedicalCatalog } from "@/hooks/useEgyptMedicalCatalog";
+import { toSearchableOptions } from "@/lib/catalogHelpers";
 
 type Procedure = {
   id: number;
@@ -41,6 +44,11 @@ export default function Procedures() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
+  const { catalog } = useEgyptMedicalCatalog();
+  const categoryOptions = useMemo(
+    () => toSearchableOptions(catalog?.procedureCategories ?? CATEGORIES.map((c) => ({ en: c.en, ar: c.ar, value: c.v }))),
+    [catalog?.procedureCategories],
+  );
 
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -185,12 +193,12 @@ export default function Procedures() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>{t("Category", "الفئة")}</Label>
-                  <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIES.map(c => <SelectItem key={c.v} value={c.v}>{isAr ? c.ar : c.en}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    options={categoryOptions}
+                    value={form.category}
+                    onChange={(v) => setForm({ ...form, category: v || "general" })}
+                    placeholder={{ en: "Search category…", ar: "ابحث عن الفئة…" }}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("Price (EGP) *", "السعر (ج.م) *")}</Label>

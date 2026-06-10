@@ -9,10 +9,26 @@ const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SCHEMA_SQL = fs.readFileSync(path.join(__dirname, "tenant-schema.sql"), "utf8");
+const EGYPT_CATALOG_SEED_SQL = fs.readFileSync(
+  path.join(__dirname, "../../../deploy/seed/egypt-clinic-catalog.sql"),
+  "utf8",
+);
 
 const ALL_PERMISSIONS = [
-  "dashboard","tasks","crm","finance","team","products","rentals","suppliers","purchase_orders","reports","notifications","settings",
+  "dashboard", "tasks", "crm", "finance", "team", "products", "rentals", "suppliers",
+  "purchase_orders", "invoicing", "reports", "notifications", "settings", "medical",
 ];
+
+async function seedEgyptCatalog(client: pg.PoolClient): Promise<void> {
+  try {
+    await client.query(EGYPT_CATALOG_SEED_SQL);
+  } catch (err: unknown) {
+    const code = (err as { code?: string } | null)?.code;
+    // Older tenant schemas may not have physio/nutrition tables yet — skip seed then.
+    if (code === "42P01") return;
+    throw err;
+  }
+}
 
 // Strict validator — dbName is interpolated as an identifier (no parameter
 // binding for CREATE DATABASE), so this is the only thing standing between us
@@ -88,6 +104,7 @@ export async function provisionTenantDb(dbName: string): Promise<ProvisionOutcom
        ON CONFLICT (username) DO NOTHING`,
       ["admin", passwordHash, JSON.stringify(ALL_PERMISSIONS)],
     );
+    await seedEgyptCatalog(client);
     await client.query("COMMIT");
     return { status: "ready" };
   } catch (err: unknown) {
@@ -98,7 +115,13 @@ export async function provisionTenantDb(dbName: string): Promise<ProvisionOutcom
     // call it ready.
     const code = (err as { code?: string } | null)?.code;
     if (code === "42P07") {
-      await seedTenantAdmin(tenantPool);
+      const retry = await tenantPool.connect();
+      try {
+        await seedTenantAdmin(tenantPool);
+        await seedEgyptCatalog(retry);
+      } finally {
+        retry.release();
+      }
       return { status: "ready" };
     }
     throw err;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
 import { apiFetch } from "@/lib/api";
@@ -15,6 +15,9 @@ import { MedicalDataTable, MedicalListToolbar } from "@/components/medical/Medic
 import { Activity, ClipboardList, Dumbbell, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { PatientSearchSelect } from "@/components/medical/PatientSearchSelect";
+import { SearchableSelect } from "@/components/medical/SearchableSelect";
+import { toSearchableOptions } from "@/lib/catalogHelpers";
 
 type Assessment = {
   id: number; patientId: number; assessmentDate: string; bodyRegion?: string | null;
@@ -47,6 +50,7 @@ export default function PhysiotherapyPage() {
   const isAr = language === "ar";
   const qc = useQueryClient();
   const { toast } = useToast();
+  const bodyRegionOptions = useMemo(() => toSearchableOptions(BODY_REGIONS), []);
 
   const [tab, setTab] = useState("sessions");
   const [search, setSearch] = useState("");
@@ -290,14 +294,10 @@ export default function PhysiotherapyPage() {
           <div className="grid gap-3">
             <div>
               <Label>{t("Patient", "المريض")}</Label>
-              <Select value={sessionForm.patientId} onValueChange={(v) => setSessionForm((f) => ({ ...f, patientId: v }))}>
-                <SelectTrigger><SelectValue placeholder={t("Select patient", "اختر المريض")} /></SelectTrigger>
-                <SelectContent>
-                  {(patients ?? []).map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.firstName} {p.lastName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <PatientSearchSelect
+                value={sessionForm.patientId}
+                onChange={(v) => setSessionForm((f) => ({ ...f, patientId: v }))}
+              />
             </div>
             <div>
               <Label>{t("Date & time", "التاريخ والوقت")}</Label>
@@ -306,14 +306,12 @@ export default function PhysiotherapyPage() {
             </div>
             <div>
               <Label>{t("Body region", "منطقة الجسم")}</Label>
-              <Select value={sessionForm.bodyRegion} onValueChange={(v) => setSessionForm((f) => ({ ...f, bodyRegion: v }))}>
-                <SelectTrigger><SelectValue placeholder={t("Select region", "اختر المنطقة")} /></SelectTrigger>
-                <SelectContent>
-                  {BODY_REGIONS.map((r) => (
-                    <SelectItem key={r.en} value={r.en}>{isAr ? r.ar : r.en}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={bodyRegionOptions}
+                value={sessionForm.bodyRegion}
+                onChange={(v) => setSessionForm((f) => ({ ...f, bodyRegion: v }))}
+                placeholder={{ en: "Search body region…", ar: "ابحث عن منطقة الجسم…" }}
+              />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div><Label>{t("Pain before (0-10)", "الألم قبل")}</Label>

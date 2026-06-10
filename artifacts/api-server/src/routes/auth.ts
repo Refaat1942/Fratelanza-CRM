@@ -6,7 +6,10 @@ import rateLimit from "express-rate-limit";
 
 const router: IRouter = Router();
 
-const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","suppliers","purchase_orders","invoicing","reports","notifications","settings"];
+const ALL_PERMISSIONS = [
+  "dashboard", "tasks", "crm", "finance", "team", "products", "rentals", "suppliers",
+  "purchase_orders", "invoicing", "reports", "notifications", "settings", "medical",
+];
 
 // Default seed password — used to detect first-login + force a change.
 const DEFAULT_ADMIN_PASSWORD = "admin123";

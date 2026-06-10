@@ -12,6 +12,7 @@ import aiSummaryRouter from "./ai-summary";
 import proceduresRouter from "./procedures";
 import physiotherapyRouter from "./physiotherapy";
 import clinicalNutritionRouter from "./clinicalNutrition";
+import catalogRouter from "./catalog";
 import { requireMedicalSubmodule, requirePhysiotherapy, requireClinicalNutrition } from "../../lib/medicalFeatures";
 
 const router: IRouter = Router();
@@ -25,6 +26,7 @@ router.use(requireMedicalSubmodule("medical_materials"), materialsRouter);
 router.use(requireMedicalSubmodule("medical_prescriptions"), prescriptionsRouter);
 router.use(requireMedicalSubmodule("medical_doctor_availability"), doctorAvailabilityRouter);
 router.use(requireMedicalSubmodule("medical_procedures"), proceduresRouter);
+router.use(catalogRouter);
 router.use(alertsRouter);
 router.use(aiSummaryRouter);
 router.use(requirePhysiotherapy, physiotherapyRouter);
