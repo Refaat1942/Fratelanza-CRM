@@ -18,3 +18,5 @@ export * from "./doctorAvailability";
 export * from "./branches";
 export * from "./tenantSettings";
 export * from "./clinicStaff";
+export * from "./physiotherapy";
+export * from "./clinicalNutrition";

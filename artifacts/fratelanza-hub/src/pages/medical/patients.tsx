@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
 import { apiFetch } from "@/lib/api";
@@ -25,6 +25,12 @@ import { EmptyState } from "@/components/ui-ext/empty-state";
 import { SectionCard } from "@/components/ui-ext/section-card";
 import { BranchSelect } from "@/components/BranchSelect";
 import { useAuth } from "@/components/AuthProvider";
+import { MedicalListToolbar } from "@/components/medical/MedicalListToolbar";
+import { SearchableSelect } from "@/components/medical/SearchableSelect";
+import { CatalogPickTextarea } from "@/components/medical/CatalogPickTextarea";
+import { useEgyptMedicalCatalog } from "@/hooks/useEgyptMedicalCatalog";
+import { toSearchableOptions } from "@/lib/catalogHelpers";
+import { EGYPT_GOVERNORATES, INSURANCE_TYPES } from "@/lib/egyptGovernorates";
 
 type Patient = {
   id: number;
@@ -33,6 +39,12 @@ type Patient = {
   gender?: "male" | "female" | "other" | null;
   dateOfBirth?: string | null;
   nationalId?: string | null;
+  governorate?: string | null; governorateAr?: string | null;
+  city?: string | null; cityAr?: string | null;
+  maritalStatus?: string | null;
+  occupation?: string | null; occupationAr?: string | null;
+  insuranceType?: string | null; insuranceNumber?: string | null;
+  insuranceProvider?: string | null; insuranceProviderAr?: string | null;
   phone?: string | null; email?: string | null;
   address?: string | null; addressAr?: string | null;
   bloodType?: string | null;
@@ -48,7 +60,11 @@ type Stats = { total: number; recent: number };
 
 const EMPTY: Patient = {
   id: 0, firstName: "", firstNameAr: "", lastName: "", lastNameAr: "",
-  gender: null, dateOfBirth: "", nationalId: "", phone: "", email: "",
+  gender: null, dateOfBirth: "", nationalId: "",
+  governorate: null, governorateAr: null, city: null, cityAr: null,
+  maritalStatus: null, occupation: null, occupationAr: null,
+  insuranceType: null, insuranceNumber: null, insuranceProvider: null, insuranceProviderAr: null,
+  phone: "", email: "",
   address: "", addressAr: "", bloodType: "", allergies: "", chronicConditions: "",
   emergencyContactName: "", emergencyContactPhone: "", notes: "", notesAr: "",
   branchId: null,
@@ -72,10 +88,40 @@ export default function Patients() {
   const confirmDelete = useDeleteConfirm();
 
   const [search, setSearch] = useState("");
+  const [governorateFilter, setGovernorateFilter] = useState("");
+  const [insuranceFilter, setInsuranceFilter] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState<Patient>(EMPTY);
   const [aiSummaryFor, setAiSummaryFor] = useState<Patient | null>(null);
+  const { catalog } = useEgyptMedicalCatalog();
+
+  const governorateOptions = useMemo(
+    () => toSearchableOptions(catalog?.governorates ?? EGYPT_GOVERNORATES),
+    [catalog?.governorates],
+  );
+  const insuranceOptions = useMemo(
+    () => toSearchableOptions(catalog?.insuranceTypes ?? [...INSURANCE_TYPES]),
+    [catalog?.insuranceTypes],
+  );
+  const cityOptions = useMemo(() => {
+    if (!form.governorate) return [];
+    const cities = catalog?.citiesByGovernorate?.[form.governorate] ?? [];
+    return toSearchableOptions(cities);
+  }, [catalog?.citiesByGovernorate, form.governorate]);
+  const allergyOptions = useMemo(() => toSearchableOptions(catalog?.allergies ?? []), [catalog?.allergies]);
+  const chronicOptions = useMemo(() => toSearchableOptions(catalog?.chronicConditions ?? []), [catalog?.chronicConditions]);
+  const maritalOptions = useMemo(() => toSearchableOptions(catalog?.maritalStatuses ?? []), [catalog?.maritalStatuses]);
+  const bloodOptions = useMemo(
+    () => (catalog?.bloodTypes ?? ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]).map((b) => ({ value: b, labelEn: b, labelAr: b })),
+    [catalog?.bloodTypes],
+  );
+  const insuranceProviderOptions = useMemo(
+    () => toSearchableOptions(catalog?.insuranceProviders ?? []),
+    [catalog?.insuranceProviders],
+  );
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["patients-stats"],
@@ -83,8 +129,16 @@ export default function Patients() {
   });
 
   const { data: patients, isLoading } = useQuery<Patient[]>({
-    queryKey: ["patients", search],
-    queryFn: () => apiFetch(`/patients${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    queryKey: ["patients", search, governorateFilter, insuranceFilter, sortBy, sortDir],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (search) p.set("search", search);
+      if (governorateFilter) p.set("governorate", governorateFilter);
+      if (insuranceFilter) p.set("insuranceType", insuranceFilter);
+      p.set("sortBy", sortBy);
+      p.set("sortDir", sortDir);
+      return apiFetch(`/patients?${p}`);
+    },
   });
 
   const invalidate = () => {
@@ -129,6 +183,17 @@ export default function Patients() {
       gender: form.gender || null,
       dateOfBirth: form.dateOfBirth || null,
       nationalId: form.nationalId || null,
+      governorate: form.governorate || null,
+      governorateAr: form.governorateAr || null,
+      city: form.city || null,
+      cityAr: form.cityAr || null,
+      maritalStatus: form.maritalStatus || null,
+      occupation: form.occupation || null,
+      occupationAr: form.occupationAr || null,
+      insuranceType: form.insuranceType || null,
+      insuranceNumber: form.insuranceNumber || null,
+      insuranceProvider: form.insuranceProvider || null,
+      insuranceProviderAr: form.insuranceProviderAr || null,
       phone: form.phone || null,
       email: form.email || null,
       bloodType: form.bloodType || null,
@@ -207,12 +272,37 @@ export default function Patients() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">{t("Blood Type", "فصيلة الدم")}</Label>
-            <Select value={form.bloodType || ""} onValueChange={v => setForm({ ...form, bloodType: v || null })}>
-              <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-              <SelectContent>
-                {["A+","A-","B+","B-","AB+","AB-","O+","O-"].map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              options={bloodOptions}
+              value={form.bloodType || ""}
+              onChange={(v) => setForm({ ...form, bloodType: v || null })}
+              placeholder={{ en: "Search blood type…", ar: "ابحث عن فصيلة الدم…" }}
+              allowClear
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Marital status", "الحالة الاجتماعية")}</Label>
+            <SearchableSelect
+              options={maritalOptions}
+              value={form.maritalStatus || ""}
+              onChange={(v) => setForm({ ...form, maritalStatus: v || null })}
+              placeholder={{ en: "Search marital status…", ar: "ابحث عن الحالة الاجتماعية…" }}
+              allowClear
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Occupation", "المهنة")}</Label>
+            <Input
+              dir={lf.dir}
+              value={isAr ? (form.occupationAr || "") : (form.occupation || "")}
+              onChange={(e) => isAr
+                ? setForm({ ...form, occupationAr: e.target.value })
+                : setForm({ ...form, occupation: e.target.value })}
+              placeholder={t("e.g. Teacher, Engineer", "مثل: مدرس، مهندس")}
+            />
           </div>
         </div>
 
@@ -232,6 +322,78 @@ export default function Patients() {
           <Input dir="ltr" value={form.nationalId || ""} onChange={e => setForm({ ...form, nationalId: e.target.value })} />
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Governorate", "المحافظة")}</Label>
+            <SearchableSelect
+              options={governorateOptions}
+              value={form.governorate || ""}
+              onChange={(v) => {
+                const g = (catalog?.governorates ?? EGYPT_GOVERNORATES).find((x) => x.en === v);
+                setForm({ ...form, governorate: v || null, governorateAr: g?.ar ?? null, city: null, cityAr: null });
+              }}
+              placeholder={{ en: "Search governorate…", ar: "ابحث عن المحافظة…" }}
+              allowClear
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("City", "المدينة")}</Label>
+            {cityOptions.length > 0 ? (
+              <SearchableSelect
+                options={cityOptions}
+                value={form.city || ""}
+                onChange={(v) => {
+                  const c = catalog?.citiesByGovernorate?.[form.governorate || ""]?.find((x) => x.en === v);
+                  setForm({ ...form, city: v || null, cityAr: c?.ar ?? form.cityAr });
+                }}
+                placeholder={{ en: "Search city / district…", ar: "ابحث عن المدينة / الحي…" }}
+                allowClear
+              />
+            ) : (
+              <Input
+                value={isAr ? (form.cityAr || "") : (form.city || "")}
+                onChange={(e) => isAr ? setForm({ ...form, cityAr: e.target.value }) : setForm({ ...form, city: e.target.value })}
+                placeholder={t("Type city name", "اكتب اسم المدينة")}
+              />
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Insurance", "التأمين الصحي")}</Label>
+            <SearchableSelect
+              options={insuranceOptions}
+              value={form.insuranceType || ""}
+              onChange={(v) => setForm({ ...form, insuranceType: v || null })}
+              placeholder={{ en: "Search insurance type…", ar: "ابحث عن نوع التأمين…" }}
+              allowClear
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Insurance provider", "جهة التأمين")}</Label>
+            <SearchableSelect
+              options={insuranceProviderOptions}
+              value={form.insuranceProvider || ""}
+              onChange={(v) => {
+                const p = catalog?.insuranceProviders?.find((x) => (x.value ?? x.en) === v);
+                setForm({
+                  ...form,
+                  insuranceProvider: v || null,
+                  insuranceProviderAr: p?.ar ?? form.insuranceProviderAr,
+                });
+              }}
+              placeholder={{ en: "Search provider…", ar: "ابحث عن جهة التأمين…" }}
+              allowClear
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-semibold">{t("Insurance number", "رقم التأمين")}</Label>
+          <Input dir="ltr" value={form.insuranceNumber || ""} onChange={e => setForm({ ...form, insuranceNumber: e.target.value })} />
+        </div>
+
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold">{t("Address", "العنوان")}</Label>
           <Textarea
@@ -243,14 +405,22 @@ export default function Patients() {
 
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold flex items-center gap-1.5"><AlertTriangle size={13} className="text-amber-600"/>{t("Allergies", "الحساسية")}</Label>
-          <Textarea rows={2} value={form.allergies || ""} onChange={e => setForm({ ...form, allergies: e.target.value })}
-            placeholder={t("e.g. Penicillin, peanuts", "مثل: البنسلين، الفول السوداني")} />
+          <CatalogPickTextarea
+            value={form.allergies || ""}
+            onChange={(v) => setForm({ ...form, allergies: v })}
+            options={allergyOptions}
+            placeholder={{ en: "e.g. Penicillin, peanuts", ar: "مثل: البنسلين، الفول السوداني" }}
+          />
         </div>
 
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold">{t("Chronic Conditions", "أمراض مزمنة")}</Label>
-          <Textarea rows={2} value={form.chronicConditions || ""} onChange={e => setForm({ ...form, chronicConditions: e.target.value })}
-            placeholder={t("e.g. Diabetes, hypertension", "مثل: السكري، ضغط الدم")} />
+          <CatalogPickTextarea
+            value={form.chronicConditions || ""}
+            onChange={(v) => setForm({ ...form, chronicConditions: v })}
+            options={chronicOptions}
+            placeholder={{ en: "e.g. Diabetes, hypertension", ar: "مثل: السكري، ضغط الدم" }}
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -325,22 +495,42 @@ export default function Patients() {
         />
       </div>
 
-      <SectionCard
-        title={t("All Patients", "كل المرضى")}
-        actions={
-          <div className="relative w-full sm:w-72">
-            <Search size={14} className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-2.5" : "left-2.5"} text-muted-foreground`} />
-            <Input
-              placeholder={t("Search by name, phone, national ID…", "بحث بالاسم، الهاتف، الرقم القومي…")}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`h-8 ${isRtl ? "pr-8" : "pl-8"}`}
-              dir={lf.dir}
-            />
-          </div>
-        }
-        noPadding
-      >
+      <SectionCard title={t("All Patients", "كل المرضى")}>
+        <MedicalListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={{ en: "Search name, phone, national ID, city…", ar: "بحث بالاسم، الهاتف، الرقم القومي، المدينة…" }}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSortByChange={setSortBy}
+          onSortDirToggle={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+          sortOptions={[
+            { value: "createdAt", labelEn: "Date added", labelAr: "تاريخ الإضافة" },
+            { value: "firstName", labelEn: "Name", labelAr: "الاسم" },
+            { value: "governorate", labelEn: "Governorate", labelAr: "المحافظة" },
+          ]}
+          exportUrl="/api/patients/export.xlsx"
+          extraFilters={
+            <>
+              <SearchableSelect
+                className="w-[180px]"
+                options={governorateOptions}
+                value={governorateFilter}
+                onChange={setGovernorateFilter}
+                placeholder={{ en: "All governorates", ar: "كل المحافظات" }}
+                allowClear
+              />
+              <SearchableSelect
+                className="w-[180px]"
+                options={insuranceOptions}
+                value={insuranceFilter}
+                onChange={setInsuranceFilter}
+                placeholder={{ en: "All insurance", ar: "كل التأمينات" }}
+                allowClear
+              />
+            </>
+          }
+        />
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
             {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-44 w-full rounded-md" />)}

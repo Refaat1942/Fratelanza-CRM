@@ -7,6 +7,7 @@ import {
   patientsTable,
   employeesTable,
 } from "@workspace/db";
+import { sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -59,6 +60,42 @@ router.get("/prescriptions", async (req: Request, res: Response): Promise<void> 
     .orderBy(desc(prescriptionsTable.createdAt))
     .limit(500);
   res.json(rows);
+});
+
+router.get("/prescriptions/export.xlsx", async (req: Request, res: Response): Promise<void> => {
+  const patientId = req.query.patient ? Number(req.query.patient) : null;
+  const visitId = req.query.visit ? Number(req.query.visit) : null;
+  const whereParts: any[] = [];
+  if (visitId && Number.isFinite(visitId)) whereParts.push(eq(prescriptionsTable.visitId, visitId));
+  if (patientId && Number.isFinite(patientId)) whereParts.push(eq(visitsTable.patientId, patientId));
+  const rows = await db
+    .select({
+      id: prescriptionsTable.id,
+      medicineName: prescriptionsTable.medicineName,
+      dosage: prescriptionsTable.dosage,
+      frequency: prescriptionsTable.frequency,
+      durationDays: prescriptionsTable.durationDays,
+      patientFirstName: patientsTable.firstName,
+      patientLastName: patientsTable.lastName,
+      doctorName: employeesTable.name,
+      visitDate: visitsTable.visitDate,
+    })
+    .from(prescriptionsTable)
+    .leftJoin(visitsTable, eq(visitsTable.id, prescriptionsTable.visitId))
+    .leftJoin(patientsTable, eq(patientsTable.id, visitsTable.patientId))
+    .leftJoin(employeesTable, eq(employeesTable.id, visitsTable.doctorId))
+    .where(whereParts.length ? and(...whereParts) : undefined)
+    .orderBy(desc(prescriptionsTable.createdAt))
+    .limit(5000);
+  await sendExcel(res, "prescriptions.xlsx", "Prescriptions", [
+    { header: "Medicine", key: "medicineName" },
+    { header: "Patient", key: "patientFirstName", format: (r) => `${r.patientFirstName ?? ""} ${r.patientLastName ?? ""}`.trim() },
+    { header: "Doctor", key: "doctorName" },
+    { header: "Dosage", key: "dosage" },
+    { header: "Frequency", key: "frequency" },
+    { header: "Days", key: "durationDays" },
+    { header: "Visit Date", key: "visitDate", format: (r) => String(r.visitDate ?? "") },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.post("/prescriptions", async (req: Request, res: Response): Promise<void> => {

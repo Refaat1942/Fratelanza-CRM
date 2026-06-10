@@ -17,6 +17,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
 import { BranchBadge } from "@/components/BranchBadge";
+import { PatientSearchSelect } from "@/components/medical/PatientSearchSelect";
+import { CatalogPickTextarea } from "@/components/medical/CatalogPickTextarea";
+import { useEgyptMedicalCatalog } from "@/hooks/useEgyptMedicalCatalog";
+import { toSearchableOptions } from "@/lib/catalogHelpers";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
@@ -78,6 +82,8 @@ export default function Visits() {
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
   const [, navigate] = useLocation();
+  const { catalog } = useEgyptMedicalCatalog();
+  const diagnosisOptions = React.useMemo(() => toSearchableOptions(catalog?.diagnoses ?? []), [catalog?.diagnoses]);
 
   const initialPatient = parseQuery().get("patient") || "all";
   const [patientFilter, setPatientFilter] = useState<string>(initialPatient);
@@ -358,12 +364,10 @@ export default function Visits() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>{t("Patient *", "المريض *")}</Label>
-                  <Select value={form.patientId} onValueChange={(v) => setForm({ ...form, patientId: v })} required>
-                    <SelectTrigger><SelectValue placeholder={t("Select patient", "اختر مريض")} /></SelectTrigger>
-                    <SelectContent>
-                      {(patients || []).map(p => <SelectItem key={p.id} value={String(p.id)}>{patientLabel(p)}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <PatientSearchSelect
+                    value={form.patientId}
+                    onChange={(v) => setForm({ ...form, patientId: v })}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>{t("Doctor", "الطبيب")}</Label>
@@ -397,9 +401,12 @@ export default function Visits() {
 
               <div className="space-y-2">
                 <Label>{t("Diagnosis", "التشخيص")}</Label>
-                <Textarea rows={2} dir={isAr ? "rtl" : "ltr"}
+                <CatalogPickTextarea
                   value={isAr ? form.diagnosisAr : form.diagnosis}
-                  onChange={(e) => isAr ? setForm({ ...form, diagnosisAr: e.target.value }) : setForm({ ...form, diagnosis: e.target.value })} />
+                  onChange={(v) => isAr ? setForm({ ...form, diagnosisAr: v }) : setForm({ ...form, diagnosis: v })}
+                  options={diagnosisOptions}
+                  placeholder={{ en: "Search common diagnoses or type…", ar: "ابحث عن تشخيصات شائعة أو اكتب…" }}
+                />
               </div>
 
               <div className="space-y-2">

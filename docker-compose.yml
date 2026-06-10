@@ -1,3 +1,7 @@
+# Fixed Compose project name — avoids container/volume collisions with other VPS apps.
+# Deploy from this directory only: `docker compose -p fratelanza up -d --build`
+name: fratelanza
+
 # =====================================================================
 # Fratelanza — full stack on one VPS, from one git repo.
 #
@@ -37,7 +41,7 @@ services:
     restart: unless-stopped
     ports:
       # Loopback only — nginx on the host fronts this.
-      - "127.0.0.1:1025:3000"
+      - "127.0.0.1:${FRATELANZA_CRM_PORT:-1025}:3000"
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -84,7 +88,7 @@ services:
     restart: unless-stopped
     ports:
       # Loopback only — nginx on the host fronts this.
-      - "127.0.0.1:2025:5050"
+      - "127.0.0.1:${FRATELANZA_ADMIN_PORT:-2025}:5050"
     environment:
       NODE_ENV: production
       PORT: 5050

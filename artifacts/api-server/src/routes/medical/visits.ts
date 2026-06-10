@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { db, visitsTable, patientsTable, employeesTable } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
+import { sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -77,6 +78,20 @@ router.get("/visits", async (req, res): Promise<void> => {
   const where = conds.length ? and(...conds) : undefined;
   const rows = await selectVisits(where);
   res.json(rows);
+});
+
+router.get("/visits/export.xlsx", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, visitsTable.branchId);
+  const rows = await selectVisits(bw ?? undefined);
+  await sendExcel(res, "visits.xlsx", "Visits", [
+    { header: "ID", key: "id" },
+    { header: "Patient", key: "patientFirstName", format: (r) => `${r.patientFirstName ?? ""} ${r.patientLastName ?? ""}`.trim() },
+    { header: "Doctor", key: "doctorName" },
+    { header: "Visit Date", key: "visitDate", format: (r) => String(r.visitDate ?? "") },
+    { header: "Diagnosis", key: "diagnosis" },
+    { header: "Treatment", key: "treatment" },
+    { header: "Follow-up", key: "followUpDate" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.get("/visits/stats", async (req, res): Promise<void> => {

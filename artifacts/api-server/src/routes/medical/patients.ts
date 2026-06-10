@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { and, eq, or, ilike, sql, desc } from "drizzle-orm";
+import { and, asc, eq, or, ilike, sql, desc } from "drizzle-orm";
 import { db, patientsTable, activityTable } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
+import { parseSort, sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -14,6 +15,17 @@ const PatientInput = z.object({
   gender: z.enum(["male", "female", "other"]).nullable().optional(),
   dateOfBirth: z.string().nullable().optional(), // YYYY-MM-DD
   nationalId: z.string().nullable().optional(),
+  governorate: z.string().nullable().optional(),
+  governorateAr: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  cityAr: z.string().nullable().optional(),
+  maritalStatus: z.enum(["single", "married", "divorced", "widowed"]).nullable().optional(),
+  occupation: z.string().nullable().optional(),
+  occupationAr: z.string().nullable().optional(),
+  insuranceType: z.enum(["none", "general_authority", "private", "corporate", "other"]).nullable().optional(),
+  insuranceNumber: z.string().nullable().optional(),
+  insuranceProvider: z.string().nullable().optional(),
+  insuranceProviderAr: z.string().nullable().optional(),
   phone: z.string().nullable().optional(),
   email: z.string().email().nullable().optional().or(z.literal("").transform(() => null)),
   address: z.string().nullable().optional(),
@@ -41,21 +53,55 @@ router.get("/patients/stats", async (req, res): Promise<void> => {
 router.get("/patients", async (req, res): Promise<void> => {
   const bw = branchWhere(req, patientsTable.branchId);
   const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
-  const searchCond = search
-    ? or(
-        ilike(patientsTable.firstName, `%${search}%`),
-        ilike(patientsTable.firstNameAr, `%${search}%`),
-        ilike(patientsTable.lastName, `%${search}%`),
-        ilike(patientsTable.lastNameAr, `%${search}%`),
-        ilike(patientsTable.phone, `%${search}%`),
-        ilike(patientsTable.nationalId, `%${search}%`),
-      )
-    : undefined;
-  const where = searchCond && bw ? and(searchCond, bw) : (searchCond ?? bw);
+  const governorate = typeof req.query.governorate === "string" ? req.query.governorate.trim() : "";
+  const insuranceType = typeof req.query.insuranceType === "string" ? req.query.insuranceType.trim() : "";
+  const { field, dir } = parseSort(req.query as Record<string, unknown>, ["createdAt", "firstName", "dateOfBirth", "governorate"], "createdAt");
+  const orderCol = field === "firstName" ? patientsTable.firstName
+    : field === "dateOfBirth" ? patientsTable.dateOfBirth
+    : field === "governorate" ? patientsTable.governorate
+    : patientsTable.createdAt;
+  const orderFn = dir === "asc" ? asc : desc;
+
+  const conds = [];
+  if (bw) conds.push(bw);
+  if (governorate) conds.push(eq(patientsTable.governorate, governorate));
+  if (insuranceType) conds.push(eq(patientsTable.insuranceType, insuranceType));
+  if (search) {
+    conds.push(or(
+      ilike(patientsTable.firstName, `%${search}%`),
+      ilike(patientsTable.firstNameAr, `%${search}%`),
+      ilike(patientsTable.lastName, `%${search}%`),
+      ilike(patientsTable.lastNameAr, `%${search}%`),
+      ilike(patientsTable.phone, `%${search}%`),
+      ilike(patientsTable.nationalId, `%${search}%`),
+      ilike(patientsTable.governorate, `%${search}%`),
+      ilike(patientsTable.city, `%${search}%`),
+    ));
+  }
   let query = db.select().from(patientsTable).$dynamic();
-  if (where) query = query.where(where);
-  const rows = await query.orderBy(desc(patientsTable.createdAt)).limit(500);
+  if (conds.length) query = query.where(and(...conds));
+  const rows = await query.orderBy(orderFn(orderCol)).limit(500);
   res.json(rows);
+});
+
+router.get("/patients/export.xlsx", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, patientsTable.branchId);
+  let query = db.select().from(patientsTable).$dynamic();
+  if (bw) query = query.where(bw);
+  const rows = await query.orderBy(desc(patientsTable.createdAt)).limit(10000);
+  await sendExcel(res, "patients.xlsx", "Patients", [
+    { header: "ID", key: "id" },
+    { header: "First Name", key: "firstName" },
+    { header: "Last Name", key: "lastName" },
+    { header: "National ID", key: "nationalId" },
+    { header: "Governorate", key: "governorate" },
+    { header: "City", key: "city" },
+    { header: "Phone", key: "phone" },
+    { header: "Insurance", key: "insuranceType" },
+    { header: "Insurance #", key: "insuranceNumber" },
+    { header: "Blood Type", key: "bloodType" },
+    { header: "DOB", key: "dateOfBirth" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.post("/patients", async (req, res): Promise<void> => {

@@ -1,9 +1,12 @@
 import { Router, type IRouter } from "express";
 import { eq, and, asc } from "drizzle-orm";
 import { db, doctorAvailabilityTable, employeesTable } from "@workspace/db";
+import { sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -36,6 +39,27 @@ router.get("/doctor-availability", async (req, res): Promise<void> => {
     .where(doctorId && Number.isFinite(doctorId) ? eq(doctorAvailabilityTable.doctorId, doctorId) : undefined)
     .orderBy(asc(doctorAvailabilityTable.doctorId), asc(doctorAvailabilityTable.dayOfWeek), asc(doctorAvailabilityTable.startTime));
   res.json(rows);
+});
+
+router.get("/doctor-availability/export.xlsx", async (req, res): Promise<void> => {
+  const doctorId = req.query.doctorId ? parseInt(String(req.query.doctorId), 10) : null;
+  const rows = await db
+    .select({
+      doctorName: employeesTable.name,
+      dayOfWeek: doctorAvailabilityTable.dayOfWeek,
+      startTime: doctorAvailabilityTable.startTime,
+      endTime: doctorAvailabilityTable.endTime,
+    })
+    .from(doctorAvailabilityTable)
+    .leftJoin(employeesTable, eq(doctorAvailabilityTable.doctorId, employeesTable.id))
+    .where(doctorId && Number.isFinite(doctorId) ? eq(doctorAvailabilityTable.doctorId, doctorId) : undefined)
+    .orderBy(asc(doctorAvailabilityTable.doctorId), asc(doctorAvailabilityTable.dayOfWeek));
+  await sendExcel(res, "doctor-availability.xlsx", "Doctor Hours", [
+    { header: "Doctor", key: "doctorName" },
+    { header: "Day", key: "dayOfWeek", format: (r) => DAY_NAMES[Number(r.dayOfWeek)] ?? String(r.dayOfWeek) },
+    { header: "Start", key: "startTime" },
+    { header: "End", key: "endTime" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.post("/doctor-availability", async (req, res): Promise<void> => {

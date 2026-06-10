@@ -33,4 +33,4 @@ jobs:
           script: |
             cd ~/Fratelanza-HUB
             git pull origin main
-            docker compose up -d --build
+            docker compose -p fratelanza up -d --build

@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { and, eq, desc, sql } from "drizzle-orm";
 import { branchWhere } from "../../lib/branchScope";
+import { sendExcel } from "../../lib/excelExport";
 import {
   db, medicalInvoicesTable, medicalInvoiceLinesTable,
   patientsTable, employeesTable, transactionsTable,
@@ -74,6 +75,23 @@ router.get("/medical-invoices", async (req, res): Promise<void> => {
   const where = pidWhere && bw ? and(pidWhere, bw) : (pidWhere ?? bw);
   const rows = await selectInvoices(where);
   res.json(rows);
+});
+
+router.get("/medical-invoices/export.xlsx", async (req, res): Promise<void> => {
+  const pidWhere = typeof req.query.patientId === "string"
+    ? eq(medicalInvoicesTable.patientId, parseInt(req.query.patientId, 10))
+    : undefined;
+  const bw = branchWhere(req, medicalInvoicesTable.branchId);
+  const where = pidWhere && bw ? and(pidWhere, bw) : (pidWhere ?? bw);
+  const rows = await selectInvoices(where);
+  await sendExcel(res, "medical-invoices.xlsx", "Invoices", [
+    { header: "ID", key: "id" },
+    { header: "Patient", key: "patientFirstName", format: (r) => `${r.patientFirstName ?? ""} ${r.patientLastName ?? ""}`.trim() },
+    { header: "Date", key: "invoiceDate" },
+    { header: "Total (EGP)", key: "total" },
+    { header: "Paid (EGP)", key: "paidAmount" },
+    { header: "Status", key: "status" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.get("/medical-invoices/stats", async (req, res): Promise<void> => {

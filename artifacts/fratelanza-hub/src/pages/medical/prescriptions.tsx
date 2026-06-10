@@ -13,6 +13,10 @@ import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
 import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer } from "lucide-react";
 import { useBranding } from "@/components/BrandingProvider";
+import { SearchableSelect } from "@/components/medical/SearchableSelect";
+import { useEgyptMedicalCatalog } from "@/hooks/useEgyptMedicalCatalog";
+import { toSearchableOptions } from "@/lib/catalogHelpers";
+import { useMemo } from "react";
 
 type Prescription = {
   id: number;
@@ -167,6 +171,8 @@ export default function PrescriptionsPage() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { branding } = useBranding();
+  const { catalog } = useEgyptMedicalCatalog();
+  const medicationOptions = useMemo(() => toSearchableOptions(catalog?.medications ?? []), [catalog?.medications]);
   const { data: rxHeader } = useQuery<RxHeader>({
     queryKey: ["settings-branding-full"],
     queryFn: () => apiFetch("/settings/branding"),
@@ -201,6 +207,17 @@ export default function PrescriptionsPage() {
     if (isAr) return `${p.firstNameAr || p.firstName || ""} ${p.lastNameAr || p.lastName || ""}`.trim();
     return `${p.firstName || ""} ${p.lastName || ""}`.trim();
   };
+
+  const visitOptions = useMemo(
+    () => visits.slice(0, 200).map((v) => {
+      const pat = patients.find((p) => p.id === v.patientId);
+      const name = pat ? `${pat.firstName} ${pat.lastName ?? ""}`.trim() : `#${v.patientId}`;
+      const nameAr = pat ? `${pat.firstNameAr ?? pat.firstName} ${pat.lastNameAr ?? pat.lastName ?? ""}`.trim() : name;
+      const date = new Date(v.visitDate).toLocaleDateString(isAr ? "ar-EG" : undefined);
+      return { value: String(v.id), labelEn: `${name} — ${date}`, labelAr: `${nameAr} — ${date}` };
+    }),
+    [visits, patients, isAr],
+  );
 
   const createMutation = useMutation({
     mutationFn: (body: any) => apiFetch("/prescriptions", { method: "POST", body: JSON.stringify(body) }),
@@ -352,35 +369,40 @@ export default function PrescriptionsPage() {
           <form onSubmit={submit} className="space-y-3.5">
             <div className="space-y-1.5">
               <Label>{t("Visit", "الزيارة")}*</Label>
-              <Select value={form.visitId} onValueChange={v => setForm({ ...form, visitId: v })}>
-                <SelectTrigger><SelectValue placeholder={t("Pick a visit", "اختر زيارة")} /></SelectTrigger>
-                <SelectContent>
-                  {visits.length === 0 && (
-                    <SelectItem value="_none" disabled>{t("No visits yet — create a visit first", "لا توجد زيارات — أنشئ زيارة أولاً")}</SelectItem>
-                  )}
-                  {visits.slice(0, 100).map(v => {
-                    const pat = patients.find(p => p.id === v.patientId);
-                    return (
-                      <SelectItem key={v.id} value={String(v.id)}>
-                        {patientLabel(pat as any)} — {new Date(v.visitDate).toLocaleDateString(isAr ? "ar-EG" : undefined)}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={visitOptions}
+                value={form.visitId}
+                onChange={(v) => setForm({ ...form, visitId: v })}
+                placeholder={{ en: "Search visit by patient or date…", ar: "ابحث عن زيارة بالمريض أو التاريخ…" }}
+                emptyText={{ en: "No visits — create a visit first", ar: "لا توجد زيارات — أنشئ زيارة أولاً" }}
+              />
             </div>
 
-            {isAr ? (
-              <div className="space-y-1.5">
-                <Label>{t("Medicine name (Arabic)", "اسم الدواء (عربي)")}*</Label>
-                <Input value={form.medicineNameAr} onChange={e => setForm({ ...form, medicineNameAr: e.target.value, medicineName: e.target.value })} required />
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label>{t("Medicine name", "اسم الدواء")}*</Label>
-                <Input value={form.medicineName} onChange={e => setForm({ ...form, medicineName: e.target.value })} required />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label>{t("Medicine", "الدواء")}*</Label>
+              <SearchableSelect
+                options={medicationOptions}
+                value={form.medicineName}
+                onChange={(v) => {
+                  const m = catalog?.medications?.find((x) => x.en === v);
+                  setForm({
+                    ...form,
+                    medicineName: v,
+                    medicineNameAr: m?.ar ?? (form.medicineNameAr || v),
+                  });
+                }}
+                placeholder={{ en: "Search Egyptian formulary…", ar: "ابحث في قائمة الأدوية المصرية…" }}
+              />
+              <Input
+                className="mt-1.5"
+                value={isAr ? form.medicineNameAr : form.medicineName}
+                onChange={(e) => isAr
+                  ? setForm({ ...form, medicineNameAr: e.target.value, medicineName: e.target.value })
+                  : setForm({ ...form, medicineName: e.target.value })}
+                placeholder={t("Or type custom medicine name", "أو اكتب اسم دواء يدوياً")}
+                required
+              />
+            </div>
 
             <div className="grid grid-cols-3 gap-2.5">
               <div className="space-y-1.5">
