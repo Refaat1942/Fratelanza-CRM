@@ -9,10 +9,16 @@ const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SCHEMA_SQL = fs.readFileSync(path.join(__dirname, "tenant-schema.sql"), "utf8");
-const EGYPT_CATALOG_SEED_SQL = fs.readFileSync(
-  path.join(__dirname, "../../../deploy/seed/egypt-clinic-catalog.sql"),
-  "utf8",
-);
+
+function loadEgyptCatalogSeedSql(): string {
+  const seedPath = path.join(__dirname, "egypt-clinic-catalog.sql");
+  try {
+    return fs.readFileSync(seedPath, "utf8");
+  } catch {
+    console.warn(`[provision] ${seedPath} not found — Egyptian catalog seed skipped`);
+    return "";
+  }
+}
 
 const ALL_PERMISSIONS = [
   "dashboard", "tasks", "crm", "finance", "team", "products", "rentals", "suppliers",
