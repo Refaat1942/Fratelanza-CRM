@@ -4,7 +4,8 @@ import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
-  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck
+  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck,
+  Activity, Apple,
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -73,15 +74,18 @@ const NAV_GROUPS: NavGroup[] = [
     labelEn: "Medical",
     labelAr: "العيادة الطبية",
     items: [
-      { href: "/medical/patients", key: "medical", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
-      { href: "/medical/appointments", key: "medical", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
-      { href: "/medical/visits", key: "medical", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
-      { href: "/medical/prescriptions", key: "medical", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
-      { href: "/medical/materials", key: "medical", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
-      { href: "/medical/invoices", key: "medical", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
-      { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
-      { href: "/medical/doctor-availability", key: "medical", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
+      { href: "/medical/patients", key: "medical", featureKey: "medical_patients", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
+      { href: "/medical/appointments", key: "medical", featureKey: "medical_appointments", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
+      { href: "/medical/visits", key: "medical", featureKey: "medical_visits", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
+      { href: "/medical/prescriptions", key: "medical", featureKey: "medical_prescriptions", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
+      { href: "/medical/materials", key: "medical", featureKey: "medical_materials", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
+      { href: "/medical/invoices", key: "medical", featureKey: "medical_invoices", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
+      { href: "/medical/reports", key: "medical", featureKey: "medical_reports", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
+      { href: "/medical/procedures", key: "medical", featureKey: "medical_procedures", icon: ListPlus, labelEn: "Procedures", labelAr: "الإجراءات" },
+      { href: "/medical/doctor-availability", key: "medical", featureKey: "medical_doctor_availability", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
       { href: "/medical/clinic-staff", key: "medical", featureKey: "clinic_staff", icon: Stethoscope, labelEn: "Clinic Staff", labelAr: "طاقم العيادة" },
+      { href: "/medical/physiotherapy", key: "medical", featureKey: "physiotherapy", icon: Activity, labelEn: "Physiotherapy", labelAr: "العلاج الطبيعي" },
+      { href: "/medical/clinical-nutrition", key: "medical", featureKey: "clinical_nutrition", icon: Apple, labelEn: "Clinical Nutrition", labelAr: "التغذية العلاجية" },
     ],
   },
 ];
@@ -147,7 +151,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // default to medical; otherwise default to general. Auto-switches if the
   // current route belongs to the other workspace (so a direct URL keeps working).
   const hasGeneralFeatures = features["tasks"] !== false || features["crm"] !== false || features["finance"] !== false;
-  const hasMedicalFeatures = features["medical"] !== false || features["dental"] !== false;
+  const hasMedicalFeatures = features["medical"] !== false
+    || features["physiotherapy"] !== false
+    || features["clinical_nutrition"] !== false
+    || features["dental"] !== false;
   const [workspace, setWorkspaceState] = useState<"general" | "medical">(() => {
     try {
       const stored = localStorage.getItem("workspace");
@@ -180,6 +187,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const canSee = (item: NavItem) => {
     const featKey = item.featureKey ?? item.key;
+    if (item.key === "medical" || item.featureKey?.startsWith("medical_") || item.featureKey === "clinic_staff" || item.featureKey === "physiotherapy" || item.featureKey === "clinical_nutrition") {
+      if (features["medical"] === false) return false;
+    }
     if (item.key !== "dashboard" && features[featKey] === false) return false;
     return isAdmin || userPerms.includes(item.key);
   };

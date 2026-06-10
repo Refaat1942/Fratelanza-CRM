@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
-import { eq, asc } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or } from "drizzle-orm";
 import { db, medicalProceduresTable } from "@workspace/db";
+import { parseSort, sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -13,9 +14,31 @@ const ProcedureInput = z.object({
   active: z.enum(["true", "false"]).default("true"),
 });
 
-router.get("/procedures", async (_req, res): Promise<void> => {
-  const rows = await db.select().from(medicalProceduresTable).orderBy(asc(medicalProceduresTable.name));
-  res.json(rows);
+router.get("/procedures", async (req, res): Promise<void> => {
+  const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+  const category = typeof req.query.category === "string" ? req.query.category.trim() : "";
+  const { field, dir } = parseSort(req.query as Record<string, unknown>, ["name", "price", "category"], "name");
+  const orderCol = field === "price" ? medicalProceduresTable.price
+    : field === "category" ? medicalProceduresTable.category
+    : medicalProceduresTable.name;
+  const orderFn = dir === "asc" ? asc : desc;
+  const conds = [];
+  if (search) conds.push(or(ilike(medicalProceduresTable.name, `%${search}%`), ilike(medicalProceduresTable.nameAr, `%${search}%`)));
+  if (category) conds.push(eq(medicalProceduresTable.category, category));
+  let q = db.select().from(medicalProceduresTable).$dynamic();
+  if (conds.length) q = q.where(and(...conds));
+  res.json(await q.orderBy(orderFn(orderCol)).limit(500));
+});
+
+router.get("/procedures/export.xlsx", async (_req, res): Promise<void> => {
+  const rows = await db.select().from(medicalProceduresTable).orderBy(asc(medicalProceduresTable.category), asc(medicalProceduresTable.name));
+  await sendExcel(res, "procedures.xlsx", "Procedures", [
+    { header: "Name", key: "name" },
+    { header: "Name (AR)", key: "nameAr" },
+    { header: "Category", key: "category" },
+    { header: "Price (EGP)", key: "price" },
+    { header: "Active", key: "active" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.post("/procedures", async (req, res): Promise<void> => {

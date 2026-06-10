@@ -25,6 +25,8 @@ import { EmptyState } from "@/components/ui-ext/empty-state";
 import { SectionCard } from "@/components/ui-ext/section-card";
 import { BranchSelect } from "@/components/BranchSelect";
 import { useAuth } from "@/components/AuthProvider";
+import { MedicalListToolbar } from "@/components/medical/MedicalListToolbar";
+import { EGYPT_GOVERNORATES, INSURANCE_TYPES } from "@/lib/egyptGovernorates";
 
 type Patient = {
   id: number;
@@ -33,6 +35,12 @@ type Patient = {
   gender?: "male" | "female" | "other" | null;
   dateOfBirth?: string | null;
   nationalId?: string | null;
+  governorate?: string | null; governorateAr?: string | null;
+  city?: string | null; cityAr?: string | null;
+  maritalStatus?: string | null;
+  occupation?: string | null; occupationAr?: string | null;
+  insuranceType?: string | null; insuranceNumber?: string | null;
+  insuranceProvider?: string | null; insuranceProviderAr?: string | null;
   phone?: string | null; email?: string | null;
   address?: string | null; addressAr?: string | null;
   bloodType?: string | null;
@@ -48,7 +56,11 @@ type Stats = { total: number; recent: number };
 
 const EMPTY: Patient = {
   id: 0, firstName: "", firstNameAr: "", lastName: "", lastNameAr: "",
-  gender: null, dateOfBirth: "", nationalId: "", phone: "", email: "",
+  gender: null, dateOfBirth: "", nationalId: "",
+  governorate: null, governorateAr: null, city: null, cityAr: null,
+  maritalStatus: null, occupation: null, occupationAr: null,
+  insuranceType: null, insuranceNumber: null, insuranceProvider: null, insuranceProviderAr: null,
+  phone: "", email: "",
   address: "", addressAr: "", bloodType: "", allergies: "", chronicConditions: "",
   emergencyContactName: "", emergencyContactPhone: "", notes: "", notesAr: "",
   branchId: null,
@@ -72,6 +84,10 @@ export default function Patients() {
   const confirmDelete = useDeleteConfirm();
 
   const [search, setSearch] = useState("");
+  const [governorateFilter, setGovernorateFilter] = useState("");
+  const [insuranceFilter, setInsuranceFilter] = useState("");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState<Patient>(EMPTY);
@@ -83,8 +99,16 @@ export default function Patients() {
   });
 
   const { data: patients, isLoading } = useQuery<Patient[]>({
-    queryKey: ["patients", search],
-    queryFn: () => apiFetch(`/patients${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    queryKey: ["patients", search, governorateFilter, insuranceFilter, sortBy, sortDir],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (search) p.set("search", search);
+      if (governorateFilter) p.set("governorate", governorateFilter);
+      if (insuranceFilter) p.set("insuranceType", insuranceFilter);
+      p.set("sortBy", sortBy);
+      p.set("sortDir", sortDir);
+      return apiFetch(`/patients?${p}`);
+    },
   });
 
   const invalidate = () => {
@@ -129,6 +153,17 @@ export default function Patients() {
       gender: form.gender || null,
       dateOfBirth: form.dateOfBirth || null,
       nationalId: form.nationalId || null,
+      governorate: form.governorate || null,
+      governorateAr: form.governorateAr || null,
+      city: form.city || null,
+      cityAr: form.cityAr || null,
+      maritalStatus: form.maritalStatus || null,
+      occupation: form.occupation || null,
+      occupationAr: form.occupationAr || null,
+      insuranceType: form.insuranceType || null,
+      insuranceNumber: form.insuranceNumber || null,
+      insuranceProvider: form.insuranceProvider || null,
+      insuranceProviderAr: form.insuranceProviderAr || null,
       phone: form.phone || null,
       email: form.email || null,
       bloodType: form.bloodType || null,
@@ -232,6 +267,46 @@ export default function Patients() {
           <Input dir="ltr" value={form.nationalId || ""} onChange={e => setForm({ ...form, nationalId: e.target.value })} />
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Governorate", "المحافظة")}</Label>
+            <Select value={form.governorate || ""} onValueChange={v => {
+              const g = EGYPT_GOVERNORATES.find(x => x.en === v);
+              setForm({ ...form, governorate: v || null, governorateAr: g?.ar ?? null });
+            }}>
+              <SelectTrigger><SelectValue placeholder={t("Select governorate", "اختر المحافظة")} /></SelectTrigger>
+              <SelectContent>
+                {EGYPT_GOVERNORATES.map(g => (
+                  <SelectItem key={g.en} value={g.en}>{isAr ? g.ar : g.en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("City", "المدينة")}</Label>
+            <Input value={isAr ? (form.cityAr || "") : (form.city || "")}
+              onChange={e => isAr ? setForm({ ...form, cityAr: e.target.value }) : setForm({ ...form, city: e.target.value })} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Insurance", "التأمين الصحي")}</Label>
+            <Select value={form.insuranceType || ""} onValueChange={v => setForm({ ...form, insuranceType: v || null })}>
+              <SelectTrigger><SelectValue placeholder={t("Select", "اختر")} /></SelectTrigger>
+              <SelectContent>
+                {INSURANCE_TYPES.map(i => (
+                  <SelectItem key={i.value} value={i.value}>{isAr ? i.ar : i.en}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">{t("Insurance number", "رقم التأمين")}</Label>
+            <Input dir="ltr" value={form.insuranceNumber || ""} onChange={e => setForm({ ...form, insuranceNumber: e.target.value })} />
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold">{t("Address", "العنوان")}</Label>
           <Textarea
@@ -325,22 +400,44 @@ export default function Patients() {
         />
       </div>
 
-      <SectionCard
-        title={t("All Patients", "كل المرضى")}
-        actions={
-          <div className="relative w-full sm:w-72">
-            <Search size={14} className={`absolute top-1/2 -translate-y-1/2 ${isRtl ? "right-2.5" : "left-2.5"} text-muted-foreground`} />
-            <Input
-              placeholder={t("Search by name, phone, national ID…", "بحث بالاسم، الهاتف، الرقم القومي…")}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className={`h-8 ${isRtl ? "pr-8" : "pl-8"}`}
-              dir={lf.dir}
-            />
-          </div>
-        }
-        noPadding
-      >
+      <SectionCard title={t("All Patients", "كل المرضى")}>
+        <MedicalListToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder={{ en: "Search name, phone, national ID, city…", ar: "بحث بالاسم، الهاتف، الرقم القومي، المدينة…" }}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSortByChange={setSortBy}
+          onSortDirToggle={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+          sortOptions={[
+            { value: "createdAt", labelEn: "Date added", labelAr: "تاريخ الإضافة" },
+            { value: "firstName", labelEn: "Name", labelAr: "الاسم" },
+            { value: "governorate", labelEn: "Governorate", labelAr: "المحافظة" },
+          ]}
+          exportUrl="/api/patients/export.xlsx"
+          extraFilters={
+            <>
+              <Select value={governorateFilter || "all"} onValueChange={v => setGovernorateFilter(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder={t("Governorate", "المحافظة")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("All governorates", "كل المحافظات")}</SelectItem>
+                  {EGYPT_GOVERNORATES.map(g => (
+                    <SelectItem key={g.en} value={g.en}>{isAr ? g.ar : g.en}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={insuranceFilter || "all"} onValueChange={v => setInsuranceFilter(v === "all" ? "" : v)}>
+                <SelectTrigger className="w-[150px]"><SelectValue placeholder={t("Insurance", "التأمين")} /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t("All insurance", "كل التأمينات")}</SelectItem>
+                  {INSURANCE_TYPES.map(i => (
+                    <SelectItem key={i.value} value={i.value}>{isAr ? i.ar : i.en}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </>
+          }
+        />
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
             {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-44 w-full rounded-md" />)}

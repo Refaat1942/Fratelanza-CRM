@@ -31,6 +31,9 @@ import MedicalReports from "@/pages/medical/reports";
 import Prescriptions from "@/pages/medical/prescriptions";
 import DoctorAvailability from "@/pages/medical/doctor-availability";
 import ClinicStaff from "@/pages/medical/clinic-staff";
+import Procedures from "@/pages/medical/procedures";
+import Physiotherapy from "@/pages/medical/physiotherapy";
+import ClinicalNutrition from "@/pages/medical/clinical-nutrition";
 import Branches from "@/pages/branches";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
@@ -54,11 +57,12 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function FeatureGate({
-  feature, permission, children,
-}: { feature: string; permission?: string; children: React.ReactNode }) {
+  feature, permission, masterFeature, children,
+}: { feature: string; permission?: string; masterFeature?: string; children: React.ReactNode }) {
   const { features, loading } = useFeatures();
   const { user } = useAuth();
   if (loading) return null;
+  if (masterFeature && features[masterFeature] === false) return <NotFound />;
   // Tenant-level: feature must be enabled for the workspace.
   if (features[feature] === false) return <NotFound />;
   // User-level: non-admins need the permission in their assigned list.
@@ -90,15 +94,18 @@ function AppRouter() {
               <Route path="/suppliers"><FeatureGate feature="suppliers"><Suppliers /></FeatureGate></Route>
               <Route path="/purchase-orders"><FeatureGate feature="purchase_orders"><PurchaseOrders /></FeatureGate></Route>
               <Route path="/invoices"><FeatureGate feature="invoicing"><Invoices /></FeatureGate></Route>
-              <Route path="/medical/patients"><FeatureGate feature="medical"><Patients /></FeatureGate></Route>
-              <Route path="/medical/appointments"><FeatureGate feature="medical"><Appointments /></FeatureGate></Route>
-              <Route path="/medical/visits"><FeatureGate feature="medical"><Visits /></FeatureGate></Route>
-              <Route path="/medical/materials"><FeatureGate feature="medical"><MedicalMaterials /></FeatureGate></Route>
-              <Route path="/medical/prescriptions"><FeatureGate feature="medical"><Prescriptions /></FeatureGate></Route>
-              <Route path="/medical/invoices"><FeatureGate feature="medical"><MedicalInvoices /></FeatureGate></Route>
-              <Route path="/medical/reports"><FeatureGate feature="medical"><MedicalReports /></FeatureGate></Route>
-              <Route path="/medical/doctor-availability"><FeatureGate feature="medical"><DoctorAvailability /></FeatureGate></Route>
-              <Route path="/medical/clinic-staff"><FeatureGate feature="clinic_staff" permission="medical"><ClinicStaff /></FeatureGate></Route>
+              <Route path="/medical/patients"><FeatureGate feature="medical_patients" masterFeature="medical" permission="medical"><Patients /></FeatureGate></Route>
+              <Route path="/medical/appointments"><FeatureGate feature="medical_appointments" masterFeature="medical" permission="medical"><Appointments /></FeatureGate></Route>
+              <Route path="/medical/visits"><FeatureGate feature="medical_visits" masterFeature="medical" permission="medical"><Visits /></FeatureGate></Route>
+              <Route path="/medical/materials"><FeatureGate feature="medical_materials" masterFeature="medical" permission="medical"><MedicalMaterials /></FeatureGate></Route>
+              <Route path="/medical/prescriptions"><FeatureGate feature="medical_prescriptions" masterFeature="medical" permission="medical"><Prescriptions /></FeatureGate></Route>
+              <Route path="/medical/invoices"><FeatureGate feature="medical_invoices" masterFeature="medical" permission="medical"><MedicalInvoices /></FeatureGate></Route>
+              <Route path="/medical/reports"><FeatureGate feature="medical_reports" masterFeature="medical" permission="medical"><MedicalReports /></FeatureGate></Route>
+              <Route path="/medical/procedures"><FeatureGate feature="medical_procedures" masterFeature="medical" permission="medical"><Procedures /></FeatureGate></Route>
+              <Route path="/medical/doctor-availability"><FeatureGate feature="medical_doctor_availability" masterFeature="medical" permission="medical"><DoctorAvailability /></FeatureGate></Route>
+              <Route path="/medical/clinic-staff"><FeatureGate feature="clinic_staff" masterFeature="medical" permission="medical"><ClinicStaff /></FeatureGate></Route>
+              <Route path="/medical/physiotherapy"><FeatureGate feature="physiotherapy" masterFeature="medical" permission="medical"><Physiotherapy /></FeatureGate></Route>
+              <Route path="/medical/clinical-nutrition"><FeatureGate feature="clinical_nutrition" masterFeature="medical" permission="medical"><ClinicalNutrition /></FeatureGate></Route>
               <Route path="/branches" component={Branches} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />

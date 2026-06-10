@@ -3,6 +3,7 @@ import { eq, and, gte, lt, ne, sql, asc } from "drizzle-orm";
 import { db, medicalAppointmentsTable, patientsTable, employeesTable } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
 import { isWithinAvailability } from "../../lib/availability";
+import { sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -86,6 +87,26 @@ router.get("/appointments", async (req, res): Promise<void> => {
   if (bw) where = where ? and(where, bw) : bw;
   const rows = await listJoined(where);
   res.json(rows);
+});
+
+router.get("/appointments/export.xlsx", async (req, res): Promise<void> => {
+  const from = typeof req.query.from === "string" ? new Date(req.query.from) : null;
+  const to = typeof req.query.to === "string" ? new Date(req.query.to) : null;
+  let where: any = undefined;
+  if (from && !isNaN(from.getTime()) && to && !isNaN(to.getTime())) {
+    where = and(gte(medicalAppointmentsTable.startAt, from), lt(medicalAppointmentsTable.startAt, to));
+  }
+  const bw = branchWhere(req, medicalAppointmentsTable.branchId);
+  if (bw) where = where ? and(where, bw) : bw;
+  const rows = await listJoined(where);
+  await sendExcel(res, "appointments.xlsx", "Appointments", [
+    { header: "ID", key: "id" },
+    { header: "Patient", key: "patientFirstName", format: (r) => `${r.patientFirstName ?? ""} ${r.patientLastName ?? ""}`.trim() },
+    { header: "Doctor", key: "doctorName" },
+    { header: "Start", key: "startAt", format: (r) => String(r.startAt ?? "") },
+    { header: "Status", key: "status" },
+    { header: "Reason", key: "reason" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.get("/appointments/upcoming", async (_req, res): Promise<void> => {

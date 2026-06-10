@@ -107,7 +107,7 @@ Then:
 cd ~/Fratelanza-HUB
 cp .env.example .env
 nano .env          # paste the generated values into every CHANGE_ME slot
-docker compose up -d --build
+   docker compose -p fratelanza up -d --build
 docker compose ps  # all four services should be "running"
 docker compose logs --tail=40 admin-app app   # should be quiet, no errors
 ```
@@ -150,7 +150,7 @@ On the VPS:
 ```bash
 cd ~/Fratelanza-HUB
 git pull
-docker compose up -d --build
+   docker compose -p fratelanza up -d --build
 ```
 
 That's it for both apps. They share the same git checkout.

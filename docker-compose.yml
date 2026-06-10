@@ -1,3 +1,7 @@
+# Fixed Compose project name — avoids container/volume collisions with other VPS apps.
+# Deploy from this directory only: `docker compose -p fratelanza up -d --build`
+name: fratelanza
+
 # =====================================================================
 # Fratelanza — full stack on one VPS, from one git repo.
 #

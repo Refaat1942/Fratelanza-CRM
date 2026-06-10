@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, sql } from "drizzle-orm";
 import { db, medicalMaterialsTable } from "@workspace/db";
+import { sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -48,6 +49,19 @@ router.get("/medical-materials", async (req: Request, res: Response): Promise<vo
   }
   const rows = await q.orderBy(desc(medicalMaterialsTable.updatedAt));
   res.json(rows);
+});
+
+router.get("/medical-materials/export.xlsx", async (_req, res) => {
+  const rows = await db.select().from(medicalMaterialsTable).orderBy(desc(medicalMaterialsTable.updatedAt));
+  await sendExcel(res, "medical-materials.xlsx", "Materials", [
+    { header: "Name", key: "name" },
+    { header: "SKU", key: "sku" },
+    { header: "Category", key: "category" },
+    { header: "Stock", key: "quantityInStock" },
+    { header: "Reorder", key: "reorderLevel" },
+    { header: "Unit Price (EGP)", key: "unitPrice" },
+    { header: "Supplier", key: "supplier" },
+  ], rows as Record<string, unknown>[]);
 });
 
 router.post("/medical-materials", async (req: Request, res: Response): Promise<void> => {

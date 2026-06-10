@@ -12,6 +12,19 @@ export const patientsTable = pgTable("patients", {
   gender: text("gender"), // 'male' | 'female' | 'other'
   dateOfBirth: date("date_of_birth"),
   nationalId: text("national_id"),
+  /** Egyptian governorate (محافظة) */
+  governorate: text("governorate"),
+  governorateAr: text("governorate_ar"),
+  city: text("city"),
+  cityAr: text("city_ar"),
+  maritalStatus: text("marital_status"), // single|married|divorced|widowed
+  occupation: text("occupation"),
+  occupationAr: text("occupation_ar"),
+  /** none | general_authority | private | corporate | other */
+  insuranceType: text("insurance_type"),
+  insuranceNumber: text("insurance_number"),
+  insuranceProvider: text("insurance_provider"),
+  insuranceProviderAr: text("insurance_provider_ar"),
   phone: text("phone"),
   email: text("email"),
   address: text("address"),

@@ -9,20 +9,25 @@ import prescriptionsRouter from "./prescriptions";
 import alertsRouter from "./alerts";
 import doctorAvailabilityRouter from "./doctor-availability";
 import aiSummaryRouter from "./ai-summary";
-// Phase F2: Procedures module removed from UI; backend route also unmounted.
-// Catalog table `medical_procedures` is retained in the DB for data preservation.
+import proceduresRouter from "./procedures";
+import physiotherapyRouter from "./physiotherapy";
+import clinicalNutritionRouter from "./clinicalNutrition";
+import { requireMedicalSubmodule, requirePhysiotherapy, requireClinicalNutrition } from "../../lib/medicalFeatures";
 
 const router: IRouter = Router();
 
-router.use(patientsRouter);
-router.use(appointmentsRouter);
-router.use(visitsRouter);
-router.use(medicalInvoicesRouter);
-router.use(reportsRouter);
-router.use(materialsRouter);
-router.use(prescriptionsRouter);
+router.use(requireMedicalSubmodule("medical_patients"), patientsRouter);
+router.use(requireMedicalSubmodule("medical_appointments"), appointmentsRouter);
+router.use(requireMedicalSubmodule("medical_visits"), visitsRouter);
+router.use(requireMedicalSubmodule("medical_invoices"), medicalInvoicesRouter);
+router.use(requireMedicalSubmodule("medical_reports"), reportsRouter);
+router.use(requireMedicalSubmodule("medical_materials"), materialsRouter);
+router.use(requireMedicalSubmodule("medical_prescriptions"), prescriptionsRouter);
+router.use(requireMedicalSubmodule("medical_doctor_availability"), doctorAvailabilityRouter);
+router.use(requireMedicalSubmodule("medical_procedures"), proceduresRouter);
 router.use(alertsRouter);
-router.use(doctorAvailabilityRouter);
 router.use(aiSummaryRouter);
+router.use(requirePhysiotherapy, physiotherapyRouter);
+router.use(requireClinicalNutrition, clinicalNutritionRouter);
 
 export default router;
