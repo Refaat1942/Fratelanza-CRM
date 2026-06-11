@@ -137,6 +137,23 @@ Both should return `HTTP/2 200`.
 4. The customer opens `https://acme.fratelanza.com` and logs in with
    `admin / <TENANT_DEFAULT_ADMIN_PASSWORD>`. They should change it immediately.
 
+> **Not the same as admin panel login.** `ADMIN_PASSWORD` is for
+> `https://admin.fratelanza.com`. Tenant CRM uses `TENANT_DEFAULT_ADMIN_PASSWORD`
+> (seeded when the customer DB was first provisioned). Re-deploying does **not**
+> change an existing tenant password.
+
+### Forgot tenant CRM password?
+
+```bash
+# Reset test tenant (db_name from admin UI → DB column, e.g. test_tenant)
+./deploy/reset-tenant-password.sh test_tenant
+
+# Or set a specific password
+./deploy/reset-tenant-password.sh test_tenant 'YourNewPass123'
+```
+
+Then log in at `https://test.fratelanza.com` as `admin` with that password.
+
 DNS already wildcards to the VPS, the CRM resolves the subdomain via the admin
 API, switches to the per-customer DB, and away they go. **No deploy, no restart
 needed for new customers.**
@@ -218,6 +235,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | Deploy / fix 502 | `./deploy/vps-deploy.sh --branch cursor/ui-redesign-bb80` |
 | Diagnose 502 | `./deploy/vps-deploy.sh --diagnose` |
 | Fix nginx 502 (loopback OK) | `sudo ./deploy/fix-nginx.sh` |
+| Reset tenant CRM password | `./deploy/reset-tenant-password.sh test_tenant` |
 | See logs | `docker compose -p fratelanza-hub logs -f app` (or `admin-app`) |
 | Restart one service | `docker compose -p fratelanza-hub restart app` |
 | Renew SSL test | `sudo certbot renew --dry-run` |
