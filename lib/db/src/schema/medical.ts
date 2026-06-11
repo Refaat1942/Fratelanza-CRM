@@ -93,6 +93,9 @@ export type MedicalProcedure = typeof medicalProceduresTable.$inferSelect;
 export const prescriptionsTable = pgTable("prescriptions", {
   id: serial("id").primaryKey(),
   visitId: integer("visit_id").notNull(),
+  medicineMasterId: integer("medicine_master_id"),
+  medicineMaterial: text("medicine_material"),
+  medicineUnit: text("medicine_unit"),
   medicineName: text("medicine_name").notNull(),
   medicineNameAr: text("medicine_name_ar"),
   dosage: text("dosage"),
@@ -104,6 +107,52 @@ export const prescriptionsTable = pgTable("prescriptions", {
 });
 
 export type Prescription = typeof prescriptionsTable.$inferSelect;
+
+// =============== Medicine Master Data ===============
+// Imported customer-provided item catalog used by prescription entry.
+export const medicineMasterTable = pgTable("medicine_master", {
+  id: serial("id").primaryKey(),
+  material: text("material").notNull(),
+  materialDescription: text("material_description").notNull(),
+  bun: text("bun"),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type MedicineMaster = typeof medicineMasterTable.$inferSelect;
+
+// =============== Doctor Prescription Templates ===============
+// Optional doctor-specific prescription background/shape used while printing.
+export const doctorPrescriptionTemplatesTable = pgTable("doctor_prescription_templates", {
+  id: serial("id").primaryKey(),
+  doctorId: integer("doctor_id").notNull(),
+  name: text("name").notNull(),
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name"),
+  mimeType: text("mime_type"),
+  active: integer("active").notNull().default(1),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type DoctorPrescriptionTemplate = typeof doctorPrescriptionTemplatesTable.$inferSelect;
+
+// =============== Medical Specialization Catalog ===============
+// Seeded from admin customer specialization and used as visit-form suggestions.
+export const medicalSpecializationCatalogTable = pgTable("medical_specialization_catalog", {
+  id: serial("id").primaryKey(),
+  specialization: text("specialization").notNull(),
+  type: text("type").notNull(), // diagnosis | feature
+  name: text("name").notNull(),
+  nameAr: text("name_ar"),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type MedicalSpecializationCatalogItem = typeof medicalSpecializationCatalogTable.$inferSelect;
 
 // =============== Medical Invoices ===============
 export const medicalInvoicesTable = pgTable("medical_invoices", {

@@ -298,6 +298,9 @@ CREATE TABLE "patients" (
 CREATE TABLE "prescriptions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"visit_id" integer NOT NULL,
+	"medicine_master_id" integer,
+	"medicine_material" text,
+	"medicine_unit" text,
 	"medicine_name" text NOT NULL,
 	"medicine_name_ar" text,
 	"dosage" text,
@@ -307,6 +310,48 @@ CREATE TABLE "prescriptions" (
 	"instructions_ar" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS medicine_master (
+  id                    SERIAL PRIMARY KEY,
+  material              TEXT NOT NULL,
+  material_description  TEXT NOT NULL,
+  bun                   TEXT,
+  active                INTEGER NOT NULL DEFAULT 1,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medicine_master_material_unique ON medicine_master (material);
+CREATE INDEX IF NOT EXISTS idx_medicine_master_description ON medicine_master (material_description);
+CREATE INDEX IF NOT EXISTS idx_prescriptions_medicine_master ON prescriptions (medicine_master_id);
+
+CREATE TABLE IF NOT EXISTS doctor_prescription_templates (
+  id          SERIAL PRIMARY KEY,
+  doctor_id   INTEGER NOT NULL,
+  name        TEXT NOT NULL,
+  file_url    TEXT NOT NULL,
+  file_name   TEXT,
+  mime_type   TEXT,
+  active      INTEGER NOT NULL DEFAULT 1,
+  notes       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_doctor_prescription_templates_doctor ON doctor_prescription_templates (doctor_id);
+
+CREATE TABLE IF NOT EXISTS medical_specialization_catalog (
+  id              SERIAL PRIMARY KEY,
+  specialization  TEXT NOT NULL,
+  type            TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  name_ar         TEXT,
+  active          INTEGER NOT NULL DEFAULT 1,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_medical_specialization_catalog_unique
+  ON medical_specialization_catalog (specialization, type, name);
+CREATE INDEX IF NOT EXISTS idx_medical_specialization_catalog_type
+  ON medical_specialization_catalog (type, active);
 
 CREATE TABLE "visits" (
 	"id" serial PRIMARY KEY NOT NULL,

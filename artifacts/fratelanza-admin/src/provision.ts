@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { pool as adminPool } from "./db.js";
+import { MEDICAL_SPECIALIZATIONS, pool as adminPool } from "./db.js";
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -108,6 +108,46 @@ export async function provisionTenantDb(dbName: string): Promise<ProvisionOutcom
   }
 }
 
+export async function seedTenantMedicalSpecialization(dbName: string, specializationKey: string | null | undefined): Promise<void> {
+  const preset = MEDICAL_SPECIALIZATIONS.find(s => s.key === (specializationKey || "general")) || MEDICAL_SPECIALIZATIONS[0]!;
+  const tenantPool = new Pool({ connectionString: buildTenantUrl(dbName), max: 2 });
+  try {
+    await tenantPool.query(`
+      CREATE TABLE IF NOT EXISTS medical_specialization_catalog (
+        id              SERIAL PRIMARY KEY,
+        specialization  TEXT NOT NULL,
+        type            TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        name_ar         TEXT,
+        active          INTEGER NOT NULL DEFAULT 1,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_medical_specialization_catalog_unique
+        ON medical_specialization_catalog (specialization, type, name);
+      CREATE INDEX IF NOT EXISTS idx_medical_specialization_catalog_type
+        ON medical_specialization_catalog (type, active);
+    `);
+    const values: Array<{ type: "diagnosis" | "feature"; name: string; nameAr: string | null }> = [
+      ...preset.diagnoses.map((name, i) => ({ type: "diagnosis" as const, name, nameAr: preset.diagnosesAr[i] || null })),
+      ...preset.features.map((name, i) => ({ type: "feature" as const, name, nameAr: preset.featuresAr[i] || null })),
+    ];
+    for (const item of values) {
+      await tenantPool.query(
+        `INSERT INTO medical_specialization_catalog (specialization, type, name, name_ar, active, updated_at)
+         VALUES ($1,$2,$3,$4,1,NOW())
+         ON CONFLICT (specialization, type, name) DO UPDATE SET
+           name_ar=EXCLUDED.name_ar,
+           active=1,
+           updated_at=NOW()`,
+        [preset.key, item.type, item.name, item.nameAr],
+      );
+    }
+  } finally {
+    await tenantPool.end().catch(() => {});
+  }
+}
+
 // Background wrapper: claims the customer row (concurrency guard), runs
 // provisioning, and writes the final status. A second concurrent invocation
 // for the same customer is a no-op while one is in flight.
@@ -124,6 +164,11 @@ export function provisionInBackground(customerId: number, dbName: string): void 
 
     try {
       await provisionTenantDb(dbName);
+      const customer = await adminPool.query<{ medical_specialization: string | null }>(
+        "SELECT medical_specialization FROM admin_customers WHERE id=$1",
+        [customerId],
+      );
+      await seedTenantMedicalSpecialization(dbName, customer.rows[0]?.medical_specialization);
       await adminPool.query(
         `UPDATE admin_customers SET provision_status='ready', provision_error=NULL, updated_at=NOW() WHERE id=$1`,
         [customerId],

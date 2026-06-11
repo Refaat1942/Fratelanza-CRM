@@ -74,6 +74,56 @@ export type BillingCycle = (typeof BILLING_CYCLES)[number];
 export const PAYMENT_STATUSES = ["trial", "paid", "due", "overdue", "cancelled"] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+export const MEDICAL_SPECIALIZATIONS = [
+  {
+    key: "general",
+    label: "General Practice",
+    labelAr: "طب عام",
+    diagnoses: ["Upper respiratory infection", "Hypertension", "Type 2 diabetes", "Gastroenteritis", "Back pain"],
+    diagnosesAr: ["عدوى الجهاز التنفسي العلوي", "ارتفاع ضغط الدم", "سكري النوع الثاني", "التهاب المعدة والأمعاء", "آلام الظهر"],
+    features: ["Vitals", "Follow-up reminders", "Chronic disease tracking"],
+    featuresAr: ["العلامات الحيوية", "تذكيرات المتابعة", "متابعة الأمراض المزمنة"],
+  },
+  {
+    key: "gyna",
+    label: "Gynaecology",
+    labelAr: "نساء وتوليد",
+    diagnoses: ["Pregnancy follow-up", "Polycystic ovary syndrome", "Dysmenorrhea", "Vaginitis", "Menorrhagia"],
+    diagnosesAr: ["متابعة الحمل", "تكيس المبايض", "عسر الطمث", "التهاب مهبلي", "غزارة الطمث"],
+    features: ["LMP/EDD tracking", "Pregnancy follow-up", "Ultrasound notes"],
+    featuresAr: ["متابعة آخر دورة وموعد الولادة", "متابعة الحمل", "ملاحظات السونار"],
+  },
+  {
+    key: "orthopedics",
+    label: "Orthopedics / Osteology",
+    labelAr: "عظام",
+    diagnoses: ["Fracture", "Osteoarthritis", "Ligament sprain", "Disc prolapse", "Osteoporosis"],
+    diagnosesAr: ["كسر", "خشونة المفاصل", "التواء أربطة", "انزلاق غضروفي", "هشاشة العظام"],
+    features: ["X-ray notes", "Cast follow-up", "Physiotherapy plan"],
+    featuresAr: ["ملاحظات الأشعة", "متابعة الجبس", "خطة العلاج الطبيعي"],
+  },
+  {
+    key: "dermatology",
+    label: "Dermatology",
+    labelAr: "جلدية",
+    diagnoses: ["Acne vulgaris", "Eczema", "Psoriasis", "Urticaria", "Fungal infection"],
+    diagnosesAr: ["حب الشباب", "إكزيما", "صدفية", "أرتيكاريا", "عدوى فطرية"],
+    features: ["Skin lesion notes", "Photo follow-up", "Procedure reminders"],
+    featuresAr: ["ملاحظات الآفات الجلدية", "متابعة بالصور", "تذكيرات الإجراءات"],
+  },
+  {
+    key: "pediatrics",
+    label: "Pediatrics",
+    labelAr: "أطفال",
+    diagnoses: ["Fever", "Bronchiolitis", "Tonsillitis", "Otitis media", "Gastroenteritis"],
+    diagnosesAr: ["حمى", "التهاب الشعب الهوائية", "التهاب اللوزتين", "التهاب الأذن الوسطى", "التهاب المعدة والأمعاء"],
+    features: ["Growth tracking", "Vaccination reminders", "Weight-based dosing"],
+    featuresAr: ["متابعة النمو", "تذكيرات التطعيم", "جرعات حسب الوزن"],
+  },
+] as const;
+
+export type MedicalSpecializationKey = (typeof MEDICAL_SPECIALIZATIONS)[number]["key"];
+
 export async function initSchema() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS admin_users (
@@ -109,6 +159,7 @@ export async function initSchema() {
     ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS last_payment_date DATE;
     ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'trial';
     ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+    ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS medical_specialization TEXT DEFAULT 'general';
     CREATE TABLE IF NOT EXISTS admin_payments (
       id SERIAL PRIMARY KEY,
       customer_id INTEGER NOT NULL REFERENCES admin_customers(id) ON DELETE CASCADE,

@@ -59,6 +59,7 @@
     <h2 class="font-semibold mb-3">Subscription details</h2>
     <dl class="text-sm divide-y divide-slate-100">
       <div class="py-2 flex justify-between"><dt class="text-slate-500">Status</dt><dd><%= customer.payment_status || 'trial' %></dd></div>
+      <div class="py-2 flex justify-between"><dt class="text-slate-500">Medical specialization</dt><dd><%= (medicalSpecializations.find(function(s){ return s.key === (customer.medical_specialization || 'general'); }) || {}).label || 'General Practice' %></dd></div>
       <div class="py-2 flex justify-between"><dt class="text-slate-500">Subscription start</dt><dd><%= fmtDate(customer.subscription_start) %></dd></div>
       <div class="py-2 flex justify-between"><dt class="text-slate-500">Subscription end</dt><dd><%= fmtDate(customer.subscription_end) %><% if (daysUntilEnd !== null && daysUntilEnd >= 0) { %> <span class="text-xs text-slate-500">(<%= daysUntilEnd %> days left)</span><% } %></dd></div>
       <div class="py-2 flex justify-between"><dt class="text-slate-500">Customer since</dt><dd><%= fmtDate(customer.created_at) %></dd></div>

@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
 import { and, eq, or, ilike, sql, desc } from "drizzle-orm";
-import { db, patientsTable, activityTable } from "@workspace/db";
+import {
+  db,
+  patientsTable,
+  activityTable,
+  visitsTable,
+  prescriptionsTable,
+  medicalAppointmentsTable,
+  employeesTable,
+} from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 
@@ -56,6 +64,85 @@ router.get("/patients", async (req, res): Promise<void> => {
   if (where) query = query.where(where);
   const rows = await query.orderBy(desc(patientsTable.createdAt)).limit(500);
   res.json(rows);
+});
+
+router.get("/patients/:id/history", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, id));
+  if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
+
+  const visits = await db
+    .select({
+      id: visitsTable.id,
+      patientId: visitsTable.patientId,
+      appointmentId: visitsTable.appointmentId,
+      doctorId: visitsTable.doctorId,
+      visitDate: visitsTable.visitDate,
+      chiefComplaint: visitsTable.chiefComplaint,
+      chiefComplaintAr: visitsTable.chiefComplaintAr,
+      diagnosis: visitsTable.diagnosis,
+      diagnosisAr: visitsTable.diagnosisAr,
+      treatment: visitsTable.treatment,
+      treatmentAr: visitsTable.treatmentAr,
+      materialsUsed: visitsTable.materialsUsed,
+      materialsUsedAr: visitsTable.materialsUsedAr,
+      toothNumber: visitsTable.toothNumber,
+      followUpDate: visitsTable.followUpDate,
+      notes: visitsTable.notes,
+      doctorName: employeesTable.name,
+      doctorNameAr: employeesTable.nameAr,
+    })
+    .from(visitsTable)
+    .leftJoin(employeesTable, eq(employeesTable.id, visitsTable.doctorId))
+    .where(eq(visitsTable.patientId, id))
+    .orderBy(desc(visitsTable.visitDate));
+
+  const prescriptions = await db
+    .select({
+      id: prescriptionsTable.id,
+      visitId: prescriptionsTable.visitId,
+      medicineMasterId: prescriptionsTable.medicineMasterId,
+      medicineMaterial: prescriptionsTable.medicineMaterial,
+      medicineUnit: prescriptionsTable.medicineUnit,
+      medicineName: prescriptionsTable.medicineName,
+      medicineNameAr: prescriptionsTable.medicineNameAr,
+      dosage: prescriptionsTable.dosage,
+      frequency: prescriptionsTable.frequency,
+      durationDays: prescriptionsTable.durationDays,
+      instructions: prescriptionsTable.instructions,
+      instructionsAr: prescriptionsTable.instructionsAr,
+      createdAt: prescriptionsTable.createdAt,
+      visitDate: visitsTable.visitDate,
+      doctorName: employeesTable.name,
+      doctorNameAr: employeesTable.nameAr,
+    })
+    .from(prescriptionsTable)
+    .leftJoin(visitsTable, eq(visitsTable.id, prescriptionsTable.visitId))
+    .leftJoin(employeesTable, eq(employeesTable.id, visitsTable.doctorId))
+    .where(eq(visitsTable.patientId, id))
+    .orderBy(desc(prescriptionsTable.createdAt));
+
+  const appointments = await db
+    .select({
+      id: medicalAppointmentsTable.id,
+      patientId: medicalAppointmentsTable.patientId,
+      doctorId: medicalAppointmentsTable.doctorId,
+      startAt: medicalAppointmentsTable.startAt,
+      endAt: medicalAppointmentsTable.endAt,
+      status: medicalAppointmentsTable.status,
+      reason: medicalAppointmentsTable.reason,
+      reasonAr: medicalAppointmentsTable.reasonAr,
+      notes: medicalAppointmentsTable.notes,
+      doctorName: employeesTable.name,
+      doctorNameAr: employeesTable.nameAr,
+    })
+    .from(medicalAppointmentsTable)
+    .leftJoin(employeesTable, eq(employeesTable.id, medicalAppointmentsTable.doctorId))
+    .where(eq(medicalAppointmentsTable.patientId, id))
+    .orderBy(desc(medicalAppointmentsTable.startAt));
+
+  res.json({ patient, visits, prescriptions, appointments });
 });
 
 router.post("/patients", async (req, res): Promise<void> => {

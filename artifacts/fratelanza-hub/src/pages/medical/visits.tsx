@@ -20,6 +20,7 @@ import { BranchBadge } from "@/components/BranchBadge";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
+type SpecializationCatalogItem = { id: number; type: "diagnosis" | "feature"; name: string; nameAr?: string | null };
 
 type Visit = {
   id: number;
@@ -96,6 +97,10 @@ export default function Visits() {
   const { data: stats } = useQuery<Stats>({
     queryKey: ["visits-stats"],
     queryFn: () => apiFetch("/visits/stats"),
+  });
+  const { data: specializationCatalog = [] } = useQuery<SpecializationCatalogItem[]>({
+    queryKey: ["medical-specialization-catalog"],
+    queryFn: () => apiFetch("/medical-specialization-catalog"),
   });
 
   const listUrl = patientFilter === "all" ? "/visits" : `/visits?patientId=${patientFilter}`;
@@ -203,6 +208,8 @@ export default function Visits() {
     () => patientFilter === "all" ? null : (patients || []).find(p => String(p.id) === patientFilter),
     [patientFilter, patients]
   );
+  const diagnosisSuggestions = specializationCatalog.filter(i => i.type === "diagnosis");
+  const medicalFeatures = specializationCatalog.filter(i => i.type === "feature");
 
   return (
     <div className="space-y-6">
@@ -219,6 +226,15 @@ export default function Visits() {
           <Plus size={16} />{t("Record Visit", "تسجيل زيارة")}
         </Button>
       </div>
+
+      {medicalFeatures.length > 0 && (
+        <Card><CardContent className="p-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium">{t("Specialized features:", "ميزات التخصص:")}</span>
+          {medicalFeatures.map(item => (
+            <Badge key={item.id} variant="outline">{isAr ? (item.nameAr || item.name) : item.name}</Badge>
+          ))}
+        </CardContent></Card>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card><CardContent className="p-4">
@@ -397,9 +413,14 @@ export default function Visits() {
 
               <div className="space-y-2">
                 <Label>{t("Diagnosis", "التشخيص")}</Label>
-                <Textarea rows={2} dir={isAr ? "rtl" : "ltr"}
+                <Input list="diagnosis-suggestions" dir={isAr ? "rtl" : "ltr"}
                   value={isAr ? form.diagnosisAr : form.diagnosis}
                   onChange={(e) => isAr ? setForm({ ...form, diagnosisAr: e.target.value }) : setForm({ ...form, diagnosis: e.target.value })} />
+                <datalist id="diagnosis-suggestions">
+                  {diagnosisSuggestions.map(item => (
+                    <option key={item.id} value={isAr ? (item.nameAr || item.name) : item.name} />
+                  ))}
+                </datalist>
               </div>
 
               <div className="space-y-2">

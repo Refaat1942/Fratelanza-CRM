@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/components/LanguageProvider";
@@ -11,12 +11,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/ui-ext/page-header";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
-import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer } from "lucide-react";
+import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer, Upload, Image as ImageIcon } from "lucide-react";
 import { useBranding } from "@/components/BrandingProvider";
 
 type Prescription = {
   id: number;
   visitId: number;
+  medicineMasterId: number | null;
+  medicineMaterial: string | null;
+  medicineUnit: string | null;
   medicineName: string;
   medicineNameAr: string | null;
   dosage: string | null;
@@ -31,12 +34,25 @@ type Prescription = {
   patientFirstNameAr: string | null;
   patientLastName: string | null;
   patientLastNameAr: string | null;
+  doctorId: number | null;
   doctorName: string | null;
   doctorNameAr: string | null;
 };
 
 type Visit = { id: number; patientId: number; visitDate: string };
 type Patient = { id: number; firstName: string; firstNameAr: string | null; lastName: string | null; lastNameAr: string | null };
+type Employee = { id: number; name: string; nameAr?: string | null };
+type MedicineMaster = { id: number; material: string; materialDescription: string; bun: string | null; active: number };
+type PrescriptionTemplate = {
+  id: number;
+  doctorId: number;
+  name: string;
+  fileUrl: string;
+  fileName: string | null;
+  mimeType: string | null;
+  doctorName: string | null;
+  doctorNameAr: string | null;
+};
 
 type RxHeader = {
   companyName?: string | null; companyNameAr?: string | null; logoUrl?: string | null;
@@ -56,7 +72,7 @@ function escHtml(v: unknown): string {
 }
 function escAttr(v: unknown): string { return escHtml(v); }
 
-function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: (en: string, ar: string) => string, patientLabelRaw: string) {
+function printPrescription(p: Prescription, header: RxHeader, template: PrescriptionTemplate | undefined, isAr: boolean, t: (en: string, ar: string) => string, patientLabelRaw: string) {
   const clinicName = escHtml(isAr ? (header.companyNameAr || header.companyName) : (header.companyName || header.companyNameAr));
   const address = escHtml(isAr ? (header.clinicAddressAr || header.clinicAddress) : (header.clinicAddress || header.clinicAddressAr));
   const doctor = escHtml(isAr ? (p.doctorNameAr || p.doctorName) : (p.doctorName || p.doctorNameAr));
@@ -68,6 +84,7 @@ function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: 
   const frequency = escHtml(p.frequency);
   const clinicPhone = escHtml(header.clinicPhone);
   const logoUrl = escAttr(header.logoUrl);
+  const templateUrl = escAttr(template?.fileUrl);
   const doctorLicense = escHtml(header.doctorLicense);
   const patientLabel = escHtml(patientLabelRaw);
   const initial = escHtml((isAr ? (header.companyNameAr || header.companyName) : (header.companyName || header.companyNameAr))?.charAt(0) || "C");
@@ -82,6 +99,7 @@ function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: 
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:${isAr ? "'Tahoma','Segoe UI'" : "'Inter','Segoe UI','Helvetica'"},sans-serif;color:#0f172a;padding:32px 40px;line-height:1.5}
+  .template-bg{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-1;opacity:.18}
   .header{display:flex;align-items:center;gap:18px;padding-bottom:18px;border-bottom:3px solid #1e40af}
   .logo{width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid #e2e8f0}
   .logo-placeholder{width:72px;height:72px;border-radius:8px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}
@@ -103,6 +121,7 @@ function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: 
   .footer{margin-top:40px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;white-space:pre-wrap}
   @media print{ body{padding:24px 32px} }
 </style></head><body>
+  ${templateUrl ? `<img src="${templateUrl}" class="template-bg" alt="">` : ""}
   <div class="header">
     ${logoUrl ? `<img src="${logoUrl}" class="logo" alt="logo">` : `<div class="logo-placeholder">${initial}</div>`}
     <div style="flex:1">
@@ -173,11 +192,15 @@ export default function PrescriptionsPage() {
   });
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [templateForm, setTemplateForm] = useState({ doctorId: "", name: "", notes: "" });
+  const [templateFile, setTemplateFile] = useState<File | null>(null);
+  const [uploadingMaster, setUploadingMaster] = useState(false);
   const [form, setForm] = useState<{
-    visitId: string; medicineName: string; medicineNameAr: string;
+    visitId: string; medicineMasterId: string; medicineName: string; medicineNameAr: string;
     dosage: string; frequency: string; durationDays: string;
     instructions: string; instructionsAr: string;
-  }>({ visitId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+  }>({ visitId: "", medicineMasterId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
 
   const { data: prescriptions = [], isLoading } = useQuery<Prescription[]>({
     queryKey: ["prescriptions"],
@@ -195,6 +218,18 @@ export default function PrescriptionsPage() {
     queryKey: ["patients"],
     queryFn: () => apiFetch("/patients"),
   });
+  const { data: employees = [] } = useQuery<Employee[]>({
+    queryKey: ["employees"],
+    queryFn: () => apiFetch("/employees"),
+  });
+  const { data: medicineMaster = [] } = useQuery<MedicineMaster[]>({
+    queryKey: ["medicine-master"],
+    queryFn: () => apiFetch("/medicine-master?limit=2000"),
+  });
+  const { data: templates = [] } = useQuery<PrescriptionTemplate[]>({
+    queryKey: ["prescription-templates"],
+    queryFn: () => apiFetch("/prescription-templates"),
+  });
 
   const patientLabel = (p?: { firstName?: string | null; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null } | null) => {
     if (!p) return "—";
@@ -208,7 +243,7 @@ export default function PrescriptionsPage() {
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
       qc.invalidateQueries({ queryKey: ["prescriptions-stats"] });
       setOpen(false);
-      setForm({ visitId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+      setForm({ visitId: "", medicineMasterId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
       toast({ title: t("Prescription added", "تم إضافة الوصفة") });
     },
     onError: (err: any) => toast({ title: err?.message || t("Failed", "فشل"), variant: "destructive" }),
@@ -225,11 +260,12 @@ export default function PrescriptionsPage() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.visitId || !form.medicineName) return;
+    if (!form.visitId || (!form.medicineName && !form.medicineMasterId)) return;
     const body: any = {
       visitId: Number(form.visitId),
-      medicineName: form.medicineName.trim(),
     };
+    if (form.medicineMasterId) body.medicineMasterId = Number(form.medicineMasterId);
+    else body.medicineName = form.medicineName.trim();
     if (form.medicineNameAr.trim()) body.medicineNameAr = form.medicineNameAr.trim();
     if (form.dosage.trim()) body.dosage = form.dosage.trim();
     if (form.frequency.trim()) body.frequency = form.frequency.trim();
@@ -237,6 +273,67 @@ export default function PrescriptionsPage() {
     if (form.instructions.trim()) body.instructions = form.instructions.trim();
     if (form.instructionsAr.trim()) body.instructionsAr = form.instructionsAr.trim();
     createMutation.mutate(body);
+  };
+
+  const templatesByDoctor = useMemo(() => new Map(templates.map(tpl => [tpl.doctorId, tpl])), [templates]);
+  const selectedMedicine = (value: string) => medicineMaster.find(m =>
+    m.materialDescription === value || m.material === value || `${m.materialDescription} (${m.material})` === value
+  );
+  const handleMedicineChange = (value: string) => {
+    const match = selectedMedicine(value);
+    setForm({
+      ...form,
+      medicineName: match ? match.materialDescription : value,
+      medicineMasterId: match ? String(match.id) : "",
+    });
+  };
+
+  const uploadMasterFile = async (file: File) => {
+    setUploadingMaster(true);
+    try {
+      const xlsx = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const wb = xlsx.read(buffer, { type: "array" });
+      const sheet = wb.Sheets[wb.SheetNames[0]!];
+      const rawRows = xlsx.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+      const rows = rawRows.map(row => {
+        const normalized = Object.fromEntries(Object.entries(row).map(([k, v]) => [k.trim().toLowerCase(), String(v ?? "").trim()]));
+        return {
+          material: normalized["material"] || "",
+          materialDescription: normalized["material description"] || "",
+          bun: normalized["bun"] || null,
+          active: 1,
+        };
+      }).filter(row => row.material && row.materialDescription);
+      if (!rows.length) throw new Error("No valid rows. Required columns: Material, Material description, BUn.");
+      const result = await apiFetch<{ imported: number }>("/medicine-master/import", { method: "POST", body: JSON.stringify({ rows }) });
+      await qc.invalidateQueries({ queryKey: ["medicine-master"] });
+      toast({ title: t("Medicine master uploaded", "تم رفع بيانات الأدوية"), description: `${result.imported} rows` });
+    } catch (err: any) {
+      toast({ title: err?.message || t("Upload failed", "فشل الرفع"), variant: "destructive" });
+    } finally {
+      setUploadingMaster(false);
+    }
+  };
+
+  const uploadTemplate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!templateForm.doctorId || !templateFile) return;
+    const fd = new FormData();
+    fd.append("doctorId", templateForm.doctorId);
+    fd.append("name", templateForm.name);
+    fd.append("notes", templateForm.notes);
+    fd.append("template", templateFile);
+    try {
+      await apiFetch("/prescription-templates", { method: "POST", body: fd });
+      await qc.invalidateQueries({ queryKey: ["prescription-templates"] });
+      setTemplateOpen(false);
+      setTemplateFile(null);
+      setTemplateForm({ doctorId: "", name: "", notes: "" });
+      toast({ title: t("Prescription shape uploaded", "تم رفع شكل الوصفة") });
+    } catch (err: any) {
+      toast({ title: err?.message || t("Upload failed", "فشل الرفع"), variant: "destructive" });
+    }
   };
 
   const filtered = prescriptions.filter(p => {
@@ -254,10 +351,27 @@ export default function PrescriptionsPage() {
         title={t("Prescriptions", "الوصفات الطبية")}
         description={t("Medicines prescribed per visit", "الأدوية الموصوفة لكل زيارة")}
         actions={
-          <Button onClick={() => setOpen(true)} data-testid="button-new-prescription">
-            <Plus size={16} className="me-1.5" />
-            {t("New Prescription", "وصفة جديدة")}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <label className="inline-flex items-center gap-1.5 h-9 px-3 rounded-md border border-input bg-background text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground">
+              <Upload size={15} />
+              {uploadingMaster ? t("Uploading…", "جاري الرفع…") : t("Upload medicine master", "رفع بيانات الأدوية")}
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                disabled={uploadingMaster}
+                onChange={e => { const file = e.target.files?.[0]; if (file) uploadMasterFile(file); e.target.value = ""; }}
+              />
+            </label>
+            <Button variant="outline" onClick={() => setTemplateOpen(true)} data-testid="button-prescription-shapes">
+              <ImageIcon size={16} className="me-1.5" />
+              {t("Prescription shapes", "أشكال الوصفة")}
+            </Button>
+            <Button onClick={() => setOpen(true)} data-testid="button-new-prescription">
+              <Plus size={16} className="me-1.5" />
+              {t("New Prescription", "وصفة جديدة")}
+            </Button>
+          </div>
         }
       />
 
@@ -294,6 +408,8 @@ export default function PrescriptionsPage() {
                     <h3 className="font-semibold text-[15px]" data-testid={`text-medicine-${p.id}`}>
                       {isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName}
                     </h3>
+                    {p.medicineMaterial && <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono">{p.medicineMaterial}</span>}
+                    {p.medicineUnit && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{p.medicineUnit}</span>}
                     {p.dosage && <span className="text-xs text-muted-foreground">· {p.dosage}</span>}
                     {p.frequency && <span className="text-xs text-muted-foreground">· {p.frequency}</span>}
                     {p.durationDays != null && (
@@ -325,7 +441,7 @@ export default function PrescriptionsPage() {
                   <Button
                     variant="ghost" size="icon" className="h-8 w-8"
                     title={t("Print", "طباعة")}
-                    onClick={() => printPrescription(p, { ...branding, ...(rxHeader || {}) }, isAr, t, patientLabel(p as any))}
+                    onClick={() => printPrescription(p, { ...branding, ...(rxHeader || {}) }, p.doctorId ? templatesByDoctor.get(p.doctorId) : undefined, isAr, t, patientLabel(p as any))}
                     data-testid={`button-print-prescription-${p.id}`}
                   >
                     <Printer size={15} />
@@ -378,7 +494,23 @@ export default function PrescriptionsPage() {
             ) : (
               <div className="space-y-1.5">
                 <Label>{t("Medicine name", "اسم الدواء")}*</Label>
-                <Input value={form.medicineName} onChange={e => setForm({ ...form, medicineName: e.target.value })} required />
+                <Input
+                  list="medicine-master-options"
+                  value={form.medicineName}
+                  onChange={e => handleMedicineChange(e.target.value)}
+                  required={!form.medicineMasterId}
+                  placeholder={t("Start typing from medicine master", "ابدأ الكتابة من بيانات الأدوية")}
+                />
+                <datalist id="medicine-master-options">
+                  {medicineMaster.slice(0, 1000).map(m => (
+                    <option key={m.id} value={`${m.materialDescription} (${m.material})`} label={`${m.material}${m.bun ? ` · ${m.bun}` : ""}`} />
+                  ))}
+                </datalist>
+                {form.medicineMasterId && (
+                  <div className="text-[11px] text-muted-foreground">
+                    {t("Linked to master data", "مرتبط ببيانات الأدوية")} #{medicineMaster.find(m => String(m.id) === form.medicineMasterId)?.material}
+                  </div>
+                )}
               </div>
             )}
 
@@ -413,6 +545,53 @@ export default function PrescriptionsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={templateOpen} onOpenChange={setTemplateOpen}>
+        <DialogContent className="max-w-2xl" dir={isAr ? "rtl" : "ltr"}>
+          <DialogHeader>
+            <DialogTitle>{t("Doctor prescription shapes", "أشكال الوصفة لكل طبيب")}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={uploadTemplate} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{t("Doctor", "الطبيب")}*</Label>
+                <Select value={templateForm.doctorId} onValueChange={doctorId => setTemplateForm({ ...templateForm, doctorId })}>
+                  <SelectTrigger><SelectValue placeholder={t("Select doctor", "اختر الطبيب")} /></SelectTrigger>
+                  <SelectContent>
+                    {employees.map(e => <SelectItem key={e.id} value={String(e.id)}>{isAr ? (e.nameAr || e.name) : e.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>{t("Template name", "اسم الشكل")}</Label>
+                <Input value={templateForm.name} onChange={e => setTemplateForm({ ...templateForm, name: e.target.value })} placeholder={t("Premium blue header", "رأس أزرق مميز")} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>{t("Upload image shape", "رفع صورة شكل الوصفة")}*</Label>
+              <Input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={e => setTemplateFile(e.target.files?.[0] || null)} />
+              <div className="text-xs text-muted-foreground">{t("PNG/JPG/WEBP/SVG up to 4MB. It is used as the printed prescription background.", "PNG/JPG/WEBP/SVG حتى 4 ميجا. تستخدم كخلفية عند الطباعة.")}</div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={!templateForm.doctorId || !templateFile}>{t("Upload shape", "رفع الشكل")}</Button>
+            </DialogFooter>
+          </form>
+          <div className="border-t pt-4 space-y-2 max-h-64 overflow-y-auto">
+            <div className="text-sm font-medium">{t("Uploaded shapes", "الأشكال المرفوعة")}</div>
+            {templates.length === 0 ? (
+              <div className="text-sm text-muted-foreground">{t("No doctor shapes uploaded yet.", "لم يتم رفع أشكال للأطباء بعد.")}</div>
+            ) : templates.map(tpl => (
+              <div key={tpl.id} className="flex items-center justify-between gap-3 rounded-md border p-2 text-sm">
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{tpl.name}</div>
+                  <div className="text-xs text-muted-foreground truncate">{isAr ? (tpl.doctorNameAr || tpl.doctorName) : tpl.doctorName} · {tpl.fileName}</div>
+                </div>
+                <img src={tpl.fileUrl} alt="" className="w-14 h-10 object-cover rounded border bg-white" />
+              </div>
+            ))}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

@@ -18,13 +18,14 @@ import {
   defaultFeatures,
   BILLING_CYCLES,
   PAYMENT_STATUSES,
+  MEDICAL_SPECIALIZATIONS,
   withTenantPool,
   advanceBillingDate,
   monthlyEquivalent,
   type FeatureKey,
   type BillingCycle,
 } from "./db.js";
-import { provisionInBackground } from "./provision.js";
+import { provisionInBackground, seedTenantMedicalSpecialization } from "./provision.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -276,6 +277,7 @@ async function main() {
         subscription_end: "",
         next_billing_date: "",
         payment_status: "trial",
+        medical_specialization: "general",
       },
       features: defaultFeatures(),
       featureLabels: FEATURE_LABELS,
@@ -283,6 +285,7 @@ async function main() {
       featureGroups: FEATURE_GROUPS,
       billingCycles: BILLING_CYCLES,
       paymentStatuses: PAYMENT_STATUSES,
+      medicalSpecializations: MEDICAL_SPECIALIZATIONS,
       error: null,
     });
   });
@@ -303,6 +306,7 @@ async function main() {
     const subscription_end = String(body.subscription_end || "").trim() || null;
     const next_billing_date = String(body.next_billing_date || "").trim() || null;
     const payment_status = String(body.payment_status || "trial");
+    const medical_specialization = String(body.medical_specialization || "general").trim();
 
     const features = {} as Record<FeatureKey, boolean>;
     for (const k of FEATURE_KEYS) features[k] = body[`feature_${k}`] === "on";
@@ -322,7 +326,7 @@ async function main() {
           name, subdomain, db_name: dbName, notes,
           contact_name, contact_email, contact_phone,
           plan_name, billing_amount, billing_cycle,
-          subscription_start, subscription_end, next_billing_date, payment_status,
+          subscription_start, subscription_end, next_billing_date, payment_status, medical_specialization,
         },
         features,
         featureLabels: FEATURE_LABELS,
@@ -330,6 +334,7 @@ async function main() {
         featureGroups: FEATURE_GROUPS,
         billingCycles: BILLING_CYCLES,
         paymentStatuses: PAYMENT_STATUSES,
+        medicalSpecializations: MEDICAL_SPECIALIZATIONS,
         error: errors.join(" "),
       });
     }
@@ -341,14 +346,14 @@ async function main() {
            (name, subdomain, db_name, features, notes, provision_status,
             contact_name, contact_email, contact_phone,
             plan_name, billing_amount, billing_cycle,
-            subscription_start, subscription_end, next_billing_date, payment_status)
-         VALUES ($1,$2,$3,$4::jsonb,$5,'pending',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+            subscription_start, subscription_end, next_billing_date, payment_status, medical_specialization)
+         VALUES ($1,$2,$3,$4::jsonb,$5,'pending',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
          RETURNING id`,
         [
           name, subdomain, dbName, JSON.stringify(features), notes || null,
           contact_name || null, contact_email || null, contact_phone || null,
           plan_name || null, billing_amount, billing_cycle,
-          subscription_start, subscription_end, next_billing_date, payment_status,
+          subscription_start, subscription_end, next_billing_date, payment_status, medical_specialization,
         ],
       );
       newCustomerId = inserted.rows[0]!.id;
@@ -360,7 +365,7 @@ async function main() {
           name, subdomain, db_name: dbName, notes,
           contact_name, contact_email, contact_phone,
           plan_name, billing_amount, billing_cycle,
-          subscription_start, subscription_end, next_billing_date, payment_status,
+          subscription_start, subscription_end, next_billing_date, payment_status, medical_specialization,
         },
         features,
         featureLabels: FEATURE_LABELS,
@@ -368,6 +373,7 @@ async function main() {
         featureGroups: FEATURE_GROUPS,
         billingCycles: BILLING_CYCLES,
         paymentStatuses: PAYMENT_STATUSES,
+        medicalSpecializations: MEDICAL_SPECIALIZATIONS,
         error: msg.includes("duplicate") ? "Subdomain or DB name already in use." : msg,
       });
     }
@@ -430,6 +436,7 @@ async function main() {
       features,
       featureLabels: FEATURE_LABELS,
       payments: payments.rows,
+      medicalSpecializations: MEDICAL_SPECIALIZATIONS,
       daysUntilBilling,
       daysUntilEnd,
       totalPaid: totalPaid.rows[0]?.total || "0",
@@ -456,6 +463,7 @@ async function main() {
       featureGroups: FEATURE_GROUPS,
       billingCycles: BILLING_CYCLES,
       paymentStatuses: PAYMENT_STATUSES,
+      medicalSpecializations: MEDICAL_SPECIALIZATIONS,
       error: null,
     });
   });
@@ -475,6 +483,7 @@ async function main() {
     const subscription_end = String(body.subscription_end || "").trim() || null;
     const next_billing_date = String(body.next_billing_date || "").trim() || null;
     const payment_status = String(body.payment_status || "trial");
+    const medical_specialization = String(body.medical_specialization || "general").trim();
     const features = {} as Record<FeatureKey, boolean>;
     for (const k of FEATURE_KEYS) features[k] = body[`feature_${k}`] === "on";
 
@@ -488,16 +497,27 @@ async function main() {
          contact_name=$4, contact_email=$5, contact_phone=$6,
          plan_name=$7, billing_amount=$8, billing_cycle=$9,
          subscription_start=$10, subscription_end=$11, next_billing_date=$12, payment_status=$13,
+         medical_specialization=$14,
          updated_at=NOW()
-       WHERE id=$14`,
+       WHERE id=$15`,
       [
         name, JSON.stringify(features), notes || null,
         contact_name || null, contact_email || null, contact_phone || null,
         plan_name || null, billing_amount, billing_cycle,
         subscription_start, subscription_end, next_billing_date, payment_status,
+        medical_specialization,
         id,
       ],
     );
+    const dbRow = await pool.query<{ db_name: string; provision_status: string }>(
+      "SELECT db_name, provision_status FROM admin_customers WHERE id=$1",
+      [id],
+    );
+    if (dbRow.rows[0]?.provision_status === "ready") {
+      await seedTenantMedicalSpecialization(dbRow.rows[0].db_name, medical_specialization).catch((err) => {
+        console.warn(`[admin] specialization seed failed customer=${id}:`, err instanceof Error ? err.message : err);
+      });
+    }
     req.session.flash = { type: "success", message: "Customer updated." };
     res.redirect(`/customers/${id}`);
   });

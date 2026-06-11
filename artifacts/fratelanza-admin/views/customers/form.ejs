@@ -43,6 +43,25 @@
       </div>
     </div>
 
+    <div class="bg-white border border-slate-200 rounded-xl p-6 space-y-4">
+      <h2 class="font-semibold text-slate-800">Medical specialization</h2>
+      <p class="text-xs text-slate-500 -mt-2">Seeds related diagnosis suggestions and medical feature prompts for the tenant.</p>
+      <select name="medical_specialization" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        <% medicalSpecializations.forEach(function(s) { %>
+          <option value="<%= s.key %>" <%= (customer.medical_specialization || 'general') === s.key ? 'selected' : '' %>><%= s.label %> · <%= s.labelAr %></option>
+        <% }) %>
+      </select>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-600">
+        <% medicalSpecializations.forEach(function(s) { %>
+          <div class="rounded-lg border border-slate-200 p-3">
+            <div class="font-medium text-slate-800"><%= s.label %></div>
+            <div class="mt-1"><span class="text-slate-400">Diagnosis:</span> <%= s.diagnoses.slice(0, 3).join(', ') %></div>
+            <div class="mt-1"><span class="text-slate-400">Features:</span> <%= s.features.join(', ') %></div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+
     <div class="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
       <h2 class="font-semibold text-slate-800">Primary contact</h2>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
