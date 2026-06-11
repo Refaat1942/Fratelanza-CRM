@@ -61,11 +61,13 @@ cp -a /etc/nginx/sites-enabled/. "$BACKUP_DIR/"
 echo "==> Installing canonical config from repo..."
 cp "${REPO_ROOT}/deploy/nginx.conf" /etc/nginx/sites-available/fratelanza
 
-echo "==> Disabling conflicting site configs..."
+echo "==> Disabling conflicting CRM site configs (keeping console, etc.)..."
 for f in /etc/nginx/sites-enabled/*; do
   base=$(basename "$f")
   case "$base" in
-    fratelanza|default) continue ;;
+    fratelanza|default|fratelanza-console) continue ;;
+    fratelanza-hub.conf|fratelanza-rs-fratelanza-com|fratelanza-rs*) ;;
+    *) continue ;;  # leave unknown sites (e.g. other apps) alone
   esac
   if [ -e "$f" ]; then
     yellow "  removing enabled site: $base"

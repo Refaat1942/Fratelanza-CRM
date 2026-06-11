@@ -195,11 +195,20 @@ Diagnose:
 sudo ./deploy/fix-nginx.sh --check
 ```
 
-Fix (backs up sites-enabled, installs `deploy/nginx.conf`, disables conflicts):
+Fix (backs up sites-enabled, installs `deploy/nginx.conf`, removes stale CRM configs like `fratelanza-rs-fratelanza-com` that point at port 9000; keeps `fratelanza-console`):
 
 ```bash
 sudo ./deploy/fix-nginx.sh
 curl -sI https://test.fratelanza.com/api/healthz   # expect HTTP/2 200
+```
+
+Or manually:
+
+```bash
+sudo cp deploy/nginx.conf /etc/nginx/sites-available/fratelanza
+sudo ln -sf /etc/nginx/sites-available/fratelanza /etc/nginx/sites-enabled/fratelanza
+sudo rm -f /etc/nginx/sites-enabled/fratelanza-rs-fratelanza-com
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
 ## 10. Ops cheat sheet
