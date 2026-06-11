@@ -77,6 +77,8 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/medical/appointments", key: "medical", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
       { href: "/medical/visits", key: "medical", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
       { href: "/medical/prescriptions", key: "medical", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
+      { href: "/medical/medicine-master", key: "medical", icon: Pill, labelEn: "Medicine Master", labelAr: "سجل الأدوية" },
+      { href: "/medical/doctor-templates", key: "medical", icon: FileText, labelEn: "Rx Templates", labelAr: "قوالب الوصفات" },
       { href: "/medical/materials", key: "medical", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
       { href: "/medical/invoices", key: "medical", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
       { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },

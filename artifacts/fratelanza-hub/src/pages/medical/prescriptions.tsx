@@ -13,6 +13,7 @@ import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
 import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer } from "lucide-react";
 import { useBranding } from "@/components/BrandingProvider";
+import { MedicinePicker } from "@/components/medical/MedicinePicker";
 
 type Prescription = {
   id: number;
@@ -35,7 +36,7 @@ type Prescription = {
   doctorNameAr: string | null;
 };
 
-type Visit = { id: number; patientId: number; visitDate: string };
+type Visit = { id: number; patientId: number; visitDate: string; doctorId?: number | null };
 type Patient = { id: number; firstName: string; firstNameAr: string | null; lastName: string | null; lastNameAr: string | null };
 
 type RxHeader = {
@@ -56,19 +57,41 @@ function escHtml(v: unknown): string {
 }
 function escAttr(v: unknown): string { return escHtml(v); }
 
-function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: (en: string, ar: string) => string, patientLabelRaw: string) {
+type DoctorTemplate = {
+  templateUrl?: string | null;
+  doctorTitle?: string | null;
+  doctorTitleAr?: string | null;
+  doctorLicense?: string | null;
+  footerText?: string | null;
+  footerTextAr?: string | null;
+};
+
+function printPrescription(
+  p: Prescription,
+  header: RxHeader,
+  isAr: boolean,
+  t: (en: string, ar: string) => string,
+  patientLabelRaw: string,
+  doctorTemplate?: DoctorTemplate | null,
+) {
   const clinicName = escHtml(isAr ? (header.companyNameAr || header.companyName) : (header.companyName || header.companyNameAr));
   const address = escHtml(isAr ? (header.clinicAddressAr || header.clinicAddress) : (header.clinicAddress || header.clinicAddressAr));
   const doctor = escHtml(isAr ? (p.doctorNameAr || p.doctorName) : (p.doctorName || p.doctorNameAr));
-  const doctorTitle = escHtml(isAr ? (header.doctorTitleAr || header.doctorTitle) : (header.doctorTitle || header.doctorTitleAr));
-  const footer = escHtml(isAr ? (header.prescriptionFooterAr || header.prescriptionFooter) : (header.prescriptionFooter || header.prescriptionFooterAr));
+  const doctorTitle = escHtml(isAr
+    ? (doctorTemplate?.doctorTitleAr || doctorTemplate?.doctorTitle || header.doctorTitleAr || header.doctorTitle)
+    : (doctorTemplate?.doctorTitle || doctorTemplate?.doctorTitleAr || header.doctorTitle || header.doctorTitleAr));
+  const footer = escHtml(isAr
+    ? (doctorTemplate?.footerTextAr || doctorTemplate?.footerText || header.prescriptionFooterAr || header.prescriptionFooter)
+    : (doctorTemplate?.footerText || doctorTemplate?.footerTextAr || header.prescriptionFooter || header.prescriptionFooterAr));
+  const templateBg = escAttr(doctorTemplate?.templateUrl);
+  const doctorLicenseVal = doctorTemplate?.doctorLicense || header.doctorLicense;
   const medName = escHtml(isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName);
   const instructions = escHtml(isAr ? (p.instructionsAr || p.instructions) : (p.instructions || p.instructionsAr));
   const dosage = escHtml(p.dosage);
   const frequency = escHtml(p.frequency);
   const clinicPhone = escHtml(header.clinicPhone);
   const logoUrl = escAttr(header.logoUrl);
-  const doctorLicense = escHtml(header.doctorLicense);
+  const doctorLicense = escHtml(doctorLicenseVal);
   const patientLabel = escHtml(patientLabelRaw);
   const initial = escHtml((isAr ? (header.companyNameAr || header.companyName) : (header.companyName || header.companyNameAr))?.charAt(0) || "C");
   const dateStr = new Date(p.createdAt).toLocaleDateString(isAr ? "ar-EG" : undefined);
@@ -81,7 +104,8 @@ function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: 
 <meta charset="utf-8"><title>${t("Prescription", "وصفة طبية")} #${p.id}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:${isAr ? "'Tahoma','Segoe UI'" : "'Inter','Segoe UI','Helvetica'"},sans-serif;color:#0f172a;padding:32px 40px;line-height:1.5}
+  body{font-family:${isAr ? "'Tahoma','Segoe UI'" : "'Inter','Segoe UI','Helvetica'"},sans-serif;color:#0f172a;padding:32px 40px;line-height:1.5;${templateBg ? `background:url('${templateBg}') center top / contain no-repeat;min-height:100vh` : ""}}
+  .content{${templateBg ? "position:relative;z-index:1;padding-top:120px" : ""}}
   .header{display:flex;align-items:center;gap:18px;padding-bottom:18px;border-bottom:3px solid #1e40af}
   .logo{width:72px;height:72px;border-radius:8px;object-fit:cover;border:1px solid #e2e8f0}
   .logo-placeholder{width:72px;height:72px;border-radius:8px;background:#1e40af;color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700}
@@ -103,6 +127,7 @@ function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: 
   .footer{margin-top:40px;padding-top:14px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center;white-space:pre-wrap}
   @media print{ body{padding:24px 32px} }
 </style></head><body>
+  <div class="content">
   <div class="header">
     ${logoUrl ? `<img src="${logoUrl}" class="logo" alt="logo">` : `<div class="logo-placeholder">${initial}</div>`}
     <div style="flex:1">
@@ -154,6 +179,7 @@ function printPrescription(p: Prescription, header: RxHeader, isAr: boolean, t: 
   </div>
 
   ${footer ? `<div class="footer">${footer}</div>` : ""}
+  </div>
 
   <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script>
 </body></html>`;
@@ -174,10 +200,10 @@ export default function PrescriptionsPage() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<{
-    visitId: string; medicineName: string; medicineNameAr: string;
+    visitId: string; medicineId: number | null; medicineName: string; medicineNameAr: string;
     dosage: string; frequency: string; durationDays: string;
     instructions: string; instructionsAr: string;
-  }>({ visitId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+  }>({ visitId: "", medicineId: null, medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
 
   const { data: prescriptions = [], isLoading } = useQuery<Prescription[]>({
     queryKey: ["prescriptions"],
@@ -195,6 +221,15 @@ export default function PrescriptionsPage() {
     queryKey: ["patients"],
     queryFn: () => apiFetch("/patients"),
   });
+  const { data: templates = [] } = useQuery<({ doctorId: number } & DoctorTemplate)[]>({
+    queryKey: ["doctor-prescription-templates"],
+    queryFn: () => apiFetch("/doctor-prescription-templates"),
+  });
+
+  const templateByDoctor = templates.reduce<Record<number, DoctorTemplate>>((acc, tpl) => {
+    acc[tpl.doctorId] = tpl;
+    return acc;
+  }, {});
 
   const patientLabel = (p?: { firstName?: string | null; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null } | null) => {
     if (!p) return "—";
@@ -208,7 +243,7 @@ export default function PrescriptionsPage() {
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
       qc.invalidateQueries({ queryKey: ["prescriptions-stats"] });
       setOpen(false);
-      setForm({ visitId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+      setForm({ visitId: "", medicineId: null, medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
       toast({ title: t("Prescription added", "تم إضافة الوصفة") });
     },
     onError: (err: any) => toast({ title: err?.message || t("Failed", "فشل"), variant: "destructive" }),
@@ -229,6 +264,7 @@ export default function PrescriptionsPage() {
     const body: any = {
       visitId: Number(form.visitId),
       medicineName: form.medicineName.trim(),
+      medicineId: form.medicineId,
     };
     if (form.medicineNameAr.trim()) body.medicineNameAr = form.medicineNameAr.trim();
     if (form.dosage.trim()) body.dosage = form.dosage.trim();
@@ -325,7 +361,12 @@ export default function PrescriptionsPage() {
                   <Button
                     variant="ghost" size="icon" className="h-8 w-8"
                     title={t("Print", "طباعة")}
-                    onClick={() => printPrescription(p, { ...branding, ...(rxHeader || {}) }, isAr, t, patientLabel(p as any))}
+                    onClick={() => {
+                      const visit = visits.find(v => v.id === p.visitId);
+                      const doctorId = visit?.doctorId ?? undefined;
+                      const tpl = doctorId ? templateByDoctor[doctorId] : undefined;
+                      printPrescription(p, { ...branding, ...(rxHeader || {}) }, isAr, t, patientLabel(p as any), tpl);
+                    }}
                     data-testid={`button-print-prescription-${p.id}`}
                   >
                     <Printer size={15} />
@@ -370,17 +411,20 @@ export default function PrescriptionsPage() {
               </Select>
             </div>
 
-            {isAr ? (
-              <div className="space-y-1.5">
-                <Label>{t("Medicine name (Arabic)", "اسم الدواء (عربي)")}*</Label>
-                <Input value={form.medicineNameAr} onChange={e => setForm({ ...form, medicineNameAr: e.target.value, medicineName: e.target.value })} required />
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                <Label>{t("Medicine name", "اسم الدواء")}*</Label>
-                <Input value={form.medicineName} onChange={e => setForm({ ...form, medicineName: e.target.value })} required />
-              </div>
-            )}
+            <div className="space-y-1.5">
+              <Label>{t("Medicine (from master data)", "الدواء (من سجل الأدوية)")}*</Label>
+              <MedicinePicker
+                required
+                value={isAr ? form.medicineNameAr || form.medicineName : form.medicineName}
+                onChange={(name, med) => setForm({
+                  ...form,
+                  medicineName: name,
+                  medicineNameAr: name,
+                  medicineId: med?.id ?? null,
+                  dosage: med?.bun ? (form.dosage || med.bun) : form.dosage,
+                })}
+              />
+            </div>
 
             <div className="grid grid-cols-3 gap-2.5">
               <div className="space-y-1.5">

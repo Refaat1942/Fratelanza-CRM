@@ -554,3 +554,53 @@ ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS doctor_title_ar         TEX
 ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS doctor_license          TEXT;
 ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS prescription_footer     TEXT;
 ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS prescription_footer_ar  TEXT;
+
+-- Phase G1: Patient QR, medicine master, diagnoses/features master, doctor Rx templates
+ALTER TABLE patients ADD COLUMN IF NOT EXISTS qr_token TEXT UNIQUE;
+CREATE INDEX IF NOT EXISTS idx_patients_qr_token ON patients(qr_token);
+
+CREATE TABLE IF NOT EXISTS medicine_master (
+  id SERIAL PRIMARY KEY,
+  material TEXT NOT NULL UNIQUE,
+  material_description TEXT NOT NULL,
+  bun TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_medicine_master_material ON medicine_master(material);
+
+ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS medicine_id INTEGER;
+
+CREATE TABLE IF NOT EXISTS diagnoses_master (
+  id SERIAL PRIMARY KEY,
+  code TEXT,
+  name TEXT NOT NULL,
+  name_ar TEXT,
+  specialization TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS medical_features_master (
+  id SERIAL PRIMARY KEY,
+  category TEXT NOT NULL,
+  name TEXT NOT NULL,
+  name_ar TEXT,
+  specialization TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS doctor_prescription_templates (
+  id SERIAL PRIMARY KEY,
+  doctor_id INTEGER NOT NULL UNIQUE,
+  template_url TEXT,
+  doctor_title TEXT,
+  doctor_title_ar TEXT,
+  doctor_license TEXT,
+  footer_text TEXT,
+  footer_text_ar TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

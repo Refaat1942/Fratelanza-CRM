@@ -4,6 +4,11 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { pool as adminPool } from "./db.js";
+import {
+  SPECIALIZATION_PRESETS,
+  isSpecializationKey,
+  type SpecializationKey,
+} from "@workspace/db";
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -46,6 +51,31 @@ function buildTenantUrl(dbName: string): string {
   return base.replace(/\/[^/?]+(\?|$)/, `/${dbName}$1`);
 }
 
+async function seedSpecializationData(
+  client: pg.PoolClient,
+  specialization: SpecializationKey,
+): Promise<void> {
+  const preset = SPECIALIZATION_PRESETS[specialization] ?? SPECIALIZATION_PRESETS.general;
+  const diagCount = await client.query(`SELECT COUNT(*)::int AS c FROM diagnoses_master`);
+  if ((diagCount.rows[0]?.c ?? 0) === 0) {
+    for (const d of preset.diagnoses) {
+      await client.query(
+        `INSERT INTO diagnoses_master (code, name, name_ar, specialization, active) VALUES ($1, $2, $3, $4, 1)`,
+        [d.code, d.name, d.nameAr, specialization],
+      );
+    }
+  }
+  const featCount = await client.query(`SELECT COUNT(*)::int AS c FROM medical_features_master`);
+  if ((featCount.rows[0]?.c ?? 0) === 0) {
+    for (const f of preset.features) {
+      await client.query(
+        `INSERT INTO medical_features_master (category, name, name_ar, specialization, active) VALUES ($1, $2, $3, $4, 1)`,
+        [f.category, f.name, f.nameAr, specialization],
+      );
+    }
+  }
+}
+
 async function seedTenantAdmin(tenantPool: pg.Pool): Promise<void> {
   const passwordHash = await bcrypt.hash(process.env.TENANT_DEFAULT_ADMIN_PASSWORD || "admin123", 10);
   await tenantPool.query(
@@ -58,7 +88,10 @@ async function seedTenantAdmin(tenantPool: pg.Pool): Promise<void> {
 
 export type ProvisionOutcome = { status: "ready" | "failed"; error?: string };
 
-export async function provisionTenantDb(dbName: string): Promise<ProvisionOutcome> {
+export async function provisionTenantDb(
+  dbName: string,
+  specialization: SpecializationKey = "general",
+): Promise<ProvisionOutcome> {
   assertSafeDbName(dbName);
   // Create the database if it doesn't exist. Treat "duplicate_database"
   // (SQLSTATE 42P04) as a non-fatal race winner so concurrent runs converge.
@@ -88,6 +121,7 @@ export async function provisionTenantDb(dbName: string): Promise<ProvisionOutcom
        ON CONFLICT (username) DO NOTHING`,
       ["admin", passwordHash, JSON.stringify(ALL_PERMISSIONS)],
     );
+    await seedSpecializationData(client, specialization);
     await client.query("COMMIT");
     return { status: "ready" };
   } catch (err: unknown) {
@@ -123,7 +157,13 @@ export function provisionInBackground(customerId: number, dbName: string): void 
     if (claim.rowCount === 0) return; // already in progress
 
     try {
-      await provisionTenantDb(dbName);
+      const specRow = await adminPool.query<{ specialization: string | null }>(
+        `SELECT specialization FROM admin_customers WHERE id=$1`,
+        [customerId],
+      );
+      const rawSpec = specRow.rows[0]?.specialization || "general";
+      const specialization = isSpecializationKey(rawSpec) ? rawSpec : "general";
+      await provisionTenantDb(dbName, specialization);
       await adminPool.query(
         `UPDATE admin_customers SET provision_status='ready', provision_error=NULL, updated_at=NOW() WHERE id=$1`,
         [customerId],
