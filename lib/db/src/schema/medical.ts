@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, real, date } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, real, date, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -90,9 +90,24 @@ export const medicalProceduresTable = pgTable("medical_procedures", {
 export type MedicalProcedure = typeof medicalProceduresTable.$inferSelect;
 
 // =============== Prescriptions ===============
+export const medicineMasterTable = pgTable("medicine_master", {
+  id: serial("id").primaryKey(),
+  material: text("material").notNull(),
+  materialDescription: text("material_description").notNull(),
+  bun: text("bun").notNull(),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => ({
+  materialIdx: uniqueIndex("medicine_master_material_idx").on(table.material),
+}));
+
+export type MedicineMaster = typeof medicineMasterTable.$inferSelect;
+
 export const prescriptionsTable = pgTable("prescriptions", {
   id: serial("id").primaryKey(),
   visitId: integer("visit_id").notNull(),
+  medicineMasterId: integer("medicine_master_id"),
   medicineName: text("medicine_name").notNull(),
   medicineNameAr: text("medicine_name_ar"),
   dosage: text("dosage"),

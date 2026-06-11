@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui-ext/page-header";
 import { EmptyState } from "@/components/ui-ext/empty-state";
-import { Stethoscope, Plus, Edit2, Trash2, Phone, Mail, IdCard } from "lucide-react";
+import { Stethoscope, Plus, Edit2, Trash2, Phone, Mail, IdCard, Upload, Image as ImageIcon } from "lucide-react";
 
 type Staff = {
   id: number;
@@ -25,6 +25,11 @@ type Staff = {
   licenseNumber: string | null;
   phone: string | null;
   email: string | null;
+  prescriptionTemplateUrl: string | null;
+  prescriptionHeader: string | null;
+  prescriptionHeaderAr: string | null;
+  prescriptionFooter: string | null;
+  prescriptionFooterAr: string | null;
   notes: string | null;
   active: boolean;
 };
@@ -51,6 +56,8 @@ const blank = () => ({
   name: "", nameAr: "", role: "doctor",
   specialty: "", specialtyAr: "",
   licenseNumber: "", phone: "", email: "", notes: "",
+  prescriptionTemplateUrl: "", prescriptionHeader: "", prescriptionHeaderAr: "",
+  prescriptionFooter: "", prescriptionFooterAr: "",
   active: true,
 });
 
@@ -90,6 +97,23 @@ export default function ClinicStaffPage() {
     },
   });
 
+  const uploadTemplate = useMutation({
+    mutationFn: async ({ id, file }: { id: number; file: File }) => {
+      const fd = new FormData();
+      fd.append("template", file);
+      const res = await fetch(`/api/clinic-staff/${id}/prescription-template`, { method: "POST", credentials: "include", body: fd });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({} as any)))?.error || "upload_failed");
+      return res.json();
+    },
+    onSuccess: (row: Staff) => {
+      qc.invalidateQueries({ queryKey: ["clinic-staff"] });
+      setEditing(row);
+      setForm(prev => ({ ...prev, prescriptionTemplateUrl: row.prescriptionTemplateUrl || "" }));
+      toast({ title: t("Prescription shape uploaded", "تم رفع شكل الوصفة") });
+    },
+    onError: (e: any) => toast({ title: e?.message || t("Upload failed", "فشل الرفع"), variant: "destructive" }),
+  });
+
   const openNew = () => { setEditing(null); setForm(blank()); setOpen(true); };
   const openEdit = (s: Staff) => {
     setEditing(s);
@@ -97,6 +121,11 @@ export default function ClinicStaffPage() {
       name: s.name ?? "", nameAr: s.nameAr ?? "", role: s.role,
       specialty: s.specialty ?? "", specialtyAr: s.specialtyAr ?? "",
       licenseNumber: s.licenseNumber ?? "", phone: s.phone ?? "", email: s.email ?? "",
+      prescriptionTemplateUrl: s.prescriptionTemplateUrl ?? "",
+      prescriptionHeader: s.prescriptionHeader ?? "",
+      prescriptionHeaderAr: s.prescriptionHeaderAr ?? "",
+      prescriptionFooter: s.prescriptionFooter ?? "",
+      prescriptionFooterAr: s.prescriptionFooterAr ?? "",
       notes: s.notes ?? "", active: s.active,
     });
     setOpen(true);
@@ -117,6 +146,11 @@ export default function ClinicStaffPage() {
       licenseNumber: form.licenseNumber.trim() || null,
       phone: form.phone.trim() || null,
       email: form.email.trim() || null,
+      prescriptionTemplateUrl: form.prescriptionTemplateUrl.trim() || null,
+      prescriptionHeader: form.prescriptionHeader.trim() || null,
+      prescriptionHeaderAr: form.prescriptionHeaderAr.trim() || null,
+      prescriptionFooter: form.prescriptionFooter.trim() || null,
+      prescriptionFooterAr: form.prescriptionFooterAr.trim() || null,
       notes: form.notes.trim() || null,
       active: form.active,
     });
@@ -188,6 +222,7 @@ export default function ClinicStaffPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[11px] px-2 py-0.5 rounded-full ${ROLE_TONE[s.role] ?? ROLE_TONE.other}`}>{roleLabel(s.role)}</span>
                     {displaySpecialty(s) && <span className="text-xs text-muted-foreground">{displaySpecialty(s)}</span>}
+                    {s.prescriptionTemplateUrl && <span className="text-xs text-primary flex items-center gap-1"><ImageIcon size={11} />{t("Rx shape", "شكل الوصفة")}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -280,6 +315,47 @@ export default function ClinicStaffPage() {
               <Label>{t("Notes", "ملاحظات")}</Label>
               <Textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
             </div>
+
+            {form.role === "doctor" && (
+              <div className="space-y-3 rounded-md border p-3">
+                <div>
+                  <Label className="text-sm font-semibold">{t("Prescription shape for this doctor", "شكل الوصفة لهذا الطبيب")}</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {t("Upload a letterhead/template image and optional text printed only for this doctor.", "ارفع صورة قالب الوصفة ونصوص اختيارية تظهر لهذا الطبيب فقط.")}
+                  </p>
+                </div>
+                {editing && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded border bg-muted flex items-center justify-center overflow-hidden">
+                      {form.prescriptionTemplateUrl ? <img src={form.prescriptionTemplateUrl} alt="rx-template" className="w-full h-full object-cover" /> : <ImageIcon size={20} className="text-muted-foreground" />}
+                    </div>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium cursor-pointer hover:opacity-90">
+                      <Upload size={14} />{uploadTemplate.isPending ? t("Uploading…", "جاري الرفع…") : t("Upload shape", "رفع الشكل")}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                        className="hidden"
+                        disabled={uploadTemplate.isPending}
+                        onChange={e => { const file = e.target.files?.[0]; if (file && editing) uploadTemplate.mutate({ id: editing.id, file }); e.target.value = ""; }}
+                      />
+                    </label>
+                  </div>
+                )}
+                {!editing && <p className="text-xs text-amber-600">{t("Save the doctor first, then edit to upload the shape.", "احفظ الطبيب أولاً ثم عد للتعديل لرفع الشكل.")}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>{t("Doctor prescription header", "ترويسة وصفة الطبيب")}</Label>
+                    <Input value={isAr ? form.prescriptionHeaderAr : form.prescriptionHeader}
+                      onChange={e => isAr ? setForm({ ...form, prescriptionHeaderAr: e.target.value }) : setForm({ ...form, prescriptionHeader: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>{t("Doctor prescription footer", "تذييل وصفة الطبيب")}</Label>
+                    <Input value={isAr ? form.prescriptionFooterAr : form.prescriptionFooter}
+                      onChange={e => isAr ? setForm({ ...form, prescriptionFooterAr: e.target.value }) : setForm({ ...form, prescriptionFooter: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center justify-between border-t pt-3">
               <Label className="flex items-center gap-2 cursor-pointer">

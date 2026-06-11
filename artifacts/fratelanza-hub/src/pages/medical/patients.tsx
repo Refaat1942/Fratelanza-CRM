@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
 import { apiFetch } from "@/lib/api";
@@ -13,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle,
-  IdCard, AlertTriangle, Stethoscope, Search, Sparkles,
+  IdCard, AlertTriangle, Stethoscope, Search, Sparkles, QrCode, ExternalLink,
 } from "lucide-react";
 import { AiSummaryDialog } from "@/components/medical/AiSummaryDialog";
 import { openWhatsApp } from "@/lib/whatsapp";
@@ -76,6 +77,7 @@ export default function Patients() {
   const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState<Patient>(EMPTY);
   const [aiSummaryFor, setAiSummaryFor] = useState<Patient | null>(null);
+  const [qrPatient, setQrPatient] = useState<Patient | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["patients-stats"],
@@ -95,7 +97,13 @@ export default function Patients() {
   const createMut = useMutation({
     mutationFn: (data: Partial<Patient>) =>
       apiFetch<Patient>("/patients", { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => { invalidate(); setCreateOpen(false); setForm(EMPTY); toast({ title: t("Patient added", "تمت إضافة المريض") }); },
+    onSuccess: (patient) => {
+      invalidate();
+      setCreateOpen(false);
+      setForm(EMPTY);
+      setQrPatient(patient);
+      toast({ title: t("Patient added", "تمت إضافة المريض") });
+    },
     onError: (e: Error) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
   });
 
@@ -159,6 +167,9 @@ export default function Patients() {
     if (isAr) return `${p.firstNameAr || p.firstName} ${p.lastNameAr || p.lastName || ""}`.trim();
     return `${p.firstName || p.firstNameAr || ""} ${p.lastName || p.lastNameAr || ""}`.trim();
   };
+
+  const patientHistoryPath = (p: Patient) => `/medical/patients/${p.id}/history`;
+  const patientHistoryUrl = (p: Patient) => `${window.location.origin}${patientHistoryPath(p)}`;
 
   const genderLabel = (g?: string | null) =>
     g === "male" ? t("Male", "ذكر") : g === "female" ? t("Female", "أنثى") : g === "other" ? t("Other", "آخر") : null;
@@ -389,6 +400,11 @@ export default function Patients() {
                         title={t("AI Summary", "ملخص ذكاء اصطناعي")} data-testid={`btn-ai-summary-${p.id}`}>
                         <Sparkles size={13} />
                       </Button>
+                      <Button variant="outline" size="sm" className="h-7 px-2 text-blue-700 hover:bg-blue-50 hover:text-blue-800 border-blue-200"
+                        onClick={() => setQrPatient(p)}
+                        title={t("Patient QR", "QR المريض")} data-testid={`btn-patient-qr-${p.id}`}>
+                        <QrCode size={13} />
+                      </Button>
                       {p.phone && (
                         <Button variant="outline" size="sm" className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 border-emerald-200"
                           onClick={() => openWhatsApp(p.phone!, isAr ? `السلام عليكم ${p.firstNameAr || p.firstName}،` : `Hello ${p.firstName},`)}
@@ -431,6 +447,28 @@ export default function Patients() {
             <DialogTitle className="flex items-center gap-2"><Edit2 size={18} className="text-primary"/>{t("Edit Patient", "تعديل بيانات المريض")}</DialogTitle>
           </DialogHeader>
           {PatientForm}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={qrPatient !== null} onOpenChange={open => { if (!open) setQrPatient(null); }}>
+        <DialogContent className={`max-w-sm ${isRtl ? "rtl" : "ltr"}`}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><QrCode size={18} className="text-primary" />{t("Patient history QR", "QR سجل المريض")}</DialogTitle>
+          </DialogHeader>
+          {qrPatient && (
+            <div className="space-y-4 text-center">
+              <div className="text-sm text-muted-foreground">
+                {t("Scan to open the full patient history after login.", "امسح الكود لفتح سجل المريض الكامل بعد تسجيل الدخول.")}
+              </div>
+              <div className="inline-flex bg-white p-4 rounded-lg border">
+                <QRCodeSVG value={patientHistoryUrl(qrPatient)} size={196} level="M" includeMargin />
+              </div>
+              <div className="font-medium">{fullName(qrPatient)}</div>
+              <a href={patientHistoryPath(qrPatient)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+                {t("Open history", "فتح السجل")} <ExternalLink size={13} />
+              </a>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

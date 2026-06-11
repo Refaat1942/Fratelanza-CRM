@@ -22,6 +22,9 @@ CREATE TABLE "clients" (
 	"phone" text,
 	"company" text,
 	"company_ar" text,
+	"specialization" text,
+	"related_diagnosis" text,
+	"medical_features" text,
 	"status" text DEFAULT 'lead' NOT NULL,
 	"notes" text,
 	"notes_ar" text,
@@ -298,6 +301,7 @@ CREATE TABLE "patients" (
 CREATE TABLE "prescriptions" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"visit_id" integer NOT NULL,
+	"medicine_master_id" integer,
 	"medicine_name" text NOT NULL,
 	"medicine_name_ar" text,
 	"dosage" text,
@@ -307,6 +311,19 @@ CREATE TABLE "prescriptions" (
 	"instructions_ar" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS medicine_master (
+  id                   SERIAL PRIMARY KEY,
+  material             TEXT NOT NULL,
+  material_description TEXT NOT NULL,
+  bun                  TEXT NOT NULL,
+  active               INTEGER NOT NULL DEFAULT 1,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS medicine_master_material_idx ON medicine_master(material);
+CREATE INDEX IF NOT EXISTS idx_medicine_master_active ON medicine_master(active);
+CREATE INDEX IF NOT EXISTS idx_medicine_master_description ON medicine_master(material_description);
 
 CREATE TABLE "visits" (
 	"id" serial PRIMARY KEY NOT NULL,
@@ -538,6 +555,11 @@ CREATE TABLE IF NOT EXISTS clinic_staff (
   license_number  TEXT,
   phone           TEXT,
   email           TEXT,
+  prescription_template_url TEXT,
+  prescription_header TEXT,
+  prescription_header_ar TEXT,
+  prescription_footer TEXT,
+  prescription_footer_ar TEXT,
   notes           TEXT,
   active          BOOLEAN NOT NULL DEFAULT TRUE,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -545,6 +567,20 @@ CREATE TABLE IF NOT EXISTS clinic_staff (
 );
 CREATE INDEX IF NOT EXISTS idx_clinic_staff_active ON clinic_staff(active);
 CREATE INDEX IF NOT EXISTS idx_clinic_staff_role   ON clinic_staff(role);
+
+ALTER TABLE prescriptions ADD COLUMN IF NOT EXISTS medicine_master_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_prescriptions_medicine_master ON prescriptions(medicine_master_id);
+
+ALTER TABLE clinic_staff ADD COLUMN IF NOT EXISTS prescription_template_url TEXT;
+ALTER TABLE clinic_staff ADD COLUMN IF NOT EXISTS prescription_header TEXT;
+ALTER TABLE clinic_staff ADD COLUMN IF NOT EXISTS prescription_header_ar TEXT;
+ALTER TABLE clinic_staff ADD COLUMN IF NOT EXISTS prescription_footer TEXT;
+ALTER TABLE clinic_staff ADD COLUMN IF NOT EXISTS prescription_footer_ar TEXT;
+
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS specialization TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS related_diagnosis TEXT;
+ALTER TABLE clients ADD COLUMN IF NOT EXISTS medical_features TEXT;
+CREATE INDEX IF NOT EXISTS idx_clients_specialization ON clients(specialization);
 
 ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS clinic_phone            TEXT;
 ALTER TABLE tenant_settings ADD COLUMN IF NOT EXISTS clinic_address          TEXT;

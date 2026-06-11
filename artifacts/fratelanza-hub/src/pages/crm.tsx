@@ -24,6 +24,51 @@ import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
+const SPECIALIZATIONS = [
+  {
+    value: "gynecology",
+    en: "Gynecology",
+    ar: "نساء وتوليد",
+    diagnosis: "Pregnancy follow-up, PCOS, endometriosis, infertility, menstrual disorders, pelvic inflammatory disease, menopause symptoms, cervical screening follow-up",
+    features: "Pregnancy timeline, obstetric history, LMP/EDD tracking, ultrasound notes, lab follow-up, contraceptive counseling, high-risk pregnancy alerts",
+  },
+  {
+    value: "orthopedics",
+    en: "Orthopedics / Osteology",
+    ar: "عظام",
+    diagnosis: "Fractures, osteoarthritis, osteoporosis, back pain, ligament injuries, sprains, tendonitis, scoliosis, post-operative follow-up",
+    features: "Pain score, range of motion, imaging notes, cast/splint tracking, physiotherapy plan, bone density follow-up, implant/procedure history",
+  },
+  {
+    value: "dentistry",
+    en: "Dentistry",
+    ar: "أسنان",
+    diagnosis: "Caries, pulpitis, periodontal disease, malocclusion, impacted teeth, abscess, bruxism, prosthodontic follow-up",
+    features: "Tooth charting, treatment plans, procedure catalog, materials used, follow-up reminders, dental imaging notes",
+  },
+  {
+    value: "cardiology",
+    en: "Cardiology",
+    ar: "قلب",
+    diagnosis: "Hypertension, coronary artery disease, arrhythmia, heart failure, valvular disease, dyslipidemia",
+    features: "Blood pressure trend, ECG/echo notes, medication adherence, risk factors, anticoagulation follow-up, cardiac alerts",
+  },
+  {
+    value: "dermatology",
+    en: "Dermatology",
+    ar: "جلدية",
+    diagnosis: "Acne, eczema, psoriasis, fungal infections, alopecia, urticaria, mole assessment, cosmetic follow-up",
+    features: "Photo follow-up, lesion location, treatment response, allergy triggers, procedure notes, cosmetic session tracking",
+  },
+  {
+    value: "pediatrics",
+    en: "Pediatrics",
+    ar: "أطفال",
+    diagnosis: "Vaccination follow-up, respiratory infections, gastroenteritis, allergy/asthma, growth delay, fever assessment",
+    features: "Growth chart, vaccine schedule, weight/height tracking, parent contacts, allergy alerts, school notes",
+  },
+];
+
 export default function CRM() {
   const { t, isRtl, language } = useLanguage();
   const isAr = language === "ar";
@@ -44,6 +89,9 @@ export default function CRM() {
     phone: "",
     company: "",
     companyAr: "",
+    specialization: "",
+    relatedDiagnosis: "",
+    medicalFeatures: "",
     status: "active",
     notes: "",
     notesAr: ""
@@ -122,6 +170,9 @@ export default function CRM() {
       phone: client.phone || "",
       company: client.company || "",
       companyAr: client.companyAr || "",
+      specialization: client.specialization || "",
+      relatedDiagnosis: client.relatedDiagnosis || "",
+      medicalFeatures: client.medicalFeatures || "",
       status: client.status || "active",
       notes: client.notes || "",
       notesAr: client.notesAr || ""
@@ -137,6 +188,9 @@ export default function CRM() {
       phone: "",
       company: "",
       companyAr: "",
+      specialization: "",
+      relatedDiagnosis: "",
+      medicalFeatures: "",
       status: "active",
       notes: "",
       notesAr: ""
@@ -149,6 +203,19 @@ export default function CRM() {
     inactive: { label: t("Inactive", "غير نشط"), color: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400 border-gray-200 dark:border-gray-700", icon: XCircle },
     lead: { label: t("Lead", "عميل محتمل"), color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-500 border-blue-200 dark:border-blue-800", icon: Target },
     prospect: { label: t("Prospect", "مرتقب"), color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-500 border-amber-200 dark:border-amber-800", icon: Star }
+  };
+  const applySpecialization = (value: string) => {
+    const spec = SPECIALIZATIONS.find(s => s.value === value);
+    setFormData({
+      ...formData,
+      specialization: value,
+      relatedDiagnosis: spec?.diagnosis || "",
+      medicalFeatures: spec?.features || "",
+    });
+  };
+  const specializationLabel = (value?: string | null) => {
+    const spec = SPECIALIZATIONS.find(s => s.value === value);
+    return spec ? (isAr ? spec.ar : spec.en) : value;
   };
 
   return (
@@ -218,6 +285,28 @@ export default function CRM() {
                     </Select>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>{t("Medical specialization", "التخصص الطبي")}</Label>
+                  <Select value={formData.specialization || "none"} onValueChange={(val) => val === "none" ? setFormData({ ...formData, specialization: "", relatedDiagnosis: "", medicalFeatures: "" }) : applySpecialization(val)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">{t("— Select specialization —", "— اختر التخصص —")}</SelectItem>
+                      {SPECIALIZATIONS.map(spec => <SelectItem key={spec.value} value={spec.value}>{isAr ? spec.ar : spec.en}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {formData.specialization && (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t("Related diagnosis", "التشخيصات المرتبطة")}</Label>
+                      <Textarea rows={3} value={formData.relatedDiagnosis} onChange={e => setFormData({ ...formData, relatedDiagnosis: e.target.value })} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t("Medical features", "الميزات الطبية")}</Label>
+                      <Textarea rows={3} value={formData.medicalFeatures} onChange={e => setFormData({ ...formData, medicalFeatures: e.target.value })} />
+                    </div>
+                  </div>
+                )}
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={createClient.isPending}>{t("Save", "حفظ")}</Button>
@@ -329,6 +418,11 @@ export default function CRM() {
                         {isRtl ? (client.companyAr || client.company) : client.company}
                       </p>
                     )}
+                    {client.specialization && (
+                      <p className="text-xs text-primary mt-1">
+                        {specializationLabel(client.specialization)}
+                      </p>
+                    )}
                   </div>
                   <Badge className={status?.color} variant="outline">
                     {status?.label}
@@ -436,6 +530,28 @@ export default function CRM() {
                   </Select>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>{t("Medical specialization", "التخصص الطبي")}</Label>
+                <Select value={formData.specialization || "none"} onValueChange={(val) => val === "none" ? setFormData({ ...formData, specialization: "", relatedDiagnosis: "", medicalFeatures: "" }) : applySpecialization(val)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">{t("— Select specialization —", "— اختر التخصص —")}</SelectItem>
+                    {SPECIALIZATIONS.map(spec => <SelectItem key={spec.value} value={spec.value}>{isAr ? spec.ar : spec.en}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.specialization && (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t("Related diagnosis", "التشخيصات المرتبطة")}</Label>
+                    <Textarea rows={3} value={formData.relatedDiagnosis} onChange={e => setFormData({ ...formData, relatedDiagnosis: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t("Medical features", "الميزات الطبية")}</Label>
+                    <Textarea rows={3} value={formData.medicalFeatures} onChange={e => setFormData({ ...formData, medicalFeatures: e.target.value })} />
+                  </div>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button type="submit" disabled={updateClient.isPending}>{t("Save Changes", "حفظ التغييرات")}</Button>

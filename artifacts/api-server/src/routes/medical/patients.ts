@@ -1,6 +1,16 @@
 import { Router, type IRouter } from "express";
 import { and, eq, or, ilike, sql, desc } from "drizzle-orm";
-import { db, patientsTable, activityTable } from "@workspace/db";
+import {
+  db,
+  patientsTable,
+  activityTable,
+  visitsTable,
+  prescriptionsTable,
+  medicalAppointmentsTable,
+  medicalInvoicesTable,
+  employeesTable,
+  medicineMasterTable,
+} from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 
@@ -81,6 +91,86 @@ router.get("/patients/:id", async (req, res): Promise<void> => {
   const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, id));
   if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
   res.json(patient);
+});
+
+router.get("/patients/:id/history", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [patient] = await db.select().from(patientsTable).where(eq(patientsTable.id, id));
+  if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
+
+  const [visits, prescriptions, appointments, invoices] = await Promise.all([
+    db.select({
+      id: visitsTable.id,
+      visitDate: visitsTable.visitDate,
+      chiefComplaint: visitsTable.chiefComplaint,
+      chiefComplaintAr: visitsTable.chiefComplaintAr,
+      diagnosis: visitsTable.diagnosis,
+      diagnosisAr: visitsTable.diagnosisAr,
+      treatment: visitsTable.treatment,
+      treatmentAr: visitsTable.treatmentAr,
+      materialsUsed: visitsTable.materialsUsed,
+      materialsUsedAr: visitsTable.materialsUsedAr,
+      toothNumber: visitsTable.toothNumber,
+      followUpDate: visitsTable.followUpDate,
+      notes: visitsTable.notes,
+      doctorName: employeesTable.name,
+      doctorNameAr: employeesTable.nameAr,
+    })
+      .from(visitsTable)
+      .leftJoin(employeesTable, eq(employeesTable.id, visitsTable.doctorId))
+      .where(eq(visitsTable.patientId, id))
+      .orderBy(desc(visitsTable.visitDate))
+      .limit(100),
+    db.select({
+      id: prescriptionsTable.id,
+      visitId: prescriptionsTable.visitId,
+      medicineMasterId: prescriptionsTable.medicineMasterId,
+      medicineName: prescriptionsTable.medicineName,
+      medicineNameAr: prescriptionsTable.medicineNameAr,
+      dosage: prescriptionsTable.dosage,
+      frequency: prescriptionsTable.frequency,
+      durationDays: prescriptionsTable.durationDays,
+      instructions: prescriptionsTable.instructions,
+      instructionsAr: prescriptionsTable.instructionsAr,
+      createdAt: prescriptionsTable.createdAt,
+      material: medicineMasterTable.material,
+      bun: medicineMasterTable.bun,
+      visitDate: visitsTable.visitDate,
+      doctorName: employeesTable.name,
+      doctorNameAr: employeesTable.nameAr,
+    })
+      .from(prescriptionsTable)
+      .innerJoin(visitsTable, eq(visitsTable.id, prescriptionsTable.visitId))
+      .leftJoin(employeesTable, eq(employeesTable.id, visitsTable.doctorId))
+      .leftJoin(medicineMasterTable, eq(medicineMasterTable.id, prescriptionsTable.medicineMasterId))
+      .where(eq(visitsTable.patientId, id))
+      .orderBy(desc(prescriptionsTable.createdAt))
+      .limit(100),
+    db.select({
+      id: medicalAppointmentsTable.id,
+      startAt: medicalAppointmentsTable.startAt,
+      endAt: medicalAppointmentsTable.endAt,
+      status: medicalAppointmentsTable.status,
+      reason: medicalAppointmentsTable.reason,
+      reasonAr: medicalAppointmentsTable.reasonAr,
+      notes: medicalAppointmentsTable.notes,
+      doctorName: employeesTable.name,
+      doctorNameAr: employeesTable.nameAr,
+    })
+      .from(medicalAppointmentsTable)
+      .leftJoin(employeesTable, eq(employeesTable.id, medicalAppointmentsTable.doctorId))
+      .where(eq(medicalAppointmentsTable.patientId, id))
+      .orderBy(desc(medicalAppointmentsTable.startAt))
+      .limit(100),
+    db.select().from(medicalInvoicesTable)
+      .where(eq(medicalInvoicesTable.patientId, id))
+      .orderBy(desc(medicalInvoicesTable.invoiceDate))
+      .limit(100),
+  ]);
+
+  res.json({ patient, visits, prescriptions, appointments, invoices });
 });
 
 router.patch("/patients/:id", async (req, res): Promise<void> => {

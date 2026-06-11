@@ -15,6 +15,9 @@ export interface ClientUpdate {
   phone?: string;
   company?: string;
   companyAr?: string;
+  specialization?: string;
+  relatedDiagnosis?: string;
+  medicalFeatures?: string;
   status?: ClientUpdateStatus;
   notes?: string;
   notesAr?: string;

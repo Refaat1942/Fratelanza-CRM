@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, desc, sql } from "drizzle-orm";
-import { db, medicalMaterialsTable } from "@workspace/db";
+import { db, medicalMaterialsTable, medicineMasterTable } from "@workspace/db";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -30,6 +30,25 @@ const adjustSchema = z.object({
   note: z.string().optional().nullable(),
 });
 
+const medicineImportSchema = z.object({
+  rows: z.array(z.object({
+    material: z.string().optional().nullable(),
+    Material: z.string().optional().nullable(),
+    materialDescription: z.string().optional().nullable(),
+    "Material description": z.string().optional().nullable(),
+    bun: z.string().optional().nullable(),
+    BUn: z.string().optional().nullable(),
+  })).min(1).max(5000),
+});
+
+function normalizeMedicineRow(row: z.infer<typeof medicineImportSchema>["rows"][number]) {
+  const material = (row.material ?? row.Material ?? "").trim();
+  const materialDescription = (row.materialDescription ?? row["Material description"] ?? "").trim();
+  const bun = (row.bun ?? row.BUn ?? "").trim();
+  if (!material || !materialDescription || !bun) return null;
+  return { material, materialDescription, bun, active: 1 };
+}
+
 router.get("/medical-materials/stats", async (_req, res) => {
   const rows = await db.select({
     total: sql<number>`cast(count(*) as int)`,
@@ -48,6 +67,50 @@ router.get("/medical-materials", async (req: Request, res: Response): Promise<vo
   }
   const rows = await q.orderBy(desc(medicalMaterialsTable.updatedAt));
   res.json(rows);
+});
+
+router.get("/medicine-master", async (req: Request, res: Response): Promise<void> => {
+  const search = typeof req.query.search === "string" ? req.query.search.toLowerCase().trim() : "";
+  let q = db.select().from(medicineMasterTable).$dynamic();
+  if (search) {
+    q = q.where(sql`lower(coalesce(material,'')) like ${"%" + search + "%"} or lower(coalesce(material_description,'')) like ${"%" + search + "%"} or lower(coalesce(bun,'')) like ${"%" + search + "%"}`);
+  }
+  const rows = await q.orderBy(medicineMasterTable.materialDescription).limit(1000);
+  res.json(rows);
+});
+
+router.post("/medicine-master/import", async (req: Request, res: Response): Promise<void> => {
+  const parsed = medicineImportSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid data", details: parsed.error.flatten() }); return; }
+
+  const seen = new Set<string>();
+  const values = parsed.data.rows
+    .map(normalizeMedicineRow)
+    .filter((row): row is NonNullable<ReturnType<typeof normalizeMedicineRow>> => {
+      if (!row || seen.has(row.material)) return false;
+      seen.add(row.material);
+      return true;
+    });
+
+  if (!values.length) {
+    res.status(400).json({ error: "No valid rows. Required columns: Material, Material description, BUn." });
+    return;
+  }
+
+  const rows = await db.insert(medicineMasterTable)
+    .values(values)
+    .onConflictDoUpdate({
+      target: medicineMasterTable.material,
+      set: {
+        materialDescription: sql`excluded.material_description`,
+        bun: sql`excluded.bun`,
+        active: 1,
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  res.status(201).json({ imported: rows.length, rows });
 });
 
 router.post("/medical-materials", async (req: Request, res: Response): Promise<void> => {

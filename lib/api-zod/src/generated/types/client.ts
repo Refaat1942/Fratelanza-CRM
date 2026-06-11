@@ -20,6 +20,12 @@ export interface Client {
   company?: string | null;
   /** @nullable */
   companyAr?: string | null;
+  /** @nullable */
+  specialization?: string | null;
+  /** @nullable */
+  relatedDiagnosis?: string | null;
+  /** @nullable */
+  medicalFeatures?: string | null;
   status: ClientStatus;
   /** @nullable */
   notes?: string | null;

@@ -15,6 +15,9 @@ export interface ClientInput {
   phone?: string;
   company?: string;
   companyAr?: string;
+  specialization?: string;
+  relatedDiagnosis?: string;
+  medicalFeatures?: string;
   status: ClientInputStatus;
   notes?: string;
   notesAr?: string;

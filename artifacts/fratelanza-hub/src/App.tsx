@@ -23,6 +23,7 @@ import Suppliers from "@/pages/suppliers";
 import PurchaseOrders from "@/pages/purchase-orders";
 import Invoices from "@/pages/invoices";
 import Patients from "@/pages/medical/patients";
+import PatientHistory from "@/pages/medical/patient-history";
 import Appointments from "@/pages/medical/appointments";
 import Visits from "@/pages/medical/visits";
 import MedicalMaterials from "@/pages/medical/materials";
@@ -90,6 +91,7 @@ function AppRouter() {
               <Route path="/suppliers"><FeatureGate feature="suppliers"><Suppliers /></FeatureGate></Route>
               <Route path="/purchase-orders"><FeatureGate feature="purchase_orders"><PurchaseOrders /></FeatureGate></Route>
               <Route path="/invoices"><FeatureGate feature="invoicing"><Invoices /></FeatureGate></Route>
+              <Route path="/medical/patients/:id/history"><FeatureGate feature="medical"><PatientHistory /></FeatureGate></Route>
               <Route path="/medical/patients"><FeatureGate feature="medical"><Patients /></FeatureGate></Route>
               <Route path="/medical/appointments"><FeatureGate feature="medical"><Appointments /></FeatureGate></Route>
               <Route path="/medical/visits"><FeatureGate feature="medical"><Visits /></FeatureGate></Route>

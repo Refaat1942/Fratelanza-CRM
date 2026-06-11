@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 import { useLanguage } from "../../components/LanguageProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Package, Pencil, AlertTriangle, Minus, Plus as PlusIcon } from "lucide-react";
+import { Plus, Trash2, Package, Pencil, AlertTriangle, Minus, Plus as PlusIcon, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 
@@ -25,6 +26,7 @@ type Material = {
   updatedAt: string;
 };
 type Stats = { total: number; lowStock: number; outOfStock: number; totalValue: number };
+type MedicineMaster = { id: number; material: string; materialDescription: string; bun: string };
 
 const CATEGORIES = [
   { value: "consumable", en: "Consumable", ar: "مستهلكات" },
@@ -59,6 +61,10 @@ export default function MedicalMaterials() {
   const { data: stats } = useQuery<Stats>({
     queryKey: ["medical-materials-stats"],
     queryFn: () => apiFetch("/medical-materials/stats"),
+  });
+  const { data: medicineMaster = [] } = useQuery<MedicineMaster[]>({
+    queryKey: ["medicine-master"],
+    queryFn: () => apiFetch("/medicine-master"),
   });
 
   const openCreate = () => { setEditing(null); setForm(emptyForm()); setOpenDialog(true); };
@@ -121,6 +127,33 @@ export default function MedicalMaterials() {
     },
   });
 
+  const importMedicineMaster = useMutation({
+    mutationFn: (rows: Array<{ Material: string; "Material description": string; BUn: string }>) =>
+      apiFetch<{ imported: number }>("/medicine-master/import", { method: "POST", body: JSON.stringify({ rows }) }),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["medicine-master"] });
+      toast({ title: t("Medicine master uploaded", "تم رفع بيانات الأدوية"), description: `${result.imported} ${t("rows imported", "صف مستورد")}` });
+    },
+    onError: (e: any) => toast({ title: t("Import failed", "فشل الاستيراد"), description: e?.message, variant: "destructive" }),
+  });
+
+  const handleMedicineFile = async (file: File) => {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+    const rows = raw.map(row => ({
+      Material: String(row.Material ?? row.material ?? "").trim(),
+      "Material description": String(row["Material description"] ?? row.materialDescription ?? "").trim(),
+      BUn: String(row.BUn ?? row.bun ?? "").trim(),
+    })).filter(row => row.Material && row["Material description"] && row.BUn);
+    if (!rows.length) {
+      toast({ title: t("No valid rows found", "لم يتم العثور على صفوف صحيحة"), description: "Required columns: Material, Material description, BUn", variant: "destructive" });
+      return;
+    }
+    importMedicineMaster.mutate(rows);
+  };
+
   const lowStockCount = useMemo(
     () => materials?.filter(m => m.reorderLevel > 0 && m.quantityInStock <= m.reorderLevel).length ?? 0,
     [materials]
@@ -133,10 +166,22 @@ export default function MedicalMaterials() {
           <h2 className="text-2xl font-bold flex items-center gap-2"><Package className="text-primary" /> {t("Materials Inventory", "مخزون المستلزمات")}</h2>
           <p className="text-muted-foreground text-sm">{t("Track clinic supplies, stock levels and reorder points (EGP).", "تتبع مستلزمات العيادة ومستويات المخزون ونقاط إعادة الطلب (ج.م).")}</p>
         </div>
-        <Button onClick={openCreate} className="gap-2"><Plus size={16} />{t("Add Material", "إضافة مادة")}</Button>
+        <div className="flex flex-wrap gap-2">
+          <label className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm font-medium cursor-pointer">
+            <Upload size={16} />{importMedicineMaster.isPending ? t("Uploading…", "جاري الرفع…") : t("Upload Medicine Master", "رفع بيانات الأدوية")}
+            <input
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              disabled={importMedicineMaster.isPending}
+              onChange={e => { const file = e.target.files?.[0]; if (file) handleMedicineFile(file); e.target.value = ""; }}
+            />
+          </label>
+          <Button onClick={openCreate} className="gap-2"><Plus size={16} />{t("Add Material", "إضافة مادة")}</Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("Total items", "إجمالي الأصناف")}</p>
           <p className="text-2xl font-bold mt-1">{stats?.total ?? 0}</p>
@@ -148,6 +193,10 @@ export default function MedicalMaterials() {
         <Card className={stats?.outOfStock ? "border-rose-300 bg-rose-50/40" : ""}><CardContent className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("Out of stock", "نفد المخزون")}</p>
           <p className="text-2xl font-bold mt-1 text-rose-600">{stats?.outOfStock ?? 0}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("Medicine master", "بيانات الأدوية")}</p>
+          <p className="text-2xl font-bold mt-1">{medicineMaster.length}</p>
         </CardContent></Card>
         <Card><CardContent className="p-4">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">{t("Stock value", "قيمة المخزون")}</p>

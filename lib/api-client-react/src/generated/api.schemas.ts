@@ -173,6 +173,12 @@ export interface Client {
   company?: string | null;
   /** @nullable */
   companyAr?: string | null;
+  /** @nullable */
+  specialization?: string | null;
+  /** @nullable */
+  relatedDiagnosis?: string | null;
+  /** @nullable */
+  medicalFeatures?: string | null;
   status: ClientStatus;
   /** @nullable */
   notes?: string | null;
@@ -200,6 +206,9 @@ export interface ClientInput {
   phone?: string;
   company?: string;
   companyAr?: string;
+  specialization?: string;
+  relatedDiagnosis?: string;
+  medicalFeatures?: string;
   status: ClientInputStatus;
   notes?: string;
   notesAr?: string;
@@ -223,6 +232,9 @@ export interface ClientUpdate {
   phone?: string;
   company?: string;
   companyAr?: string;
+  specialization?: string;
+  relatedDiagnosis?: string;
+  medicalFeatures?: string;
   status?: ClientUpdateStatus;
   notes?: string;
   notesAr?: string;

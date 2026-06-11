@@ -570,6 +570,12 @@ components:
           type: ["string", "null"]
         companyAr:
           type: ["string", "null"]
+        specialization:
+          type: ["string", "null"]
+        relatedDiagnosis:
+          type: ["string", "null"]
+        medicalFeatures:
+          type: ["string", "null"]
         status:
           type: string
           enum: [active, inactive, lead, prospect]
@@ -602,6 +608,12 @@ components:
           type: string
         companyAr:
           type: string
+        specialization:
+          type: string
+        relatedDiagnosis:
+          type: string
+        medicalFeatures:
+          type: string
         status:
           type: string
           enum: [active, inactive, lead, prospect]
@@ -626,6 +638,12 @@ components:
         company:
           type: string
         companyAr:
+          type: string
+        specialization:
+          type: string
+        relatedDiagnosis:
+          type: string
+        medicalFeatures:
           type: string
         status:
           type: string
