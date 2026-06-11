@@ -24,6 +24,7 @@ export const patientsTable = pgTable("patients", {
   notes: text("notes"),
   notesAr: text("notes_ar"),
   branchId: integer("branch_id"),
+  qrToken: text("qr_token").unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
@@ -93,6 +94,7 @@ export type MedicalProcedure = typeof medicalProceduresTable.$inferSelect;
 export const prescriptionsTable = pgTable("prescriptions", {
   id: serial("id").primaryKey(),
   visitId: integer("visit_id").notNull(),
+  medicineId: integer("medicine_id"),
   medicineName: text("medicine_name").notNull(),
   medicineNameAr: text("medicine_name_ar"),
   dosage: text("dosage"),
@@ -162,3 +164,58 @@ export const medicalMaterialsTable = pgTable("medical_materials", {
 });
 
 export type MedicalMaterial = typeof medicalMaterialsTable.$inferSelect;
+
+// =============== Medicine Master (prescribing formulary) ===============
+export const medicineMasterTable = pgTable("medicine_master", {
+  id: serial("id").primaryKey(),
+  material: text("material").notNull().unique(),
+  materialDescription: text("material_description").notNull(),
+  bun: text("bun"),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type MedicineMaster = typeof medicineMasterTable.$inferSelect;
+
+// =============== Diagnoses master (seeded per specialization) ===============
+export const diagnosesMasterTable = pgTable("diagnoses_master", {
+  id: serial("id").primaryKey(),
+  code: text("code"),
+  name: text("name").notNull(),
+  nameAr: text("name_ar"),
+  specialization: text("specialization"),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type DiagnosisMaster = typeof diagnosesMasterTable.$inferSelect;
+
+// =============== Medical features master (vitals, exams, procedures) ===============
+export const medicalFeaturesMasterTable = pgTable("medical_features_master", {
+  id: serial("id").primaryKey(),
+  category: text("category").notNull(),
+  name: text("name").notNull(),
+  nameAr: text("name_ar"),
+  specialization: text("specialization"),
+  active: integer("active").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type MedicalFeatureMaster = typeof medicalFeaturesMasterTable.$inferSelect;
+
+// =============== Doctor prescription template (layout / shape per doctor) ===============
+export const doctorPrescriptionTemplatesTable = pgTable("doctor_prescription_templates", {
+  id: serial("id").primaryKey(),
+  doctorId: integer("doctor_id").notNull().unique(),
+  templateUrl: text("template_url"),
+  doctorTitle: text("doctor_title"),
+  doctorTitleAr: text("doctor_title_ar"),
+  doctorLicense: text("doctor_license"),
+  footerText: text("footer_text"),
+  footerTextAr: text("footer_text_ar"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+});
+
+export type DoctorPrescriptionTemplate = typeof doctorPrescriptionTemplatesTable.$inferSelect;

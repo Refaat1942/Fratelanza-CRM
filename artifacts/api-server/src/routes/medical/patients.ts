@@ -1,8 +1,13 @@
 import { Router, type IRouter } from "express";
-import { and, eq, or, ilike, sql, desc } from "drizzle-orm";
+import { and, eq, or, ilike, sql, desc, isNull } from "drizzle-orm";
 import { db, patientsTable, activityTable } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
+import crypto from "node:crypto";
+
+function newQrToken(): string {
+  return crypto.randomBytes(24).toString("base64url");
+}
 
 const router: IRouter = Router();
 
@@ -64,7 +69,10 @@ router.post("/patients", async (req, res): Promise<void> => {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [patient] = await db.insert(patientsTable).values(parsed.data as any).returning();
+  const [patient] = await db.insert(patientsTable).values({
+    ...(parsed.data as any),
+    qrToken: newQrToken(),
+  }).returning();
   await db.insert(activityTable).values({
     type: "patient_added",
     description: `Patient added: ${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`,
@@ -100,6 +108,27 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
     .returning();
   if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
   res.json(patient);
+});
+
+/** Ensure every patient has a QR token (backfill for records created before this feature). */
+router.post("/patients/backfill-qr", async (_req, res): Promise<void> => {
+  const missing = await db.select({ id: patientsTable.id }).from(patientsTable).where(isNull(patientsTable.qrToken));
+  for (const p of missing) {
+    await db.update(patientsTable).set({ qrToken: newQrToken() }).where(eq(patientsTable.id, p.id));
+  }
+  res.json({ updated: missing.length });
+});
+
+router.post("/patients/:id/regenerate-qr", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [patient] = await db
+    .update(patientsTable)
+    .set({ qrToken: newQrToken() })
+    .where(eq(patientsTable.id, id))
+    .returning();
+  if (!patient) { res.status(404).json({ error: "Patient not found" }); return; }
+  res.json({ qrToken: patient.qrToken });
 });
 
 router.delete("/patients/:id", async (req, res): Promise<void> => {

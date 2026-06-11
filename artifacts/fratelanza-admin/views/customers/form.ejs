@@ -108,6 +108,50 @@
     </div>
 
     <div class="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
+      <h2 class="font-semibold text-slate-800">Medical specialization</h2>
+      <p class="text-xs text-slate-500 -mt-3">When Medical is enabled, the tenant is pre-loaded with diagnoses and clinical features for this specialty.</p>
+      <div>
+        <label class="block text-sm font-medium mb-1">Specialization</label>
+        <select name="specialization" id="specialization-select" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          <% specializationKeys.forEach(function(key) { %>
+            <option value="<%= key %>" <%= (customer.specialization || 'general') === key ? 'selected' : '' %>>
+              <%= specializationLabels[key].en %> · <%= specializationLabels[key].ar %>
+            </option>
+          <% }) %>
+        </select>
+      </div>
+      <div id="specialization-preview" class="text-sm bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-3 hidden">
+        <div>
+          <div class="font-medium text-slate-700 mb-1">Included diagnoses</div>
+          <ul class="list-disc list-inside text-slate-600 text-xs max-h-32 overflow-y-auto" id="spec-diagnoses"></ul>
+        </div>
+        <div>
+          <div class="font-medium text-slate-700 mb-1">Included medical features</div>
+          <ul class="list-disc list-inside text-slate-600 text-xs max-h-32 overflow-y-auto" id="spec-features"></ul>
+        </div>
+      </div>
+      <script>
+        (function () {
+          var presets = <%- JSON.stringify(specializationPresets) %>;
+          var sel = document.getElementById('specialization-select');
+          var preview = document.getElementById('specialization-preview');
+          var diagEl = document.getElementById('spec-diagnoses');
+          var featEl = document.getElementById('spec-features');
+          function render() {
+            var key = sel.value;
+            var p = presets[key];
+            if (!p) { preview.classList.add('hidden'); return; }
+            preview.classList.remove('hidden');
+            diagEl.innerHTML = p.diagnoses.map(function (d) { return '<li>' + d.name + '</li>'; }).join('');
+            featEl.innerHTML = p.features.map(function (f) { return '<li>' + f.category + ': ' + f.name + '</li>'; }).join('');
+          }
+          sel.addEventListener('change', render);
+          render();
+        })();
+      </script>
+    </div>
+
+    <div class="bg-white border border-slate-200 rounded-xl p-6 space-y-5">
       <h2 class="font-semibold text-slate-800">Enabled features</h2>
       <p class="text-xs text-slate-500 -mt-3">Use the section toggle to enable or disable a whole section at once, or pick individual features.</p>
 

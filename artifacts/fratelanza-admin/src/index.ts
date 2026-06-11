@@ -25,6 +25,12 @@ import {
   type BillingCycle,
 } from "./db.js";
 import { provisionInBackground } from "./provision.js";
+import {
+  SPECIALIZATION_KEYS,
+  SPECIALIZATION_LABELS,
+  SPECIALIZATION_PRESETS,
+  isSpecializationKey,
+} from "@workspace/db";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -283,6 +289,9 @@ async function main() {
       featureGroups: FEATURE_GROUPS,
       billingCycles: BILLING_CYCLES,
       paymentStatuses: PAYMENT_STATUSES,
+      specializationKeys: SPECIALIZATION_KEYS,
+      specializationLabels: SPECIALIZATION_LABELS,
+      specializationPresets: SPECIALIZATION_PRESETS,
       error: null,
     });
   });
@@ -303,6 +312,8 @@ async function main() {
     const subscription_end = String(body.subscription_end || "").trim() || null;
     const next_billing_date = String(body.next_billing_date || "").trim() || null;
     const payment_status = String(body.payment_status || "trial");
+    const specializationRaw = String(body.specialization || "general").trim();
+    const specialization = isSpecializationKey(specializationRaw) ? specializationRaw : "general";
 
     const features = {} as Record<FeatureKey, boolean>;
     for (const k of FEATURE_KEYS) features[k] = body[`feature_${k}`] === "on";
@@ -330,6 +341,9 @@ async function main() {
         featureGroups: FEATURE_GROUPS,
         billingCycles: BILLING_CYCLES,
         paymentStatuses: PAYMENT_STATUSES,
+        specializationKeys: SPECIALIZATION_KEYS,
+        specializationLabels: SPECIALIZATION_LABELS,
+        specializationPresets: SPECIALIZATION_PRESETS,
         error: errors.join(" "),
       });
     }
@@ -341,14 +355,15 @@ async function main() {
            (name, subdomain, db_name, features, notes, provision_status,
             contact_name, contact_email, contact_phone,
             plan_name, billing_amount, billing_cycle,
-            subscription_start, subscription_end, next_billing_date, payment_status)
-         VALUES ($1,$2,$3,$4::jsonb,$5,'pending',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+            subscription_start, subscription_end, next_billing_date, payment_status, specialization)
+         VALUES ($1,$2,$3,$4::jsonb,$5,'pending',$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
          RETURNING id`,
         [
           name, subdomain, dbName, JSON.stringify(features), notes || null,
           contact_name || null, contact_email || null, contact_phone || null,
           plan_name || null, billing_amount, billing_cycle,
           subscription_start, subscription_end, next_billing_date, payment_status,
+          specialization,
         ],
       );
       newCustomerId = inserted.rows[0]!.id;
@@ -361,6 +376,7 @@ async function main() {
           contact_name, contact_email, contact_phone,
           plan_name, billing_amount, billing_cycle,
           subscription_start, subscription_end, next_billing_date, payment_status,
+          specialization,
         },
         features,
         featureLabels: FEATURE_LABELS,
@@ -368,6 +384,9 @@ async function main() {
         featureGroups: FEATURE_GROUPS,
         billingCycles: BILLING_CYCLES,
         paymentStatuses: PAYMENT_STATUSES,
+        specializationKeys: SPECIALIZATION_KEYS,
+        specializationLabels: SPECIALIZATION_LABELS,
+        specializationPresets: SPECIALIZATION_PRESETS,
         error: msg.includes("duplicate") ? "Subdomain or DB name already in use." : msg,
       });
     }
@@ -456,6 +475,9 @@ async function main() {
       featureGroups: FEATURE_GROUPS,
       billingCycles: BILLING_CYCLES,
       paymentStatuses: PAYMENT_STATUSES,
+      specializationKeys: SPECIALIZATION_KEYS,
+      specializationLabels: SPECIALIZATION_LABELS,
+      specializationPresets: SPECIALIZATION_PRESETS,
       error: null,
     });
   });
@@ -475,6 +497,8 @@ async function main() {
     const subscription_end = String(body.subscription_end || "").trim() || null;
     const next_billing_date = String(body.next_billing_date || "").trim() || null;
     const payment_status = String(body.payment_status || "trial");
+    const specializationRaw = String(body.specialization || "general").trim();
+    const specialization = isSpecializationKey(specializationRaw) ? specializationRaw : "general";
     const features = {} as Record<FeatureKey, boolean>;
     for (const k of FEATURE_KEYS) features[k] = body[`feature_${k}`] === "on";
 
@@ -488,13 +512,14 @@ async function main() {
          contact_name=$4, contact_email=$5, contact_phone=$6,
          plan_name=$7, billing_amount=$8, billing_cycle=$9,
          subscription_start=$10, subscription_end=$11, next_billing_date=$12, payment_status=$13,
-         updated_at=NOW()
-       WHERE id=$14`,
+         specialization=$14, updated_at=NOW()
+       WHERE id=$15`,
       [
         name, JSON.stringify(features), notes || null,
         contact_name || null, contact_email || null, contact_phone || null,
         plan_name || null, billing_amount, billing_cycle,
         subscription_start, subscription_end, next_billing_date, payment_status,
+        specialization,
         id,
       ],
     );

@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle,
-  IdCard, AlertTriangle, Stethoscope, Search, Sparkles,
+  IdCard, AlertTriangle, Stethoscope, Search, Sparkles, QrCode,
 } from "lucide-react";
+import { PatientQrDialog } from "@/components/medical/PatientQrDialog";
 import { AiSummaryDialog } from "@/components/medical/AiSummaryDialog";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ type Patient = {
   emergencyContactPhone?: string | null;
   notes?: string | null; notesAr?: string | null;
   branchId?: number | null;
+  qrToken?: string | null;
 };
 
 type Stats = { total: number; recent: number };
@@ -76,6 +78,7 @@ export default function Patients() {
   const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState<Patient>(EMPTY);
   const [aiSummaryFor, setAiSummaryFor] = useState<Patient | null>(null);
+  const [qrFor, setQrFor] = useState<Patient | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["patients-stats"],
@@ -95,7 +98,13 @@ export default function Patients() {
   const createMut = useMutation({
     mutationFn: (data: Partial<Patient>) =>
       apiFetch<Patient>("/patients", { method: "POST", body: JSON.stringify(data) }),
-    onSuccess: () => { invalidate(); setCreateOpen(false); setForm(EMPTY); toast({ title: t("Patient added", "تمت إضافة المريض") }); },
+    onSuccess: (patient) => {
+      invalidate();
+      setCreateOpen(false);
+      setForm(EMPTY);
+      toast({ title: t("Patient added", "تمت إضافة المريض") });
+      if (patient.qrToken) setQrFor(patient);
+    },
     onError: (e: Error) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
   });
 
@@ -384,6 +393,10 @@ export default function Patients() {
                       </div>
                     )}
                     <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="h-7 px-2" title={t("QR code", "رمز QR")}
+                        onClick={() => setQrFor(p)} data-testid={`btn-qr-patient-${p.id}`}>
+                        <QrCode size={13} />
+                      </Button>
                       <Button variant="outline" size="sm" className="h-7 px-2 text-violet-700 hover:bg-violet-50 hover:text-violet-800 border-violet-200"
                         onClick={() => setAiSummaryFor(p)}
                         title={t("AI Summary", "ملخص ذكاء اصطناعي")} data-testid={`btn-ai-summary-${p.id}`}>
@@ -415,6 +428,13 @@ export default function Patients() {
           </div>
         )}
       </SectionCard>
+
+      <PatientQrDialog
+        open={qrFor !== null}
+        onOpenChange={v => { if (!v) setQrFor(null); }}
+        patientName={qrFor ? fullName(qrFor) : ""}
+        qrToken={qrFor?.qrToken}
+      />
 
       {aiSummaryFor && (
         <AiSummaryDialog

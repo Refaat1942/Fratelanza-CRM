@@ -6,6 +6,7 @@ import {
   visitsTable,
   patientsTable,
   employeesTable,
+  medicineMasterTable,
 } from "@workspace/db";
 import { z } from "zod";
 
@@ -13,6 +14,7 @@ const router: IRouter = Router();
 
 const PrescriptionInput = z.object({
   visitId: z.number().int().positive(),
+  medicineId: z.number().int().positive().nullable().optional(),
   medicineName: z.string().min(1),
   medicineNameAr: z.string().nullable().optional(),
   dosage: z.string().nullable().optional(),
@@ -34,7 +36,9 @@ router.get("/prescriptions", async (req: Request, res: Response): Promise<void> 
     .select({
       id: prescriptionsTable.id,
       visitId: prescriptionsTable.visitId,
+      medicineId: prescriptionsTable.medicineId,
       medicineName: prescriptionsTable.medicineName,
+      materialBun: medicineMasterTable.bun,
       medicineNameAr: prescriptionsTable.medicineNameAr,
       dosage: prescriptionsTable.dosage,
       frequency: prescriptionsTable.frequency,
@@ -55,6 +59,7 @@ router.get("/prescriptions", async (req: Request, res: Response): Promise<void> 
     .leftJoin(visitsTable, eq(visitsTable.id, prescriptionsTable.visitId))
     .leftJoin(patientsTable, eq(patientsTable.id, visitsTable.patientId))
     .leftJoin(employeesTable, eq(employeesTable.id, visitsTable.doctorId))
+    .leftJoin(medicineMasterTable, eq(medicineMasterTable.id, prescriptionsTable.medicineId))
     .where(whereParts.length ? and(...whereParts) : undefined)
     .orderBy(desc(prescriptionsTable.createdAt))
     .limit(500);
@@ -67,7 +72,21 @@ router.post("/prescriptions", async (req: Request, res: Response): Promise<void>
   // Make sure the visit exists so we don't end up with orphan prescriptions.
   const [v] = await db.select({ id: visitsTable.id }).from(visitsTable).where(eq(visitsTable.id, parsed.data.visitId));
   if (!v) { res.status(400).json({ error: "visit_not_found" }); return; }
-  const [row] = await db.insert(prescriptionsTable).values(parsed.data).returning();
+
+  let data = { ...parsed.data };
+  if (data.medicineId) {
+    const [med] = await db.select().from(medicineMasterTable).where(eq(medicineMasterTable.id, data.medicineId));
+    if (med) {
+      data = {
+        ...data,
+        medicineName: data.medicineName || med.materialDescription,
+        medicineNameAr: data.medicineNameAr ?? null,
+        dosage: data.dosage ?? med.bun ?? null,
+      };
+    }
+  }
+
+  const [row] = await db.insert(prescriptionsTable).values(data).returning();
   res.status(201).json(row);
 });
 

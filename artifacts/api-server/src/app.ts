@@ -56,7 +56,7 @@ app.use(session({
 
 app.use("/api", tenantMiddleware);
 
-const PUBLIC_PATHS = ["/api/auth/login", "/api/healthz", "/api/branding/public"];
+const PUBLIC_PATHS = ["/api/auth/login", "/api/healthz", "/api/branding/public", "/api/public/patient/"];
 
 // Paths still allowed when the user must change their password.
 // Everything else is blocked until the default password is rotated.

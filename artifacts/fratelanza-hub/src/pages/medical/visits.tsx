@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
 import { BranchBadge } from "@/components/BranchBadge";
+import { DiagnosisPicker } from "@/components/medical/DiagnosisPicker";
 
 type Patient = { id: number; firstName: string; firstNameAr?: string | null; lastName?: string | null; lastNameAr?: string | null };
 type Employee = { id: number; name: string; nameAr?: string | null; role?: string | null };
@@ -397,9 +398,11 @@ export default function Visits() {
 
               <div className="space-y-2">
                 <Label>{t("Diagnosis", "التشخيص")}</Label>
-                <Textarea rows={2} dir={isAr ? "rtl" : "ltr"}
+                <DiagnosisPicker
+                  isAr={isAr}
                   value={isAr ? form.diagnosisAr : form.diagnosis}
-                  onChange={(e) => isAr ? setForm({ ...form, diagnosisAr: e.target.value }) : setForm({ ...form, diagnosis: e.target.value })} />
+                  onChange={v => isAr ? setForm({ ...form, diagnosisAr: v }) : setForm({ ...form, diagnosis: v })}
+                />
               </div>
 
               <div className="space-y-2">

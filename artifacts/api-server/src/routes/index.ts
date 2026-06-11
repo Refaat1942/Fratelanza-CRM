@@ -17,6 +17,7 @@ import stockMovementsRouter from "./stockMovements";
 import purchaseOrdersRouter from "./purchaseOrders";
 import invoicesRouter from "./invoices";
 import medicalRouter from "./medical";
+import publicPatientRouter from "./medical/public-patient";
 import clinicStaffRouter from "./clinicStaff";
 // Dental + Treatment Plans removed from UI by user request (Phase F3).
 // Routers + DB tables kept intact for data preservation. Re-enable here if needed.
@@ -30,6 +31,7 @@ import { requirePermission } from "../middleware/permissions";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(publicPatientRouter);
 router.use(authRouter);
 router.use(meRouter);
 router.use(tenantSettingsRouter);

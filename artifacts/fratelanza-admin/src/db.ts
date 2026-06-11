@@ -109,6 +109,7 @@ export async function initSchema() {
     ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS last_payment_date DATE;
     ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'trial';
     ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ;
+    ALTER TABLE admin_customers ADD COLUMN IF NOT EXISTS specialization TEXT DEFAULT 'general';
     CREATE TABLE IF NOT EXISTS admin_payments (
       id SERIAL PRIMARY KEY,
       customer_id INTEGER NOT NULL REFERENCES admin_customers(id) ON DELETE CASCADE,
