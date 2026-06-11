@@ -4,13 +4,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, Package, PackageCheck, PackageX, AlertTriangle, ArrowUpDown, History } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui-ext/data-table";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
@@ -101,6 +102,65 @@ export default function Products() {
     low_stock: { label: "Low Stock", labelAr: "مخزون منخفض", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400", icon: AlertTriangle },
   };
 
+  const productColumns: DataTableColumn<Product>[] = [
+    {
+      id: "name",
+      header: t("Product", "المنتج"),
+      sortValue: p => isRtl ? (p.nameAr || p.name) : p.name,
+      cell: p => <span className="font-medium">{isRtl ? (p.nameAr || p.name) : p.name}</span>,
+      export: { header: t("Product", "المنتج"), value: p => p.name },
+    },
+    {
+      id: "sku",
+      header: "SKU",
+      sortValue: p => p.sku || "",
+      cell: p => p.sku || "—",
+      export: { header: "SKU", value: p => p.sku },
+    },
+    {
+      id: "price",
+      header: t("Price", "السعر"),
+      sortValue: p => p.price,
+      cell: p => `${p.price.toLocaleString()} ${t("EGP", "ج.م")}`,
+      export: { header: t("Price", "السعر"), value: p => p.price },
+    },
+    {
+      id: "stock",
+      header: t("Stock", "المخزون"),
+      sortValue: p => p.stock,
+      cell: p => {
+        const isLow = p.stock <= (p.reorderPoint || 5);
+        return <span className={isLow ? "text-amber-600 font-semibold" : ""}>{p.stock}</span>;
+      },
+      export: { header: t("Stock", "المخزون"), value: p => p.stock },
+    },
+    {
+      id: "status",
+      header: t("Status", "الحالة"),
+      sortValue: p => p.stock,
+      cell: p => {
+        const isLow = p.stock <= (p.reorderPoint || 5);
+        const key = p.stock === 0 ? "unavailable" : isLow ? "low_stock" : "available";
+        const cfg = statusCfg[key];
+        return <Badge variant="outline" className={cfg.color}>{t(cfg.label, cfg.labelAr)}</Badge>;
+      },
+      export: { header: t("Status", "الحالة"), value: p => p.status },
+    },
+    {
+      id: "actions",
+      header: "",
+      sortable: false,
+      cell: p => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setAdjustProduct(p); setAdjustForm({ type: "in", quantity: 1, reason: "" }); }}><ArrowUpDown size={13} /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setHistoryProduct(p)}><History size={13} /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Edit2 size={13} /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirmDelete({ title: t("Delete product?", "حذف المنتج؟"), onConfirm: () => deleteP.mutate(p.id) })}><Trash2 size={13} /></Button>
+        </div>
+      ),
+    },
+  ];
+
   const lowStockCount = products?.filter(p => p.stock <= (p.reorderPoint || 5)).length ?? 0;
 
   const renderF = () => (
@@ -164,59 +224,27 @@ export default function Products() {
         </Card>
       )}
 
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{[1,2,3].map(i => <Skeleton key={i} className="h-44" />)}</div>
-      ) : products?.length === 0 ? (
-        <div className="text-center py-16 border border-dashed rounded-lg bg-card/50">
-          <Package className="w-12 h-12 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-muted-foreground">{t("No products yet.", "لا توجد منتجات بعد.")}</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {products?.map(p => {
-            const isLow = p.stock <= (p.reorderPoint || 5);
-            const effectiveStatus = p.stock === 0 ? "unavailable" : isLow ? "low_stock" : "available";
-            const cfg = statusCfg[effectiveStatus];
-            const Icon = cfg.icon;
-            return (
-              <Card key={p.id} className={`hover:border-primary/50 transition-colors ${isLow && p.stock > 0 ? "border-amber-500/40" : ""}`}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-semibold text-sm">{isRtl ? (p.nameAr || p.name) : p.name}</h4>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-1 ${cfg.color}`}>
-                          <Icon size={10} />{t(cfg.label, cfg.labelAr)}
-                        </span>
-                      </div>
-                      {(isRtl ? (p.categoryAr || p.category) : p.category) && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{isRtl ? (p.categoryAr || p.category) : p.category}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-0.5 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Adjust stock", "تعديل المخزون")} onClick={() => { setAdjustProduct(p); setAdjustForm({ type: "in", quantity: 1, reason: "" }); }}><ArrowUpDown size={13} /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" title={t("History", "السجل")} onClick={() => setHistoryProduct(p)}><History size={13} /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Edit2 size={13} /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        onClick={() => confirmDelete({
-                          title: t("Delete product?", "حذف المنتج؟"),
-                          description: t(`Permanently delete "${isRtl ? (p.nameAr || p.name) : p.name}"?`, `حذف "${isRtl ? (p.nameAr || p.name) : p.name}" نهائياً؟`),
-                          onConfirm: () => deleteP.mutate(p.id),
-                        })}><Trash2 size={13} /></Button>
-                    </div>
-                  </div>
-                  <div className="mt-3 pt-3 border-t border-border space-y-1 text-xs">
-                    <div className="flex justify-between"><span className="text-muted-foreground">{t("Sale", "البيع")}</span><span className="font-bold text-primary">{p.price.toLocaleString()} {t("EGP", "ج.م")}</span></div>
-                    {p.costPrice > 0 && <div className="flex justify-between"><span className="text-muted-foreground">{t("Cost", "التكلفة")}</span><span>{p.costPrice.toLocaleString()} {t("EGP", "ج.م")}</span></div>}
-                    <div className="flex justify-between"><span className="text-muted-foreground">{t("In stock", "المخزون")}</span><span className={`font-semibold ${isLow ? "text-amber-600" : ""}`}>{p.stock} {isLow && `/ ${p.reorderPoint}`}</span></div>
-                    {p.sku && <div className="flex justify-between"><span className="text-muted-foreground">SKU</span><span>{p.sku}</span></div>}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+      <DataTable
+        data={products ?? []}
+        columns={productColumns}
+        rowKey={p => p.id}
+        isLoading={isLoading}
+        searchPlaceholder={t("Search products…", "بحث عن منتجات…")}
+        searchPredicate={(p, q) => [p.name, p.nameAr, p.sku, p.category].filter(Boolean).join(" ").toLowerCase().includes(q)}
+        filters={[{
+          id: "stock",
+          label: t("Stock level", "المخزون"),
+          allLabel: t("All", "الكل"),
+          options: [
+            { value: "low", label: t("Low stock", "مخزون منخفض") },
+            { value: "out", label: t("Out of stock", "نفد") },
+          ],
+          predicate: (p, v) => v === "out" ? p.stock === 0 : p.stock > 0 && p.stock <= (p.reorderPoint || 5),
+        }]}
+        exportFilename="products"
+        exportLabel={t("Download Excel", "تحميل Excel")}
+        emptyMessage={t("No products yet.", "لا توجد منتجات بعد.")}
+      />
 
       <Dialog open={isEditOpen} onOpenChange={v => { setIsEditOpen(v); if (!v) { setForm({ ...emptyForm }); setSelected(null); } }}>
         <DialogContent className={isRtl ? "rtl" : "ltr"}>

@@ -10,8 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui-ext/page-header";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
-import { EmptyState } from "@/components/ui-ext/empty-state";
 import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui-ext/data-table";
 import { useBranding } from "@/components/BrandingProvider";
 import { MedicinePicker } from "@/components/medical/MedicinePicker";
 
@@ -198,7 +198,6 @@ export default function PrescriptionsPage() {
     queryFn: () => apiFetch("/settings/branding"),
   });
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const [form, setForm] = useState<{
     visitId: string; medicineId: number | null; medicineName: string; medicineNameAr: string;
     dosage: string; frequency: string; durationDays: string;
@@ -275,13 +274,59 @@ export default function PrescriptionsPage() {
     createMutation.mutate(body);
   };
 
-  const filtered = prescriptions.filter(p => {
-    if (!search.trim()) return true;
-    const s = search.toLowerCase();
-    const name = (isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName).toLowerCase();
-    const pat = patientLabel(p as any).toLowerCase();
-    return name.includes(s) || pat.includes(s);
-  });
+  const rxColumns: DataTableColumn<Prescription>[] = [
+    {
+      id: "medicine",
+      header: t("Medicine", "الدواء"),
+      sortValue: p => isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName,
+      cell: p => <span className="font-medium">{isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName}</span>,
+      export: { header: t("Medicine", "الدواء"), value: p => p.medicineName },
+    },
+    {
+      id: "patient",
+      header: t("Patient", "المريض"),
+      sortValue: p => patientLabel(p as any),
+      cell: p => patientLabel(p as any),
+      export: { header: t("Patient", "المريض"), value: p => patientLabel(p as any) },
+    },
+    {
+      id: "dosage",
+      header: t("Dosage", "الجرعة"),
+      sortValue: p => p.dosage || "",
+      cell: p => p.dosage || "—",
+      export: { header: t("Dosage", "الجرعة"), value: p => p.dosage },
+    },
+    {
+      id: "frequency",
+      header: t("Frequency", "التكرار"),
+      sortValue: p => p.frequency || "",
+      cell: p => p.frequency || "—",
+      export: { header: t("Frequency", "التكرار"), value: p => p.frequency },
+    },
+    {
+      id: "visitDate",
+      header: t("Visit", "الزيارة"),
+      sortValue: p => p.visitDate || "",
+      cell: p => p.visitDate ? new Date(p.visitDate).toLocaleDateString(isAr ? "ar-EG" : undefined) : "—",
+      export: { header: t("Visit", "الزيارة"), value: p => p.visitDate },
+    },
+    {
+      id: "actions",
+      header: "",
+      sortable: false,
+      cell: p => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" title={t("Print", "طباعة")} onClick={() => {
+            const visit = visits.find(v => v.id === p.visitId);
+            const doctorId = visit?.doctorId ?? undefined;
+            const tpl = doctorId ? templateByDoctor[doctorId] : undefined;
+            printPrescription(p, { ...branding, ...(rxHeader || {}) }, isAr, t, patientLabel(p as any), tpl);
+          }}><Printer size={15} /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm(t("Delete prescription?", "حذف الوصفة؟"))) deleteMutation.mutate(p.id); }}><Trash2 size={15} /></Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -303,87 +348,20 @@ export default function PrescriptionsPage() {
         <KpiCard icon={<Activity size={18} />} tone="success" label={t("Last 30 days", "آخر ٣٠ يوم")} value={stats?.last30 ?? 0} />
       </div>
 
-      <div className="flex items-center gap-2">
-        <Input
-          placeholder={t("Search by medicine or patient name", "البحث باسم الدواء أو المريض")}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="max-w-md"
-        />
-      </div>
-
-      {isLoading ? (
-        <div className="text-sm text-muted-foreground">{t("Loading…", "جاري التحميل…")}</div>
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          icon={<Pill size={24} />}
-          title={t("No prescriptions yet", "لا توجد وصفات بعد")}
-          description={t("Create a prescription tied to a visit", "أنشئ وصفة مرتبطة بزيارة")}
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-2.5">
-          {filtered.map(p => (
-            <div key={p.id} className="bg-card border border-border rounded-md p-3.5 hover:shadow-sm transition-shadow">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 mb-1.5">
-                    <h3 className="font-semibold text-[15px]" data-testid={`text-medicine-${p.id}`}>
-                      {isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName}
-                    </h3>
-                    {p.dosage && <span className="text-xs text-muted-foreground">· {p.dosage}</span>}
-                    {p.frequency && <span className="text-xs text-muted-foreground">· {p.frequency}</span>}
-                    {p.durationDays != null && (
-                      <span className="text-xs text-muted-foreground">· {p.durationDays} {t("days", "يوم")}</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <div>
-                      {t("Patient", "المريض")}: <span className="text-foreground">{patientLabel(p as any)}</span>
-                      {(p.doctorName || p.doctorNameAr) && (
-                        <span className="ms-3">
-                          {t("Doctor", "الطبيب")}: <span className="text-foreground">{isAr ? (p.doctorNameAr || p.doctorName) : p.doctorName}</span>
-                        </span>
-                      )}
-                    </div>
-                    {p.visitDate && (
-                      <div>
-                        {t("Visit", "الزيارة")}: {new Date(p.visitDate).toLocaleDateString(isAr ? "ar-EG" : undefined)}
-                      </div>
-                    )}
-                    {(p.instructions || p.instructionsAr) && (
-                      <div className="text-foreground/80 mt-1.5 p-2 bg-muted/40 rounded text-xs">
-                        {isAr ? (p.instructionsAr || p.instructions) : p.instructions}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button
-                    variant="ghost" size="icon" className="h-8 w-8"
-                    title={t("Print", "طباعة")}
-                    onClick={() => {
-                      const visit = visits.find(v => v.id === p.visitId);
-                      const doctorId = visit?.doctorId ?? undefined;
-                      const tpl = doctorId ? templateByDoctor[doctorId] : undefined;
-                      printPrescription(p, { ...branding, ...(rxHeader || {}) }, isAr, t, patientLabel(p as any), tpl);
-                    }}
-                    data-testid={`button-print-prescription-${p.id}`}
-                  >
-                    <Printer size={15} />
-                  </Button>
-                  <Button
-                    variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                    onClick={() => { if (confirm(t("Delete prescription?", "حذف الوصفة؟"))) deleteMutation.mutate(p.id); }}
-                    data-testid={`button-delete-prescription-${p.id}`}
-                  >
-                    <Trash2 size={15} />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        data={prescriptions}
+        columns={rxColumns}
+        rowKey={p => p.id}
+        isLoading={isLoading}
+        searchPlaceholder={t("Search by medicine or patient", "بحث بالدواء أو المريض")}
+        searchPredicate={(p, q) => {
+          const name = (isAr ? (p.medicineNameAr || p.medicineName) : p.medicineName).toLowerCase();
+          return name.includes(q) || patientLabel(p as any).toLowerCase().includes(q);
+        }}
+        exportFilename="prescriptions"
+        exportLabel={t("Download Excel", "تحميل Excel")}
+        emptyMessage={t("No prescriptions yet", "لا توجد وصفات بعد")}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg" dir={isAr ? "rtl" : "ltr"}>

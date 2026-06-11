@@ -81,40 +81,40 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Bold Corporate: deep cobalt blue primary, clean light surfaces, sharper corners */
-  --background: 220 25% 97%;
-  --foreground: 222 47% 11%;
-  --border: 220 16% 88%;
+  /* Airy clinic workspace — light sidebar, soft teal accents, rounded surfaces */
+  --background: 210 40% 98%;
+  --foreground: 215 28% 17%;
+  --border: 214 24% 90%;
 
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --card-border: 220 16% 90%;
+  --card-foreground: 215 28% 17%;
+  --card-border: 214 24% 92%;
 
-  --sidebar: 222 47% 11%;
-  --sidebar-foreground: 220 14% 88%;
-  --sidebar-border: 222 47% 18%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 215 20% 35%;
+  --sidebar-border: 214 24% 92%;
+  --sidebar-primary: 168 76% 42%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 47% 18%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring: 217 91% 60%;
-  --sidebar-section: 220 14% 60%;
+  --sidebar-accent: 168 45% 95%;
+  --sidebar-accent-foreground: 168 70% 28%;
+  --sidebar-ring: 168 76% 42%;
+  --sidebar-section: 215 12% 58%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 222 47% 11%;
   --popover-border: 220 16% 88%;
 
-  --primary: 217 91% 42%;
+  --primary: 168 76% 36%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 25% 94%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary: 210 35% 96%;
+  --secondary-foreground: 215 28% 17%;
 
-  --muted: 220 25% 94%;
-  --muted-foreground: 220 9% 46%;
+  --muted: 210 35% 96%;
+  --muted-foreground: 215 12% 48%;
 
-  --accent: 217 91% 96%;
-  --accent-foreground: 217 91% 42%;
+  --accent: 168 45% 95%;
+  --accent-foreground: 168 70% 28%;
 
   --destructive: 0 84% 52%;
   --destructive-foreground: 0 0% 100%;
@@ -127,9 +127,9 @@
   --info-foreground: 0 0% 100%;
 
   --input: 220 16% 88%;
-  --ring: 217 91% 42%;
+  --ring: 168 76% 42%;
 
-  --chart-1: 217 91% 42%;
+  --chart-1: 168 76% 42%;
   --chart-2: 152 76% 36%;
   --chart-3: 38 92% 50%;
   --chart-4: 271 81% 56%;
@@ -138,7 +138,7 @@
   --app-font-sans: 'Outfit', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
-  --radius: .375rem;
+  --radius: .625rem;
 
   --shadow-2xs: 0 1px 2px 0 rgba(15,23,42,0.04);
   --shadow-xs: 0 1px 2px 0 rgba(15,23,42,0.05);
@@ -227,5 +227,22 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -10%, hsl(168 76% 42% / 0.06), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, hsl(217 91% 60% / 0.05), transparent);
+    background-attachment: fixed;
   }
+}
+
+@keyframes nav-shimmer {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.sidebar-glow {
+  background: linear-gradient(
+    180deg,
+    hsl(var(--sidebar)) 0%,
+    hsl(168 45% 98%) 100%
+  );
 }

@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Edit2, Users, UserCheck, Coffee } from "lucide-react";
+import { DataTable, type DataTableColumn } from "@/components/ui-ext/data-table";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
@@ -84,6 +86,58 @@ export default function Team() {
   };
 
   const isAr = language === "ar";
+
+  const statusLabel = (s: string) =>
+    s === "active" ? t("Active", "نشط") : s === "on_leave" ? t("On Leave", "في إجازة") : t("Inactive", "غير نشط");
+
+  const employeeColumns: DataTableColumn<Employee>[] = [
+    {
+      id: "name",
+      header: t("Name", "الاسم"),
+      sortValue: e => isRtl ? (e.nameAr || e.name) : e.name,
+      cell: e => <span className="font-medium">{isRtl ? (e.nameAr || e.name) : e.name}</span>,
+      export: { header: t("Name", "الاسم"), value: e => isRtl ? (e.nameAr || e.name) : e.name },
+    },
+    {
+      id: "role",
+      header: t("Role", "الدور"),
+      sortValue: e => e.role || "",
+      cell: e => isRtl ? (e.roleAr || e.role) : e.role,
+      export: { header: t("Role", "الدور"), value: e => e.role },
+    },
+    {
+      id: "department",
+      header: t("Department", "القسم"),
+      sortValue: e => e.department || "",
+      cell: e => isRtl ? (e.departmentAr || e.department) : e.department,
+      export: { header: t("Department", "القسم"), value: e => e.department },
+    },
+    {
+      id: "status",
+      header: t("Status", "الحالة"),
+      sortValue: e => e.status,
+      cell: e => <Badge variant="outline" className={statusColor[e.status] || statusColor.inactive}>{statusLabel(e.status)}</Badge>,
+      export: { header: t("Status", "الحالة"), value: e => statusLabel(e.status) },
+    },
+    {
+      id: "salary",
+      header: t("Salary", "الراتب"),
+      sortValue: e => Number(e.salary) || 0,
+      cell: e => e.salary ? `${e.salary} ${t("EGP", "ج.م")}` : "—",
+      export: { header: t("Salary", "الراتب"), value: e => e.salary },
+    },
+    {
+      id: "actions",
+      header: "",
+      sortable: false,
+      cell: e => (
+        <div className="flex justify-end gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(e)}><Edit2 size={14} /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => confirmDelete({ title: t("Remove this employee?", "حذف هذا الموظف؟"), onConfirm: () => deleteEmp.mutate(e.id) })}><Trash2 size={14} /></Button>
+        </div>
+      ),
+    },
+  ];
 
   const renderFormFields = () => (
     <div className="grid gap-4 py-4">
@@ -203,44 +257,28 @@ export default function Team() {
         </div>
       )}
 
-      {isLoading ? (
-        <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-20" />)}</div>
-      ) : employees?.length === 0 ? (
-        <div className="text-center py-12 border border-dashed rounded-lg bg-card/50">
-          <p className="text-muted-foreground">{t("No employees yet.", "لا يوجد موظفون بعد.")}</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {employees?.map(emp => (
-            <Card key={emp.id} className="hover:border-primary/50 transition-colors">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h4 className="font-semibold">{isRtl ? (emp.nameAr || emp.name) : emp.name}</h4>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColor[emp.status] || statusColor.inactive}`}>
-                        {emp.status === "active" ? t("Active", "نشط") : emp.status === "on_leave" ? t("On Leave", "في إجازة") : t("Inactive", "غير نشط")}
-                      </span>
-                    </div>
-                    {emp.role && <p className="text-sm text-muted-foreground mt-1">{isRtl ? (emp.roleAr || emp.role) : emp.role}</p>}
-                    {emp.department && <p className="text-xs text-muted-foreground mt-0.5">{isRtl ? (emp.departmentAr || emp.department) : emp.department}</p>}
-                    {emp.email && <p className="text-xs text-muted-foreground mt-1">{emp.email}</p>}
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(emp)}><Edit2 size={15} /></Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => confirmDelete({ title: t("Remove this employee?", "حذف هذا الموظف؟"), onConfirm: () => deleteEmp.mutate(emp.id) })}><Trash2 size={15} /></Button>
-                  </div>
-                </div>
-                {emp.salary && (
-                  <div className="mt-3 pt-3 border-t border-border text-sm font-medium">
-                    {t("Salary:", "الراتب:")} {emp.salary} {t("EGP", "ج.م")}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <DataTable
+        data={employees ?? []}
+        columns={employeeColumns}
+        rowKey={e => e.id}
+        isLoading={isLoading}
+        searchPlaceholder={t("Search employees…", "بحث عن موظفين…")}
+        searchPredicate={(e, q) => [e.name, e.nameAr, e.role, e.department, e.email, e.phone].filter(Boolean).join(" ").toLowerCase().includes(q)}
+        filters={[{
+          id: "status",
+          label: t("Status", "الحالة"),
+          allLabel: t("All statuses", "كل الحالات"),
+          options: [
+            { value: "active", label: t("Active", "نشط") },
+            { value: "on_leave", label: t("On Leave", "في إجازة") },
+            { value: "inactive", label: t("Inactive", "غير نشط") },
+          ],
+          predicate: (e, v) => e.status === v,
+        }]}
+        exportFilename="employees"
+        exportLabel={t("Download Excel", "تحميل Excel")}
+        emptyMessage={t("No employees yet.", "لا يوجد موظفون بعد.")}
+      />
 
       <Dialog open={isEditOpen} onOpenChange={v => { setIsEditOpen(v); if (!v) setForm({ ...emptyForm }); }}>
         <DialogContent className={isRtl ? "rtl" : "ltr"}>

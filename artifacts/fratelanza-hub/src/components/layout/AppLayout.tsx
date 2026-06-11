@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
-  Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
-  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck
+  Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList,
+  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill,
+  PanelLeftClose, PanelLeft,
 } from "lucide-react";
+import { PageTransition } from "./PageTransition";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
@@ -99,6 +102,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { logout, user } = useAuth();
   const { toast } = useToast();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem("sidebar-collapsed") === "1"; } catch { return false; }
+  });
   const [changePwOpen, setChangePwOpen] = useState(false);
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwLoading, setPwLoading] = useState(false);
@@ -255,21 +261,45 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     } finally { setPwLoading(false); }
   };
 
+  const toggleSidebar = () => {
+    setSidebarCollapsed(c => {
+      const next = !c;
+      try { localStorage.setItem("sidebar-collapsed", next ? "1" : "0"); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   const NavLink = ({ item, onClick, indent }: { item: NavItem; onClick?: () => void; indent?: boolean }) => {
     const active = isActive(item.href);
     const Icon = item.icon;
     return (
       <Link href={item.href} onClick={onClick}
-        className={`group flex items-center gap-2.5 ${indent ? "px-3 ml-3" : "px-3"} py-2 rounded-md transition-all text-[13px] font-medium ${
+        className={`group relative flex items-center gap-2.5 ${indent ? "ps-3 ms-2" : "px-2"} py-2 rounded-lg transition-colors text-[13px] font-medium ${
           active
-            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-            : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            ? "text-sidebar-primary"
+            : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/70"
         }`}
         data-testid={`nav-${item.labelEn.toLowerCase().replace(/\s+/g, "-")}`}
         data-active={active ? "true" : "false"}
+        title={sidebarCollapsed ? t(item.labelEn, item.labelAr) : undefined}
       >
-        <Icon size={15} className={active ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/55 group-hover:text-sidebar-accent-foreground"} />
-        <span className="truncate">{t(item.labelEn, item.labelAr)}</span>
+        {active && (
+          <motion.span
+            layoutId="sidebar-active-pill"
+            className="absolute inset-0 rounded-lg bg-sidebar-accent border border-sidebar-primary/15 shadow-sm"
+            transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          />
+        )}
+        <Icon size={16} className={`relative z-10 shrink-0 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/50 group-hover:text-sidebar-primary/80"}`} />
+        {!sidebarCollapsed && (
+          <motion.span
+            initial={{ opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="relative z-10 truncate"
+          >
+            {t(item.labelEn, item.labelAr)}
+          </motion.span>
+        )}
       </Link>
     );
   };
@@ -286,9 +316,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     if (visibleItems.length === 0 && visibleSubgroups.length === 0) return null;
     return (
       <div key={group.id} className="space-y-0.5">
-        <div className="px-3 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[hsl(var(--sidebar-section))]">
-          {t(group.labelEn, group.labelAr)}
-        </div>
+        {!sidebarCollapsed && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-[hsl(var(--sidebar-section))]"
+          >
+            {t(group.labelEn, group.labelAr)}
+          </motion.div>
+        )}
         {visibleItems.map(item => <NavLink key={item.href} item={item} onClick={onNavClick} />)}
         {visibleSubgroups.map(sg => {
           const SgIcon = sg.icon;
@@ -321,62 +357,78 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = ({ onNavClick, navRef }: { onNavClick?: () => void; navRef?: React.RefObject<HTMLElement | null> }) => (
     <>
-      <div className="px-5 pt-5 pb-3 border-b border-sidebar-border">
+      <div className={`px-3 pt-4 pb-3 border-b border-sidebar-border ${sidebarCollapsed ? "px-2" : ""}`}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-md bg-sidebar-primary flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+          <motion.div
+            whileHover={{ scale: 1.04 }}
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-sidebar-primary to-emerald-600 flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 overflow-hidden"
+          >
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt="logo" className="w-full h-full object-cover" />
             ) : (
-              <Stethoscope size={18} className="text-sidebar-primary-foreground" />
+              <Stethoscope size={18} className="text-white" />
             )}
-          </div>
-          <div className="min-w-0">
-            <div className="font-bold text-[15px] tracking-tight text-sidebar-foreground truncate">{companyName}</div>
-            {user?.displayName && (
-              <p className="text-[11px] text-sidebar-foreground/55 mt-0.5 truncate">{user.displayName}</p>
-            )}
-          </div>
+          </motion.div>
+          {!sidebarCollapsed && (
+            <motion.div className="min-w-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              <div className="font-bold text-[15px] tracking-tight text-sidebar-foreground truncate">{companyName}</div>
+              {user?.displayName && (
+                <p className="text-[11px] text-sidebar-foreground/55 mt-0.5 truncate">{user.displayName}</p>
+              )}
+            </motion.div>
+          )}
         </div>
       </div>
 
-      {showWorkspaceToggle && (
+      {showWorkspaceToggle && !sidebarCollapsed && (
         <div className="px-3 pt-3 pb-1">
-          <div className="grid grid-cols-2 gap-1 p-1 bg-sidebar-accent/40 rounded-md">
-            <button
-              type="button"
-              onClick={() => setWorkspace("general")}
-              className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-semibold transition-colors ${
-                effectiveWorkspace === "general"
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              }`}
-              data-testid="workspace-toggle-general"
-            >
-              <Briefcase size={12} />
-              {t("General", "عام")}
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspace("medical")}
-              className={`flex items-center justify-center gap-1.5 py-1.5 rounded text-[11px] font-semibold transition-colors ${
-                effectiveWorkspace === "medical"
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground"
-              }`}
-              data-testid="workspace-toggle-medical"
-            >
-              <Stethoscope size={12} />
-              {t("Medical", "طبي")}
-            </button>
+          <div className="relative grid grid-cols-2 gap-1 p-1 bg-muted/60 rounded-xl border border-border/60">
+            {(["general", "medical"] as const).map(w => {
+              const active = effectiveWorkspace === w;
+              const Icon = w === "general" ? Briefcase : Stethoscope;
+              return (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setWorkspace(w)}
+                  className={`relative z-10 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-semibold transition-colors ${
+                    active ? "text-sidebar-primary" : "text-sidebar-foreground/60 hover:text-sidebar-foreground"
+                  }`}
+                  data-testid={`workspace-toggle-${w}`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="workspace-pill"
+                      className="absolute inset-0 rounded-lg bg-card shadow-sm border border-border/80"
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    />
+                  )}
+                  <Icon size={12} className="relative z-10" />
+                  <span className="relative z-10">{t(w === "general" ? "General" : "Medical", w === "general" ? "عام" : "طبي")}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
 
-      <nav ref={navRef} className="flex-1 px-2.5 pb-3 overflow-y-auto">
-        {NAV_GROUPS
-          .filter(g => effectiveWorkspace === "general" ? g.id !== "medical" : g.id === "medical")
-          .map(g => renderGroup(g, onNavClick))}
-      </nav>
+      <LayoutGroup>
+        <nav ref={navRef} className="flex-1 px-2 pb-3 overflow-y-auto scrollbar-thin">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={effectiveWorkspace}
+              initial={{ opacity: 0, x: isRtl ? 12 : -12 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: isRtl ? -12 : 12 }}
+              transition={{ duration: 0.2 }}
+            >
+              {NAV_GROUPS
+                .filter(g => effectiveWorkspace === "general" ? g.id !== "medical" : g.id === "medical")
+                .map(g => renderGroup(g, onNavClick))}
+            </motion.div>
+          </AnimatePresence>
+        </nav>
+      </LayoutGroup>
 
       <div className="p-2.5 border-t border-sidebar-border space-y-0.5">
         {showNotifications && (
@@ -416,8 +468,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <KeyRound size={15} />
           {t("Change Password", "تغيير كلمة المرور")}
         </button>
+        <button onClick={toggleSidebar}
+          className="hidden md:flex w-full items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-[13px] font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground">
+          {sidebarCollapsed ? <PanelLeft size={15} /> : <PanelLeftClose size={15} />}
+          {!sidebarCollapsed && (t("Collapse", "طي القائمة"))}
+        </button>
         <button onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-md transition-all text-[13px] font-medium text-red-300 hover:bg-destructive/15 hover:text-red-200">
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all text-[13px] font-medium text-red-600 hover:bg-red-50">
           <LogOut size={15} />
           {t("Sign Out", "تسجيل الخروج")}
         </button>
@@ -434,25 +491,48 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen w-full bg-background text-foreground overflow-hidden" dir={isRtl ? "rtl" : "ltr"}>
-      <aside className={`hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground ${isRtl ? "border-l" : "border-r"} border-sidebar-border`}>
+      <motion.aside
+        animate={{ width: sidebarCollapsed ? 72 : 260 }}
+        transition={{ type: "spring", stiffness: 320, damping: 32 }}
+        className={`hidden md:flex flex-col sidebar-glow text-sidebar-foreground shrink-0 ${isRtl ? "border-l" : "border-r"} border-sidebar-border shadow-sm`}
+      >
         <SidebarContent navRef={desktopNavRef} />
-      </aside>
+      </motion.aside>
 
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className={`relative flex flex-col w-64 h-full bg-sidebar text-sidebar-foreground ${isRtl ? "border-l" : "border-r"} border-sidebar-border`}>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+          <motion.aside
+            initial={{ x: isRtl ? 280 : -280 }}
+            animate={{ x: 0 }}
+            exit={{ x: isRtl ? 280 : -280 }}
+            transition={{ type: "spring", stiffness: 340, damping: 34 }}
+            className={`relative flex flex-col w-[280px] h-full sidebar-glow text-sidebar-foreground ${isRtl ? "border-l" : "border-r"} border-sidebar-border shadow-xl`}
+          >
             <Button variant="ghost" size="icon" className="absolute top-3 right-3 z-10 text-sidebar-foreground hover:bg-sidebar-accent" onClick={() => setMobileOpen(false)}><X size={18} /></Button>
             <SidebarContent onNavClick={() => setMobileOpen(false)} navRef={mobileNavRef} />
-          </aside>
+          </motion.aside>
         </div>
       )}
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="h-14 border-b border-border bg-card flex items-center justify-between px-5 shrink-0 shadow-xs">
+        <header className="h-14 border-b border-border/80 bg-card/80 backdrop-blur-md flex items-center justify-between px-5 shrink-0">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileOpen(true)}><Menu size={20} /></Button>
-            <h1 className="text-[15px] font-semibold text-foreground">{headerTitle}</h1>
+            <Button variant="ghost" size="icon" className="md:hidden rounded-xl" onClick={() => setMobileOpen(true)}><Menu size={20} /></Button>
+            <motion.h1
+              key={headerTitle}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-[15px] font-semibold text-foreground"
+            >
+              {headerTitle}
+            </motion.h1>
           </div>
           <div className="flex items-center gap-2">
             <BranchPicker />
@@ -470,8 +550,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto p-5 md:p-6">
-          <div className="max-w-7xl mx-auto">{children}</div>
+        <div className="flex-1 overflow-auto p-4 md:p-6">
+          <div className="max-w-7xl mx-auto">
+            <PageTransition key={location}>{children}</PageTransition>
+          </div>
         </div>
       </main>
 

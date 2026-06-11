@@ -1,12 +1,11 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/components/LanguageProvider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui-ext/page-header";
-import { EmptyState } from "@/components/ui-ext/empty-state";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
+import { DataTable, type DataTableColumn } from "@/components/ui-ext/data-table";
 import { Upload, Pill, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,16 +18,14 @@ type Medicine = {
 };
 
 export default function MedicineMasterPage() {
-  const { t, language } = useLanguage();
-  const isAr = language === "ar";
+  const { t } = useLanguage();
   const qc = useQueryClient();
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [search, setSearch] = useState("");
 
   const { data: items = [], isLoading } = useQuery<Medicine[]>({
-    queryKey: ["medicine-master", search],
-    queryFn: () => apiFetch(`/medicine-master${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    queryKey: ["medicine-master"],
+    queryFn: () => apiFetch("/medicine-master"),
   });
   const { data: stats } = useQuery<{ total: number }>({
     queryKey: ["medicine-master-stats"],
@@ -63,6 +60,40 @@ export default function MedicineMasterPage() {
     },
   });
 
+  const columns: DataTableColumn<Medicine>[] = [
+    {
+      id: "material",
+      header: t("Material", "المادة"),
+      sortValue: r => r.material,
+      cell: r => <span className="font-mono text-xs">{r.material}</span>,
+      export: { header: "Material", value: r => r.material },
+    },
+    {
+      id: "description",
+      header: t("Material description", "وصف المادة"),
+      sortValue: r => r.materialDescription,
+      cell: r => r.materialDescription,
+      export: { header: "Material description", value: r => r.materialDescription },
+    },
+    {
+      id: "bun",
+      header: "BUn",
+      sortValue: r => r.bun || "",
+      cell: r => <span className="text-muted-foreground">{r.bun || "—"}</span>,
+      export: { header: "BUn", value: r => r.bun },
+    },
+    {
+      id: "actions",
+      header: "",
+      sortable: false,
+      cell: r => (
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMut.mutate(r.id)}>
+          <Trash2 size={14} />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-5">
       <PageHeader
@@ -92,49 +123,19 @@ export default function MedicineMasterPage() {
 
       <KpiCard icon={<Pill size={18} />} tone="primary" label={t("Total medicines", "إجمالي الأدوية")} value={stats?.total ?? 0} />
 
-      <Input
-        placeholder={t("Search material or description", "بحث بالمادة أو الوصف")}
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-        className="max-w-md"
+      <DataTable
+        data={items}
+        columns={columns}
+        rowKey={r => r.id}
+        isLoading={isLoading}
+        searchPlaceholder={t("Search material or description", "بحث بالمادة أو الوصف")}
+        searchPredicate={(r, q) =>
+          [r.material, r.materialDescription, r.bun].filter(Boolean).join(" ").toLowerCase().includes(q)
+        }
+        exportFilename="medicine-master"
+        exportLabel={t("Download Excel", "تحميل Excel")}
+        emptyMessage={t("No medicines yet", "لا توجد أدوية بعد")}
       />
-
-      {isLoading ? (
-        <p className="text-sm text-muted-foreground">{t("Loading…", "جاري التحميل…")}</p>
-      ) : items.length === 0 ? (
-        <EmptyState
-          icon={<Pill size={24} />}
-          title={t("No medicines yet", "لا توجد أدوية بعد")}
-          description={t("Upload an Excel file with Material, Material description, BUn columns", "ارفع ملف Excel بالأعمدة المطلوبة")}
-        />
-      ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-start p-2.5 font-medium">{t("Material", "المادة")}</th>
-                <th className="text-start p-2.5 font-medium">{t("Material description", "وصف المادة")}</th>
-                <th className="text-start p-2.5 font-medium">BUn</th>
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {items.map(m => (
-                <tr key={m.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="p-2.5 font-mono text-xs">{m.material}</td>
-                  <td className="p-2.5">{m.materialDescription}</td>
-                  <td className="p-2.5 text-muted-foreground">{m.bun || "—"}</td>
-                  <td className="p-2.5">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => deleteMut.mutate(m.id)}>
-                      <Trash2 size={14} />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
     </div>
   );
 }
