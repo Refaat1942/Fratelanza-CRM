@@ -143,24 +143,58 @@ needed for new customers.**
 
 ## 9. Updating the code later
 
-On your laptop:
-1. Edit in Replit, push to GitHub via the Git panel (one click).
+On your laptop: push to GitHub.
 
-On the VPS:
+On the VPS (one command — uses project name `fratelanza-hub` and stops port conflicts):
+
 ```bash
 cd ~/Fratelanza-HUB
-git pull
-docker compose up -d --build
+chmod +x deploy/vps-deploy.sh
+./deploy/vps-deploy.sh --branch cursor/ui-redesign-bb80 \
+  --migrate deploy/migrations/011-medical-extensions.sql
 ```
 
-That's it for both apps. They share the same git checkout.
+Or, if you're already on the right branch:
+
+```bash
+./deploy/vps-deploy.sh
+```
+
+### 502 Bad Gateway?
+
+Nginx is up but nothing answers on loopback `1025` (CRM) or `2025` (admin). Common causes:
+
+1. **Wrong compose project** — production uses `-p fratelanza-hub`, not `-p fratelanza`.
+2. **Port conflict** — a second `docker compose -p fratelanza up` leaves new containers in `Created` and stops the old ones.
+3. **Build crash** — `app` or `admin-app` exits on startup (check logs).
+
+Diagnose without rebuilding:
+
+```bash
+./deploy/vps-deploy.sh --diagnose
+```
+
+Manual recovery:
+
+```bash
+cd ~/Fratelanza-HUB
+git fetch origin && git reset --hard origin/cursor/ui-redesign-bb80
+docker compose -p fratelanza down --remove-orphans 2>/dev/null || true
+docker compose -p fratelanza-hub up -d --build
+curl -sI http://127.0.0.1:1025/api/healthz    # expect HTTP/1.1 200
+curl -sI http://127.0.0.1:2025/healthz        # expect HTTP/1.1 200
+```
+
+If loopback health checks pass but HTTPS still shows 502, reload nginx: `sudo nginx -t && sudo systemctl reload nginx`.
 
 ## 10. Ops cheat sheet
 
 | Want to… | Command |
 |---|---|
-| See logs | `docker compose logs -f app` (or `admin-app`) |
-| Restart one service | `docker compose restart app` |
+| Deploy / fix 502 | `./deploy/vps-deploy.sh --branch cursor/ui-redesign-bb80` |
+| Diagnose 502 | `./deploy/vps-deploy.sh --diagnose` |
+| See logs | `docker compose -p fratelanza-hub logs -f app` (or `admin-app`) |
+| Restart one service | `docker compose -p fratelanza-hub restart app` |
 | Renew SSL test | `sudo certbot renew --dry-run` |
 | Confirm ports are loopback | `ss -ltnp \| grep -E ':(1025\|2025)\b'` (should show `127.0.0.1`) |
 | Block a non-paying customer | admin UI → **Block** (CRM reflects within 60s) |

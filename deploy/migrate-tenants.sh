@@ -17,8 +17,11 @@ fi
 
 cd "$(dirname "$0")/.."
 
-echo "==> Reading tenant list from admin DB..."
-TENANTS=$(docker compose exec -T admin-db psql -U admin -d fratelanza_admin -tAc \
+COMPOSE_PROJECT="${COMPOSE_PROJECT:-fratelanza-hub}"
+COMPOSE="docker compose -p ${COMPOSE_PROJECT}"
+
+echo "==> Reading tenant list from admin DB (project: ${COMPOSE_PROJECT})..."
+TENANTS=$(${COMPOSE} exec -T admin-db psql -U admin -d fratelanza_admin -tAc \
   "SELECT db_name FROM admin_customers WHERE provision_status='ready' ORDER BY db_name;")
 
 if [ -z "$TENANTS" ]; then
@@ -39,7 +42,7 @@ FAIL_COUNT=0
 SUCCESS_COUNT=0
 for DB in $TENANTS; do
   echo "==> Migrating $DB ..."
-  if docker compose exec -T db psql -U fratelanza -d "$DB" < "$MIGRATION_FILE" > /dev/null; then
+  if ${COMPOSE} exec -T db psql -U fratelanza -d "$DB" < "$MIGRATION_FILE" > /dev/null; then
     echo "    OK"
     SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
   else
