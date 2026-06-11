@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from "react";
-import * as XLSX from "xlsx";
 import { useLanguage } from "../../components/LanguageProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
@@ -138,6 +137,7 @@ export default function MedicalMaterials() {
   });
 
   const handleMedicineFile = async (file: File) => {
+    const XLSX = await import("xlsx");
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, { type: "array" });
     const ws = wb.Sheets[wb.SheetNames[0]];
