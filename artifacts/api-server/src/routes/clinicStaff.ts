@@ -37,7 +37,8 @@ const templateUpload = multer({
 // Only admin or manager may mutate the clinic roster. Read access is granted
 // to anyone with `medical` permission (gated upstream in routes/index.ts).
 function requireRoster(req: Request, res: Response, next: NextFunction): void {
-  const role = (req.session as any)?.user?.role;
+  const s = req.session as any;
+  const role = s?.role ?? s?.user?.role;
   if (role === "admin" || role === "manager") { next(); return; }
   res.status(403).json({ error: "forbidden" });
 }

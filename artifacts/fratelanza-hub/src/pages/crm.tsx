@@ -443,7 +443,7 @@ export default function CRM() {
                       </div>
                     )}
                   </div>
-                  <div className="pt-4 flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="pt-4 flex items-center justify-end gap-2">
                     {client.phone && (
                       <Button
                         variant="outline"

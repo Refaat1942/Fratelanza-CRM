@@ -168,7 +168,7 @@ export default function MedicalMaterials() {
         </div>
         <div className="flex flex-wrap gap-2">
           <label className="inline-flex items-center gap-2 h-10 px-4 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm font-medium cursor-pointer">
-            <Upload size={16} />{importMedicineMaster.isPending ? t("Uploading…", "جاري الرفع…") : t("Upload Medicine Master", "رفع بيانات الأدوية")}
+            <Upload size={16} />{importMedicineMaster.isPending ? t("Uploading…", "جاري الرفع…") : t("Upload Master", "رفع البيانات")}
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
