@@ -185,7 +185,22 @@ curl -sI http://127.0.0.1:1025/api/healthz    # expect HTTP/1.1 200
 curl -sI http://127.0.0.1:2025/healthz        # expect HTTP/1.1 200
 ```
 
-If loopback health checks pass but HTTPS still shows 502, reload nginx: `sudo nginx -t && sudo systemctl reload nginx`.
+If loopback health checks pass (`127.0.0.1:1025` and `:2025` return 200) but HTTPS still shows 502,
+nginx is proxying to the **wrong upstream** — often because old configs like
+`fratelanza-hub.conf` or `fratelanza-rs-fratelanza-com` are still enabled.
+
+Diagnose:
+
+```bash
+sudo ./deploy/fix-nginx.sh --check
+```
+
+Fix (backs up sites-enabled, installs `deploy/nginx.conf`, disables conflicts):
+
+```bash
+sudo ./deploy/fix-nginx.sh
+curl -sI https://test.fratelanza.com/api/healthz   # expect HTTP/2 200
+```
 
 ## 10. Ops cheat sheet
 
@@ -193,6 +208,7 @@ If loopback health checks pass but HTTPS still shows 502, reload nginx: `sudo ng
 |---|---|
 | Deploy / fix 502 | `./deploy/vps-deploy.sh --branch cursor/ui-redesign-bb80` |
 | Diagnose 502 | `./deploy/vps-deploy.sh --diagnose` |
+| Fix nginx 502 (loopback OK) | `sudo ./deploy/fix-nginx.sh` |
 | See logs | `docker compose -p fratelanza-hub logs -f app` (or `admin-app`) |
 | Restart one service | `docker compose -p fratelanza-hub restart app` |
 | Renew SSL test | `sudo certbot renew --dry-run` |
