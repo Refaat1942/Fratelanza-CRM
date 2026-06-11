@@ -223,10 +223,14 @@ Or manually:
 
 ```bash
 sudo cp deploy/nginx.conf /etc/nginx/sites-available/fratelanza
+sudo cp deploy/nginx-rs.conf /etc/nginx/sites-available/fratelanza-rs
 sudo ln -sf /etc/nginx/sites-available/fratelanza /etc/nginx/sites-enabled/fratelanza
+sudo ln -sf /etc/nginx/sites-available/fratelanza-rs /etc/nginx/sites-enabled/fratelanza-rs
 sudo rm -f /etc/nginx/sites-enabled/fratelanza-rs-fratelanza-com
 sudo nginx -t && sudo systemctl reload nginx
 ```
+
+**RS vs Hub:** `rs.fratelanza.com` must proxy to port **9000** (RS app). The Hub CRM wildcard (`*.fratelanza.com` → 1025) must **not** catch RS — `deploy/nginx.conf` and `deploy/nginx-rs.conf` both define `rs.fratelanza.com` → 9000.
 
 ## 10. Ops cheat sheet
 

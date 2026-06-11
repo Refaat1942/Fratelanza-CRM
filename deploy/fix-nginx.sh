@@ -58,8 +58,9 @@ mkdir -p "$BACKUP_DIR"
 echo "==> Backing up current sites-enabled to ${BACKUP_DIR}"
 cp -a /etc/nginx/sites-enabled/. "$BACKUP_DIR/"
 
-echo "==> Installing canonical config from repo..."
+echo "==> Installing canonical configs from repo (Hub + RS + admin)..."
 cp "${REPO_ROOT}/deploy/nginx.conf" /etc/nginx/sites-available/fratelanza
+cp "${REPO_ROOT}/deploy/nginx-rs.conf" /etc/nginx/sites-available/fratelanza-rs
 
 echo "==> Disabling conflicting CRM site configs (keeping console, etc.)..."
 for f in /etc/nginx/sites-enabled/*; do
