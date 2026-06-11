@@ -4,21 +4,16 @@ WORKDIR /app
 
 RUN corepack enable
 
-# Copy manifest first for better caching. We intentionally do NOT copy a
-# lockfile: this folder is part of the parent monorepo and has no standalone
-# lockfile of its own. pnpm will resolve fresh from package.json.
-COPY package.json ./
+# Admin depends on @workspace/db — build from monorepo root context
+# (see docker-compose.yml: context: ., dockerfile: artifacts/fratelanza-admin/Dockerfile)
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
+COPY lib/db/ lib/db/
+COPY artifacts/fratelanza-admin/ artifacts/fratelanza-admin/
 
-# Install all deps. --ignore-scripts avoids pnpm v10's strict ERR_PNPM_IGNORED_BUILDS
-# policy (it refuses to silently skip postinstall scripts). We then explicitly
-# rebuild esbuild so its native binary gets installed — tsx needs it at runtime.
-RUN pnpm install --prod=false --ignore-scripts && \
-    pnpm rebuild esbuild
+RUN pnpm install --frozen-lockfile --ignore-scripts --filter @workspace/fratelanza-admin... && \
+    pnpm --filter @workspace/fratelanza-admin rebuild esbuild
 
-# Copy source
-COPY tsconfig.json ./
-COPY src ./src
-COPY views ./views
+WORKDIR /app/artifacts/fratelanza-admin
 
 ENV NODE_ENV=production
 ENV PORT=5050
