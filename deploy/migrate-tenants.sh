@@ -32,10 +32,15 @@ fi
 echo "Tenants to migrate:"
 echo "$TENANTS" | sed 's/^/  - /'
 echo ""
-read -p "Apply $(basename "$MIGRATION_FILE") to all of the above? (yes/NO): " CONFIRM
-if [ "$CONFIRM" != "yes" ]; then
-  echo "Aborted."
-  exit 1
+
+if [ "${AUTO_YES:-}" = "1" ] || [ "${CONFIRM:-}" = "yes" ]; then
+  echo "Auto-confirmed (AUTO_YES=1)."
+else
+  read -r -p "Apply $(basename "$MIGRATION_FILE") to all of the above? (yes/NO): " CONFIRM
+  if [ "$CONFIRM" != "yes" ]; then
+    echo "Aborted."
+    exit 1
+  fi
 fi
 
 FAIL_COUNT=0

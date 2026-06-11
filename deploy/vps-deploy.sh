@@ -150,7 +150,12 @@ deploy
 
 if [ -n "$MIGRATION" ]; then
   echo "==> Applying tenant migration: ${MIGRATION}"
-  COMPOSE_PROJECT="${COMPOSE_PROJECT}" ./deploy/migrate-tenants.sh "$MIGRATION" <<< "yes"
+  COMPOSE_PROJECT="${COMPOSE_PROJECT}" AUTO_YES=1 ./deploy/migrate-tenants.sh "$MIGRATION"
+fi
+
+if command -v nginx >/dev/null 2>&1 && [ -d /etc/nginx ]; then
+  echo "==> Reloading host nginx..."
+  nginx -t && systemctl reload nginx
 fi
 
 echo ""
