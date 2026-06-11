@@ -404,7 +404,7 @@ export default function Patients() {
                         <span className="text-[11px] leading-relaxed"><b>{t("Allergies", "حساسية")}:</b> {p.allergies}</span>
                       </div>
                     )}
-                    <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5">
                       <Button variant="outline" size="sm" className="h-7 px-2 text-violet-700 hover:bg-violet-50 hover:text-violet-800 border-violet-200"
                         onClick={() => setAiSummaryFor(p)}
                         title={t("AI Summary", "ملخص ذكاء اصطناعي")} data-testid={`btn-ai-summary-${p.id}`}>
