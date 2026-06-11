@@ -282,6 +282,7 @@ async function main() {
         subscription_end: "",
         next_billing_date: "",
         payment_status: "trial",
+        specialization: "general",
       },
       features: defaultFeatures(),
       featureLabels: FEATURE_LABELS,
