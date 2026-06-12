@@ -9,13 +9,21 @@ import {
   EGYPT_PHYSIO_MODALITIES,
   PROCEDURE_CATEGORIES_EGYPT,
 } from "../../lib/egyptClinicCatalog";
+import { medicationCatalogItems } from "../../lib/medicationProducts";
 import { seedEgyptClinicCatalog } from "../../lib/seedEgyptClinic";
 import { EGYPT_GOVERNORATES, INSURANCE_TYPES } from "../../lib/egyptGovernoratesData";
 
 const router: IRouter = Router();
 
-/** Static Egyptian market options for forms (bilingual). */
-router.get("/medical/catalog/options", (_req, res) => {
+/** Static Egyptian market options for forms (bilingual) + tenant medicine products. */
+router.get("/medical/catalog/options", async (_req, res): Promise<void> => {
+  const importedMeds = await medicationCatalogItems();
+  const staticMeds = EGYPT_MEDICATIONS.map((m) => ({ ...m, value: m.value ?? m.en }));
+  const seen = new Set(staticMeds.map((m) => m.en.toLowerCase()));
+  const medications = [
+    ...importedMeds,
+    ...staticMeds.filter((m) => !seen.has(m.en.toLowerCase())),
+  ];
   res.json({
     governorates: EGYPT_GOVERNORATES,
     insuranceTypes: INSURANCE_TYPES,
@@ -25,7 +33,7 @@ router.get("/medical/catalog/options", (_req, res) => {
     diagnoses: EGYPT_DIAGNOSES,
     chronicConditions: EGYPT_CHRONIC_CONDITIONS,
     allergies: EGYPT_ALLERGIES,
-    medications: EGYPT_MEDICATIONS,
+    medications,
     physioModalities: EGYPT_PHYSIO_MODALITIES,
     maritalStatuses: [
       { en: "Single", ar: "أعزب / عزباء", value: "single" },

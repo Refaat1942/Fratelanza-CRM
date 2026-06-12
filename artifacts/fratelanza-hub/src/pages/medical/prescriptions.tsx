@@ -180,10 +180,10 @@ export default function PrescriptionsPage() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState<{
-    visitId: string; medicineName: string; medicineNameAr: string;
+    visitId: string; medicineKey: string; medicineName: string; medicineNameAr: string;
     dosage: string; frequency: string; durationDays: string;
     instructions: string; instructionsAr: string;
-  }>({ visitId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+  }>({ visitId: "", medicineKey: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
 
   const { data: prescriptions = [], isLoading } = useQuery<Prescription[]>({
     queryKey: ["prescriptions"],
@@ -225,7 +225,7 @@ export default function PrescriptionsPage() {
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
       qc.invalidateQueries({ queryKey: ["prescriptions-stats"] });
       setOpen(false);
-      setForm({ visitId: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+      setForm({ visitId: "", medicineKey: "", medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
       toast({ title: t("Prescription added", "تم إضافة الوصفة") });
     },
     onError: (err: any) => toast({ title: err?.message || t("Failed", "فشل"), variant: "destructive" }),
@@ -382,23 +382,24 @@ export default function PrescriptionsPage() {
               <Label>{t("Medicine", "الدواء")}*</Label>
               <SearchableSelect
                 options={medicationOptions}
-                value={form.medicineName}
+                value={form.medicineKey}
                 onChange={(v) => {
-                  const m = catalog?.medications?.find((x) => x.en === v);
+                  const m = catalog?.medications?.find((x) => (x.value ?? x.en) === v);
                   setForm({
                     ...form,
-                    medicineName: v,
-                    medicineNameAr: m?.ar ?? (form.medicineNameAr || v),
+                    medicineKey: v,
+                    medicineName: m?.en ?? v.replace(/^product:\d+$/, ""),
+                    medicineNameAr: m?.ar ?? form.medicineNameAr,
                   });
                 }}
-                placeholder={{ en: "Search Egyptian formulary…", ar: "ابحث في قائمة الأدوية المصرية…" }}
+                placeholder={{ en: "Search imported medicines or formulary…", ar: "ابحث في الأدوية المستوردة أو القائمة…" }}
               />
               <Input
                 className="mt-1.5"
                 value={isAr ? form.medicineNameAr : form.medicineName}
                 onChange={(e) => isAr
-                  ? setForm({ ...form, medicineNameAr: e.target.value, medicineName: e.target.value })
-                  : setForm({ ...form, medicineName: e.target.value })}
+                  ? setForm({ ...form, medicineKey: "", medicineNameAr: e.target.value, medicineName: e.target.value })
+                  : setForm({ ...form, medicineKey: "", medicineName: e.target.value })}
                 placeholder={t("Or type custom medicine name", "أو اكتب اسم دواء يدوياً")}
                 required
               />

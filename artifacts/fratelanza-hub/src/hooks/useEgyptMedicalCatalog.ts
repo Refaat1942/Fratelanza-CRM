@@ -12,7 +12,7 @@ export type EgyptCatalogOptions = {
   diagnoses: { en: string; ar: string; value?: string }[];
   chronicConditions: { en: string; ar: string }[];
   allergies: { en: string; ar: string }[];
-  medications: { en: string; ar: string }[];
+  medications: { en: string; ar: string; value?: string }[];
   physioModalities: { en: string; ar: string }[];
   maritalStatuses: { en: string; ar: string; value: string }[];
   bloodTypes: string[];

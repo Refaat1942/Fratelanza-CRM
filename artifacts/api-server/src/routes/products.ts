@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import { and, eq, sql } from "drizzle-orm";
 import { db, productsTable } from "@workspace/db";
 import { branchWhere } from "../lib/branchScope";
+import { listMedicationProducts, medicationCategoryWhere } from "../lib/medicationProducts";
 import { z } from "zod";
 
 const router: IRouter = Router();
@@ -46,6 +47,62 @@ router.get("/products/low-stock", async (req, res): Promise<void> => {
     .where(bw ? and(lowStock, bw) : lowStock)
     .orderBy(productsTable.stock);
   res.json(rows);
+});
+
+/** Clinic medicines (for prescriptions) — products tagged as medication/pharmacy. */
+router.get("/products/medications", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, productsTable.branchId);
+  const medWhere = medicationCategoryWhere();
+  const rows = bw
+    ? await db.select().from(productsTable).where(and(medWhere!, bw)).orderBy(productsTable.name)
+    : await listMedicationProducts();
+  res.json(rows);
+});
+
+/** Remove all medicine products so you can re-import from Excel. */
+router.delete("/products/medications", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, productsTable.branchId);
+  const medWhere = medicationCategoryWhere();
+  const rows = bw
+    ? await db.delete(productsTable).where(and(medWhere!, bw)).returning({ id: productsTable.id })
+    : await db.delete(productsTable).where(medWhere!).returning({ id: productsTable.id });
+  res.json({ deleted: rows.length });
+});
+
+const BulkMedicationInput = z.object({
+  items: z.array(z.object({
+    name: z.string().min(1),
+    nameAr: z.string().optional(),
+    sku: z.string().optional(),
+    price: z.number().min(0).default(0),
+    stock: z.number().int().min(0).default(0),
+    costPrice: z.number().min(0).optional(),
+  })).min(1).max(5000),
+  branchId: z.number().int().positive().nullable().optional(),
+});
+
+router.post("/products/medications/bulk", async (req, res): Promise<void> => {
+  const parsed = BulkMedicationInput.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const branchId = parsed.data.branchId ?? null;
+  const inserted = [];
+  for (const item of parsed.data.items) {
+    const [row] = await db.insert(productsTable).values({
+      name: item.name,
+      nameAr: item.nameAr ?? null,
+      sku: item.sku ?? null,
+      price: item.price,
+      costPrice: item.costPrice ?? 0,
+      stock: item.stock,
+      reorderPoint: 5,
+      category: "medication",
+      categoryAr: "دواء",
+      status: "available",
+      branchId,
+    }).returning();
+    inserted.push(row);
+  }
+  res.status(201).json({ imported: inserted.length, items: inserted });
 });
 
 router.post("/products", async (req, res): Promise<void> => {

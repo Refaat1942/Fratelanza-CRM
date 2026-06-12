@@ -29,6 +29,8 @@ import MedicalMaterials from "@/pages/medical/materials";
 import MedicalInvoices from "@/pages/medical/invoices";
 import MedicalReports from "@/pages/medical/reports";
 import Prescriptions from "@/pages/medical/prescriptions";
+import Medicines from "@/pages/medical/medicines";
+import PatientScan from "@/pages/medical/patient-scan";
 import DoctorAvailability from "@/pages/medical/doctor-availability";
 import ClinicStaff from "@/pages/medical/clinic-staff";
 import Procedures from "@/pages/medical/procedures";
@@ -95,10 +97,12 @@ function AppRouter() {
               <Route path="/purchase-orders"><FeatureGate feature="purchase_orders"><PurchaseOrders /></FeatureGate></Route>
               <Route path="/invoices"><FeatureGate feature="invoicing"><Invoices /></FeatureGate></Route>
               <Route path="/medical/patients"><FeatureGate feature="medical_patients" masterFeature="medical" permission="medical"><Patients /></FeatureGate></Route>
+              <Route path="/medical/patient-scan"><FeatureGate feature="medical_patients" masterFeature="medical" permission="medical"><PatientScan /></FeatureGate></Route>
               <Route path="/medical/appointments"><FeatureGate feature="medical_appointments" masterFeature="medical" permission="medical"><Appointments /></FeatureGate></Route>
               <Route path="/medical/visits"><FeatureGate feature="medical_visits" masterFeature="medical" permission="medical"><Visits /></FeatureGate></Route>
               <Route path="/medical/materials"><FeatureGate feature="medical_materials" masterFeature="medical" permission="medical"><MedicalMaterials /></FeatureGate></Route>
               <Route path="/medical/prescriptions"><FeatureGate feature="medical_prescriptions" masterFeature="medical" permission="medical"><Prescriptions /></FeatureGate></Route>
+              <Route path="/medical/medicines"><FeatureGate feature="medical_prescriptions" masterFeature="medical" permission="medical"><Medicines /></FeatureGate></Route>
               <Route path="/medical/invoices"><FeatureGate feature="medical_invoices" masterFeature="medical" permission="medical"><MedicalInvoices /></FeatureGate></Route>
               <Route path="/medical/reports"><FeatureGate feature="medical_reports" masterFeature="medical" permission="medical"><MedicalReports /></FeatureGate></Route>
               <Route path="/medical/procedures"><FeatureGate feature="medical_procedures" masterFeature="medical" permission="medical"><Procedures /></FeatureGate></Route>

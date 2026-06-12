@@ -36,6 +36,8 @@ export const patientsTable = pgTable("patients", {
   emergencyContactPhone: text("emergency_contact_phone"),
   notes: text("notes"),
   notesAr: text("notes_ar"),
+  /** Opaque token encoded in patient QR (staff scan at /medical/patient-scan). */
+  qrToken: text("qr_token"),
   branchId: integer("branch_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),

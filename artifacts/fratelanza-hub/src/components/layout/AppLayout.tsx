@@ -5,7 +5,7 @@ import {
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
   Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck,
-  Activity, Apple,
+  Activity, Apple, QrCode,
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -75,9 +75,11 @@ const NAV_GROUPS: NavGroup[] = [
     labelAr: "العيادة الطبية",
     items: [
       { href: "/medical/patients", key: "medical", featureKey: "medical_patients", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
+      { href: "/medical/patient-scan", key: "medical", featureKey: "medical_patients", icon: QrCode, labelEn: "Scan patient QR", labelAr: "مسح QR المريض" },
       { href: "/medical/appointments", key: "medical", featureKey: "medical_appointments", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
       { href: "/medical/visits", key: "medical", featureKey: "medical_visits", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
-      { href: "/medical/prescriptions", key: "medical", featureKey: "medical_prescriptions", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
+      { href: "/medical/medicines", key: "medical", featureKey: "medical_prescriptions", icon: Pill, labelEn: "Medicines", labelAr: "الأدوية" },
+      { href: "/medical/prescriptions", key: "medical", featureKey: "medical_prescriptions", icon: ClipboardCheck, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
       { href: "/medical/materials", key: "medical", featureKey: "medical_materials", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
       { href: "/medical/invoices", key: "medical", featureKey: "medical_invoices", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
       { href: "/medical/reports", key: "medical", featureKey: "medical_reports", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },

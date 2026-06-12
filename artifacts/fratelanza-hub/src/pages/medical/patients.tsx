@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle,
-  IdCard, AlertTriangle, Stethoscope, Search, Sparkles,
+  IdCard, AlertTriangle, Stethoscope, Search, Sparkles, QrCode,
 } from "lucide-react";
+import { PatientQrDialog } from "@/components/medical/PatientQrDialog";
 import { AiSummaryDialog } from "@/components/medical/AiSummaryDialog";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
@@ -54,6 +55,7 @@ type Patient = {
   emergencyContactPhone?: string | null;
   notes?: string | null; notesAr?: string | null;
   branchId?: number | null;
+  qrToken?: string | null;
 };
 
 type Stats = { total: number; recent: number };
@@ -96,6 +98,7 @@ export default function Patients() {
   const [editing, setEditing] = useState<Patient | null>(null);
   const [form, setForm] = useState<Patient>(EMPTY);
   const [aiSummaryFor, setAiSummaryFor] = useState<Patient | null>(null);
+  const [qrPatient, setQrPatient] = useState<Patient | null>(null);
   const { catalog } = useEgyptMedicalCatalog();
 
   const governorateOptions = useMemo(
@@ -165,6 +168,17 @@ export default function Patients() {
     onSuccess: () => { invalidate(); toast({ title: t("Patient deleted", "تم حذف المريض") }); },
     onError: (e: Error) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
   });
+
+  const backfillQrMut = useMutation({
+    mutationFn: () => apiFetch<{ updated: number }>("/patients/backfill-qr-tokens", { method: "POST" }),
+    onSuccess: (res) => {
+      invalidate();
+      toast({ title: t(`QR codes generated for ${res.updated} patients`, `تم إنشاء QR لـ ${res.updated} مريض`) });
+    },
+    onError: (e: Error) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
+  });
+
+  const missingQrCount = patients?.filter((p) => !p.qrToken).length ?? 0;
 
   const openEdit = (p: Patient) => { setEditing(p); setForm({ ...EMPTY, ...p }); };
 
@@ -460,17 +474,31 @@ export default function Patients() {
         title={t("Patients", "المرضى")}
         description={t("Manage every patient record — bilingual, searchable, hardened.", "إدارة جميع سجلات المرضى — ثنائية اللغة، قابلة للبحث، آمنة.")}
         actions={
-          <Dialog open={createOpen} onOpenChange={open => { setCreateOpen(open); if (!open) setForm(EMPTY); }}>
-            <DialogTrigger asChild>
-              <Button data-testid="btn-create-patient" className="gap-1.5 h-9" onClick={openCreate}><Plus size={15}/>{t("New Patient", "مريض جديد")}</Button>
-            </DialogTrigger>
-            <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2"><UserPlus size={18} className="text-primary"/>{t("Add Patient", "إضافة مريض")}</DialogTitle>
-              </DialogHeader>
-              {PatientForm}
-            </DialogContent>
-          </Dialog>
+          <div className="flex flex-wrap gap-2">
+            {missingQrCount > 0 && user?.role === "admin" && (
+              <Button
+                variant="outline"
+                className="gap-1.5 h-9"
+                disabled={backfillQrMut.isPending}
+                onClick={() => backfillQrMut.mutate()}
+                data-testid="btn-backfill-qr"
+              >
+                <QrCode size={15} />
+                {t(`Generate QR (${missingQrCount})`, `إنشاء QR (${missingQrCount})`)}
+              </Button>
+            )}
+            <Dialog open={createOpen} onOpenChange={open => { setCreateOpen(open); if (!open) setForm(EMPTY); }}>
+              <DialogTrigger asChild>
+                <Button data-testid="btn-create-patient" className="gap-1.5 h-9" onClick={openCreate}><Plus size={15}/>{t("New Patient", "مريض جديد")}</Button>
+              </DialogTrigger>
+              <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2"><UserPlus size={18} className="text-primary"/>{t("Add Patient", "إضافة مريض")}</DialogTitle>
+                </DialogHeader>
+                {PatientForm}
+              </DialogContent>
+            </Dialog>
+          </div>
         }
       />
 
@@ -574,6 +602,12 @@ export default function Patients() {
                       </div>
                     )}
                     <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="h-7 px-2"
+                        onClick={() => setQrPatient(p)}
+                        title={t("Patient QR card", "بطاقة QR للمريض")}
+                        data-testid={`btn-qr-patient-${p.id}`}>
+                        <QrCode size={13} />
+                      </Button>
                       <Button variant="outline" size="sm" className="h-7 px-2 text-violet-700 hover:bg-violet-50 hover:text-violet-800 border-violet-200"
                         onClick={() => setAiSummaryFor(p)}
                         title={t("AI Summary", "ملخص ذكاء اصطناعي")} data-testid={`btn-ai-summary-${p.id}`}>
@@ -614,6 +648,12 @@ export default function Patients() {
           onOpenChange={(v) => { if (!v) setAiSummaryFor(null); }}
         />
       )}
+
+      <PatientQrDialog
+        patient={qrPatient}
+        open={qrPatient !== null}
+        onOpenChange={(open) => { if (!open) setQrPatient(null); }}
+      />
 
       <Dialog open={editing !== null} onOpenChange={open => { if (!open) { setEditing(null); setForm(EMPTY); } }}>
         <DialogContent className={`max-w-2xl ${isRtl ? "rtl" : "ltr"}`}>

@@ -1,11 +1,16 @@
 import { Router, type IRouter } from "express";
-import { and, asc, eq, or, ilike, sql, desc } from "drizzle-orm";
+import { and, asc, eq, or, ilike, sql, desc, isNull } from "drizzle-orm";
+import crypto from "node:crypto";
 import { db, patientsTable, activityTable } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
 import { parseSort, sendExcel } from "../../lib/excelExport";
 import { z } from "zod";
 
 const router: IRouter = Router();
+
+function newQrToken(): string {
+  return crypto.randomUUID().replace(/-/g, "");
+}
 
 const PatientInput = z.object({
   firstName: z.string().min(1),
@@ -104,13 +109,38 @@ router.get("/patients/export.xlsx", async (req, res): Promise<void> => {
   ], rows as Record<string, unknown>[]);
 });
 
+/** Lookup patient by QR token (staff scan screen). */
+router.get("/patients/scan/:token", async (req, res): Promise<void> => {
+  const token = String(req.params.token || "").trim();
+  if (!token) { res.status(400).json({ error: "missing_token" }); return; }
+  const bw = branchWhere(req, patientsTable.branchId);
+  const [patient] = await db.select().from(patientsTable)
+    .where(bw ? and(eq(patientsTable.qrToken, token), bw) : eq(patientsTable.qrToken, token))
+    .limit(1);
+  if (!patient) { res.status(404).json({ error: "patient_not_found" }); return; }
+  res.json(patient);
+});
+
+/** Assign QR tokens to patients created before this feature. */
+router.post("/patients/backfill-qr-tokens", async (req, res): Promise<void> => {
+  const bw = branchWhere(req, patientsTable.branchId);
+  const rows = await db.select().from(patientsTable)
+    .where(bw ? and(isNull(patientsTable.qrToken), bw) : isNull(patientsTable.qrToken));
+  let updated = 0;
+  for (const p of rows) {
+    await db.update(patientsTable).set({ qrToken: newQrToken() }).where(eq(patientsTable.id, p.id));
+    updated++;
+  }
+  res.json({ updated });
+});
+
 router.post("/patients", async (req, res): Promise<void> => {
   const parsed = PatientInput.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
-  const [patient] = await db.insert(patientsTable).values(parsed.data as any).returning();
+  const [patient] = await db.insert(patientsTable).values({ ...parsed.data, qrToken: newQrToken() } as any).returning();
   await db.insert(activityTable).values({
     type: "patient_added",
     description: `Patient added: ${patient.firstName}${patient.lastName ? " " + patient.lastName : ""}`,
