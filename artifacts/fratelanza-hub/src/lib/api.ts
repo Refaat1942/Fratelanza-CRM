@@ -1,10 +1,29 @@
 const BASE = "/api";
 
+const RESERVED = new Set(["www", "admin", "api", "app"]);
+
+function tenantSubdomainHeader(): Record<string, string> {
+  try {
+    const host = window.location.hostname.toLowerCase();
+    if (!host || host === "localhost" || /^\d+\.\d+\.\d+\.\d+$/.test(host)) return {};
+    const parts = host.split(".");
+    if (parts.length < 3) return {};
+    const sub = parts[0]!;
+    if (RESERVED.has(sub)) return {};
+    return { "X-Tenant-Subdomain": sub };
+  } catch {
+    return {};
+  }
+}
+
 export async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const isFormData = options?.body instanceof FormData;
+  const tenantHdr = tenantSubdomainHeader();
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
-    headers: isFormData ? { ...options?.headers } : { "Content-Type": "application/json", ...options?.headers },
+    headers: isFormData
+      ? { ...tenantHdr, ...options?.headers }
+      : { "Content-Type": "application/json", ...tenantHdr, ...options?.headers },
     ...options,
   });
   if (res.status === 401) {

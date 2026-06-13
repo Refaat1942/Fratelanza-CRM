@@ -1,11 +1,21 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import { eq, desc, sql, or, ilike } from "drizzle-orm";
-import { db, medicineMasterTable } from "@workspace/db";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { medicineMasterTable } from "@workspace/db";
+import type * as DbSchema from "@workspace/db/schema";
 import { z } from "zod";
 import multer from "multer";
 import * as XLSX from "xlsx";
-import { withRequestTenant } from "../../lib/tenantContext";
+import {
+  continueWithRequestTenant,
+  getRequestDb,
+  getRequestDbName,
+  requireRequestDb,
+  withRequestTenant,
+} from "../../lib/tenantContext";
 import crypto from "node:crypto";
+
+type AppDb = NodePgDatabase<typeof DbSchema>;
 
 const router: IRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -54,7 +64,6 @@ function pickRow(row: Record<string, unknown>): { material: string; materialDesc
   if (!material && !materialDescription) return null;
   if (!materialDescription) materialDescription = material;
   if (!material) {
-    // Stable unique key when SAP Material code column is missing/empty.
     const hash = crypto.createHash("sha1").update(materialDescription).digest("hex").slice(0, 12);
     material = `M-${hash}`;
   }
@@ -110,6 +119,7 @@ function parseSpreadsheet(buffer: Buffer, filename: string): { material: string;
   return rows;
 }
 
+/** Re-bind tenant ALS when multer finishes (busboy runs outside tenantAls.run). */
 const uploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
   upload.single("file")(req, res, (err) => {
     if (err) {
@@ -117,18 +127,21 @@ const uploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
       res.status(400).json({ error: code === "LIMIT_FILE_SIZE" ? "file_too_large" : "upload_failed" });
       return;
     }
-    next();
+    continueWithRequestTenant(req, next);
   });
 };
 
-async function countMedicines(): Promise<number> {
-  const [row] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(medicineMasterTable);
+async function countMedicines(tenantDb: AppDb): Promise<number> {
+  const [row] = await tenantDb.select({ total: sql<number>`cast(count(*) as int)` }).from(medicineMasterTable);
   return row?.total ?? 0;
 }
 
-async function upsertBatch(batch: { material: string; materialDescription: string; bun: string | null }[]) {
+async function upsertBatch(
+  tenantDb: AppDb,
+  batch: { material: string; materialDescription: string; bun: string | null }[],
+) {
   if (!batch.length) return;
-  await db.insert(medicineMasterTable).values(batch).onConflictDoUpdate({
+  await tenantDb.insert(medicineMasterTable).values(batch).onConflictDoUpdate({
     target: medicineMasterTable.material,
     set: {
       materialDescription: sql`excluded.material_description`,
@@ -140,12 +153,13 @@ async function upsertBatch(batch: { material: string; materialDescription: strin
 
 router.get("/medicine-master", async (req: Request, res: Response): Promise<void> => {
   try {
+    const tenantDb = getRequestDb(req);
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
     const page = Math.max(1, Number(req.query.page) || 1);
     const pageSize = Math.min(500, Math.max(50, Number(req.query.pageSize) || 100));
     const offset = (page - 1) * pageSize;
 
-    let q = db.select().from(medicineMasterTable).$dynamic();
+    let q = tenantDb.select().from(medicineMasterTable).$dynamic();
     if (search) {
       const cond = or(
         ilike(medicineMasterTable.material, `%${search}%`),
@@ -156,24 +170,25 @@ router.get("/medicine-master", async (req: Request, res: Response): Promise<void
     }
     const rows = await q.orderBy(desc(medicineMasterTable.updatedAt)).limit(pageSize).offset(offset);
     const total = search
-      ? (await db.select({ total: sql<number>`cast(count(*) as int)` }).from(medicineMasterTable).where(or(
+      ? (await tenantDb.select({ total: sql<number>`cast(count(*) as int)` }).from(medicineMasterTable).where(or(
         ilike(medicineMasterTable.material, `%${search}%`),
         ilike(medicineMasterTable.materialDescription, `%${search}%`),
         ilike(medicineMasterTable.bun, `%${search}%`),
       )!))[0]?.total ?? 0
-      : await countMedicines();
+      : await countMedicines(tenantDb);
 
-    res.json({ items: rows, total, page, pageSize });
+    res.json({ items: rows, total, page, pageSize, dbName: getRequestDbName(req) });
   } catch (err) {
     if (isMissingTable(err)) { sendDbSetupError(res); return; }
     throw err;
   }
 });
 
-router.get("/medicine-master/stats", async (_req, res) => {
+router.get("/medicine-master/stats", async (req, res) => {
   try {
-    const total = await countMedicines();
-    res.json({ total });
+    const tenantDb = getRequestDb(req);
+    const total = await countMedicines(tenantDb);
+    res.json({ total, dbName: getRequestDbName(req) });
   } catch (err) {
     if (isMissingTable(err)) { sendDbSetupError(res); return; }
     throw err;
@@ -184,7 +199,8 @@ router.post("/medicine-master", async (req: Request, res: Response): Promise<voi
   const parsed = MedicineInput.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const [row] = await db.insert(medicineMasterTable).values({
+    const tenantDb = requireRequestDb(req);
+    const [row] = await tenantDb.insert(medicineMasterTable).values({
       material: parsed.data.material.trim(),
       materialDescription: parsed.data.materialDescription.trim(),
       bun: parsed.data.bun?.trim() || null,
@@ -193,6 +209,10 @@ router.post("/medicine-master", async (req: Request, res: Response): Promise<voi
     res.status(201).json(row);
   } catch (err: unknown) {
     if (isMissingTable(err)) { sendDbSetupError(res); return; }
+    if ((err as Error).message === "tenant_binding_missing") {
+      res.status(500).json({ error: "tenant_binding_missing" });
+      return;
+    }
     const code = (err as { code?: string })?.code;
     if (code === "23505") { res.status(409).json({ error: "material_exists" }); return; }
     throw err;
@@ -204,7 +224,8 @@ router.patch("/medicine-master/:id", async (req: Request, res: Response): Promis
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = MedicineInput.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [row] = await db.update(medicineMasterTable).set(parsed.data).where(eq(medicineMasterTable.id, id)).returning();
+  const tenantDb = requireRequestDb(req);
+  const [row] = await tenantDb.update(medicineMasterTable).set(parsed.data).where(eq(medicineMasterTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
 });
@@ -212,16 +233,18 @@ router.patch("/medicine-master/:id", async (req: Request, res: Response): Promis
 router.delete("/medicine-master/:id", async (req: Request, res: Response): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const [row] = await db.delete(medicineMasterTable).where(eq(medicineMasterTable.id, id)).returning();
+  const tenantDb = requireRequestDb(req);
+  const [row] = await tenantDb.delete(medicineMasterTable).where(eq(medicineMasterTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.sendStatus(204);
 });
 
 router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, res: Response): Promise<void> => {
-  await withRequestTenant(req, async () => {
-    if (!req.file) { res.status(400).json({ error: "file_required" }); return; }
+  try {
+    await withRequestTenant(req, async (tenantDb) => {
+      if (!req.file) { res.status(400).json({ error: "file_required" }); return; }
 
-    try {
+      const targetDb = getRequestDbName(req);
       const parsed = dedupeRows(parseSpreadsheet(req.file.buffer, req.file.originalname));
       if (parsed.length === 0) {
         res.status(400).json({
@@ -231,19 +254,19 @@ router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, re
         return;
       }
 
-      const before = await countMedicines();
+      const before = await countMedicines(tenantDb);
       let skipped = 0;
 
       for (let i = 0; i < parsed.length; i += BATCH_SIZE) {
         const batch = parsed.slice(i, i + BATCH_SIZE);
         try {
-          await upsertBatch(batch);
+          await upsertBatch(tenantDb, batch);
         } catch {
           skipped += batch.length;
         }
       }
 
-      const after = await countMedicines();
+      const after = await countMedicines(tenantDb);
       const inserted = Math.max(0, after - before);
       const updated = Math.max(0, parsed.length - inserted - skipped);
 
@@ -253,13 +276,18 @@ router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, re
         skipped,
         total: parsed.length,
         inDb: after,
+        dbName: targetDb,
       });
-    } catch (err) {
-      if (isMissingTable(err)) { sendDbSetupError(res); return; }
-      const msg = err instanceof Error ? err.message : "parse_failed";
-      res.status(400).json({ error: "upload_parse_failed", message: msg });
+    });
+  } catch (err) {
+    if ((err as Error).message === "tenant_binding_missing") {
+      res.status(500).json({ error: "tenant_binding_missing", hint: "Tenant DB was not bound on this upload request" });
+      return;
     }
-  });
+    if (isMissingTable(err)) { sendDbSetupError(res); return; }
+    const msg = err instanceof Error ? err.message : "parse_failed";
+    res.status(400).json({ error: "upload_parse_failed", message: msg });
+  }
 });
 
 export default router;

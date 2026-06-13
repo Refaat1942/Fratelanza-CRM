@@ -79,11 +79,17 @@ async function resolveTenant(subdomain: string): Promise<LookupResult> {
   return result;
 }
 
+function requestHostname(req: Request): string {
+  const forwarded = req.header("x-forwarded-host");
+  if (forwarded) return forwarded.split(",")[0]!.trim().toLowerCase();
+  return (req.hostname || "").toLowerCase();
+}
+
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction): void {
   const headerOverride = ALLOW_TENANT_HEADER
     ? (req.header("x-tenant-subdomain") || "").toLowerCase().trim()
     : "";
-  const subdomain = headerOverride || extractSubdomain(req.hostname);
+  const subdomain = headerOverride || extractSubdomain(requestHostname(req));
 
   // No subdomain → single-tenant mode (dev / direct IP). Use default DB.
   if (!subdomain || !ADMIN_API_URL) {
