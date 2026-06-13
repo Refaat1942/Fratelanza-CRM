@@ -7,11 +7,14 @@ import { z } from "zod";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import {
+  assertPostgresDatabase,
   continueWithRequestTenant,
+  freezeTenantDbMiddleware,
   getRequestDb,
   getRequestDbName,
-  requireRequestDb,
-  withRequestTenant,
+  logTenantDbContext,
+  postgresCurrentDatabase,
+  requireFrozenTenantDb,
 } from "../../lib/tenantContext";
 import crypto from "node:crypto";
 
@@ -199,7 +202,7 @@ router.post("/medicine-master", async (req: Request, res: Response): Promise<voi
   const parsed = MedicineInput.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
-    const tenantDb = requireRequestDb(req);
+    const tenantDb = requireFrozenTenantDb(req).db;
     const [row] = await tenantDb.insert(medicineMasterTable).values({
       material: parsed.data.material.trim(),
       materialDescription: parsed.data.materialDescription.trim(),
@@ -224,7 +227,7 @@ router.patch("/medicine-master/:id", async (req: Request, res: Response): Promis
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = MedicineInput.partial().safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const tenantDb = requireRequestDb(req);
+  const tenantDb = requireFrozenTenantDb(req).db;
   const [row] = await tenantDb.update(medicineMasterTable).set(parsed.data).where(eq(medicineMasterTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.json(row);
@@ -233,18 +236,51 @@ router.patch("/medicine-master/:id", async (req: Request, res: Response): Promis
 router.delete("/medicine-master/:id", async (req: Request, res: Response): Promise<void> => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const tenantDb = requireRequestDb(req);
+  const tenantDb = requireFrozenTenantDb(req).db;
   const [row] = await tenantDb.delete(medicineMasterTable).where(eq(medicineMasterTable.id, id)).returning();
   if (!row) { res.status(404).json({ error: "Not found" }); return; }
   res.sendStatus(204);
 });
 
-router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, res: Response): Promise<void> => {
-  try {
-    await withRequestTenant(req, async (tenantDb) => {
-      if (!req.file) { res.status(400).json({ error: "file_required" }); return; }
+router.post(
+  "/medicine-master/upload",
+  freezeTenantDbMiddleware,
+  uploadMiddleware,
+  async (req: Request, res: Response): Promise<void> => {
+    const { db: tenantDb, dbName, subdomain, usesBindingDb } = requireFrozenTenantDb(req);
 
-      const targetDb = getRequestDbName(req);
+    logTenantDbContext(req, "upload:start", {
+      usesBindingDb,
+      selectedDbName: dbName,
+    });
+
+    if (!req.file) {
+      res.status(400).json({ error: "file_required" });
+      return;
+    }
+
+    try {
+      const postgresDbBefore = await postgresCurrentDatabase(tenantDb);
+      logTenantDbContext(req, "upload:postgres-check-before", {
+        postgresDbBefore,
+        selectedDbName: dbName,
+        usesBindingDb,
+      });
+
+      if (subdomain && process.env.ADMIN_API_URL && postgresDbBefore !== dbName) {
+        res.status(500).json({
+          error: "wrong_postgres_database",
+          subdomain,
+          dbName,
+          postgresDatabase: postgresDbBefore,
+          usesBindingDb,
+          hint: "Upload refused — connection is not on the tenant database",
+        });
+        return;
+      }
+
+      await assertPostgresDatabase(tenantDb, dbName);
+
       const parsed = dedupeRows(parseSpreadsheet(req.file.buffer, req.file.originalname));
       if (parsed.length === 0) {
         res.status(400).json({
@@ -256,19 +292,39 @@ router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, re
 
       const before = await countMedicines(tenantDb);
       let skipped = 0;
+      let lastBatchError: string | null = null;
 
       for (let i = 0; i < parsed.length; i += BATCH_SIZE) {
         const batch = parsed.slice(i, i + BATCH_SIZE);
         try {
           await upsertBatch(tenantDb, batch);
-        } catch {
+        } catch (batchErr) {
           skipped += batch.length;
+          lastBatchError = batchErr instanceof Error ? batchErr.message : "batch_failed";
+          logTenantDbContext(req, "upload:batch-error", {
+            batchIndex: i,
+            error: lastBatchError,
+            postgresDatabase: await postgresCurrentDatabase(tenantDb),
+          });
         }
       }
 
       const after = await countMedicines(tenantDb);
+      const postgresDbAfter = await postgresCurrentDatabase(tenantDb);
       const inserted = Math.max(0, after - before);
       const updated = Math.max(0, parsed.length - inserted - skipped);
+
+      logTenantDbContext(req, "upload:complete", {
+        subdomain,
+        selectedDbName: dbName,
+        postgresDbBefore,
+        postgresDbAfter,
+        usesBindingDb,
+        before,
+        after,
+        inserted,
+        skipped,
+      });
 
       res.json({
         inserted,
@@ -276,18 +332,35 @@ router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, re
         skipped,
         total: parsed.length,
         inDb: after,
-        dbName: targetDb,
+        dbName,
+        subdomain,
+        postgresDatabase: postgresDbAfter,
+        usesTenantBindingDb: usesBindingDb,
+        ...(lastBatchError && skipped > 0 ? { lastBatchError } : {}),
       });
-    });
-  } catch (err) {
-    if ((err as Error).message === "tenant_binding_missing") {
-      res.status(500).json({ error: "tenant_binding_missing", hint: "Tenant DB was not bound on this upload request" });
-      return;
+    } catch (err) {
+      if ((err as Error).message === "tenant_binding_missing") {
+        res.status(500).json({ error: "tenant_binding_missing", hint: "Tenant DB was not frozen before upload" });
+        return;
+      }
+      if ((err as Error).message.startsWith("wrong_postgres_database:")) {
+        const parts = (err as Error).message.split(":");
+        res.status(500).json({
+          error: "wrong_postgres_database",
+          postgresDatabase: parts[1],
+          expectedDatabase: parts[3],
+          dbName,
+          subdomain,
+          usesBindingDb,
+        });
+        return;
+      }
+      if (isMissingTable(err)) { sendDbSetupError(res); return; }
+      const msg = err instanceof Error ? err.message : "parse_failed";
+      logTenantDbContext(req, "upload:failed", { error: msg });
+      res.status(400).json({ error: "upload_parse_failed", message: msg });
     }
-    if (isMissingTable(err)) { sendDbSetupError(res); return; }
-    const msg = err instanceof Error ? err.message : "parse_failed";
-    res.status(400).json({ error: "upload_parse_failed", message: msg });
-  }
-});
+  },
+);
 
 export default router;

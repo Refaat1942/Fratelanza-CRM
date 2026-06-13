@@ -60,7 +60,7 @@ export default function MedicineMasterPage() {
     mutationFn: async (file: File) => {
       const fd = new FormData();
       fd.append("file", file);
-      return apiFetch<{ inserted: number; updated: number; skipped: number; total: number; inDb: number; dbName?: string }>(
+      return apiFetch<{ inserted: number; updated: number; skipped: number; total: number; inDb: number; dbName?: string; postgresDatabase?: string; usesTenantBindingDb?: boolean; subdomain?: string }>(
         "/medicine-master/upload",
         { method: "POST", body: fd },
       );
@@ -72,8 +72,8 @@ export default function MedicineMasterPage() {
       toast({
         title: t("Upload complete", "اكتمل الرفع"),
         description: t(
-          `${r.total} rows · ${r.inDb} saved to ${r.dbName ?? "?"}`,
-          `${r.total} صف · ${r.inDb} محفوظ في ${r.dbName ?? "?"}`,
+          `${r.inDb} in ${r.postgresDatabase ?? r.dbName ?? "?"} (tenant: ${r.subdomain ?? "?"})`,
+          `${r.inDb} في ${r.postgresDatabase ?? r.dbName ?? "?"} (المستأجر: ${r.subdomain ?? "?"})`,
         ),
       });
     },

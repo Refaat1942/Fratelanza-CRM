@@ -1,6 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { tenantAls, createTenantBinding, type TenantBinding, type TenantContext } from "@workspace/db";
-import type { FratelanzaRequest } from "../lib/tenantContext";
+import { tenantAls, createTenantBinding, type TenantContext } from "@workspace/db";
+import { freezeTenantOnRequest } from "../lib/tenantContext";
 
 const ADMIN_API_URL = process.env.ADMIN_API_URL;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
@@ -114,7 +114,7 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
       }
       // Fresh binding per request — never share the binding object across requests.
       const binding = createTenantBinding(ctx);
-      (req as FratelanzaRequest).tenantBinding = binding;
+      freezeTenantOnRequest(req, binding);
       tenantAls.run(binding, () => next());
     })
     .catch((err) => {
