@@ -25,7 +25,12 @@ export function MedicinePicker({ value, onChange, required }: Props) {
 
   const { data: items = [] } = useQuery<Medicine[]>({
     queryKey: ["medicine-master", q],
-    queryFn: () => apiFetch(`/medicine-master?search=${encodeURIComponent(q)}`),
+    queryFn: async () => {
+      const res = await apiFetch<{ items: Medicine[] } | Medicine[]>(
+        `/medicine-master?search=${encodeURIComponent(q)}&pageSize=20`,
+      );
+      return Array.isArray(res) ? res : res.items;
+    },
     enabled: q.length >= 1,
   });
 

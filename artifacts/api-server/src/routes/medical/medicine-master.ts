@@ -4,9 +4,12 @@ import { db, medicineMasterTable } from "@workspace/db";
 import { z } from "zod";
 import multer from "multer";
 import * as XLSX from "xlsx";
+import { withRequestTenant } from "../../lib/tenantContext";
+import crypto from "node:crypto";
 
 const router: IRouter = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+const BATCH_SIZE = 400;
 
 const MedicineInput = z.object({
   material: z.string().min(1),
@@ -16,7 +19,7 @@ const MedicineInput = z.object({
 });
 
 function normalizeHeader(h: string): string {
-  return h.trim().toLowerCase().replace(/\s+/g, " ");
+  return h.trim().toLowerCase().replace(/\s+/g, " ").replace(/[^\w\s]/g, "").trim();
 }
 
 function cellToString(v: unknown): string {
@@ -43,15 +46,25 @@ function pickRow(row: Record<string, unknown>): { material: string; materialDesc
     const nk = normalizeHeader(k);
     const s = cellToString(row[k]);
     if (!s) continue;
-    if (nk === "material" || nk === "material code" || nk === "mat" || nk === "code") material = s;
-    else if (nk === "material description" || nk === "description" || nk === "material desc" || nk === "desc") materialDescription = s;
+    if (nk === "material" || nk === "material code" || nk === "mat" || nk === "code" || nk === "material no") material = s;
+    else if (nk === "material description" || nk === "description" || nk === "material desc" || nk === "desc" || nk === "name") materialDescription = s;
     else if (nk === "bun" || nk === "base unit" || nk === "unit" || nk === "uom") bun = s;
   }
 
   if (!material && !materialDescription) return null;
-  if (!material) material = materialDescription.slice(0, 64);
   if (!materialDescription) materialDescription = material;
+  if (!material) {
+    // Stable unique key when SAP Material code column is missing/empty.
+    const hash = crypto.createHash("sha1").update(materialDescription).digest("hex").slice(0, 12);
+    material = `M-${hash}`;
+  }
   return { material, materialDescription, bun };
+}
+
+function dedupeRows(rows: { material: string; materialDescription: string; bun: string | null }[]) {
+  const map = new Map<string, { material: string; materialDescription: string; bun: string | null }>();
+  for (const r of rows) map.set(r.material, r);
+  return [...map.values()];
 }
 
 function isMissingTable(err: unknown): boolean {
@@ -108,9 +121,30 @@ const uploadMiddleware = (req: Request, res: Response, next: NextFunction) => {
   });
 };
 
+async function countMedicines(): Promise<number> {
+  const [row] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(medicineMasterTable);
+  return row?.total ?? 0;
+}
+
+async function upsertBatch(batch: { material: string; materialDescription: string; bun: string | null }[]) {
+  if (!batch.length) return;
+  await db.insert(medicineMasterTable).values(batch).onConflictDoUpdate({
+    target: medicineMasterTable.material,
+    set: {
+      materialDescription: sql`excluded.material_description`,
+      bun: sql`excluded.bun`,
+      updatedAt: sql`now()`,
+    },
+  });
+}
+
 router.get("/medicine-master", async (req: Request, res: Response): Promise<void> => {
   try {
     const search = typeof req.query.search === "string" ? req.query.search.trim() : "";
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(500, Math.max(50, Number(req.query.pageSize) || 100));
+    const offset = (page - 1) * pageSize;
+
     let q = db.select().from(medicineMasterTable).$dynamic();
     if (search) {
       const cond = or(
@@ -120,8 +154,16 @@ router.get("/medicine-master", async (req: Request, res: Response): Promise<void
       );
       q = q.where(cond);
     }
-    const rows = await q.orderBy(desc(medicineMasterTable.updatedAt)).limit(1000);
-    res.json(rows);
+    const rows = await q.orderBy(desc(medicineMasterTable.updatedAt)).limit(pageSize).offset(offset);
+    const total = search
+      ? (await db.select({ total: sql<number>`cast(count(*) as int)` }).from(medicineMasterTable).where(or(
+        ilike(medicineMasterTable.material, `%${search}%`),
+        ilike(medicineMasterTable.materialDescription, `%${search}%`),
+        ilike(medicineMasterTable.bun, `%${search}%`),
+      )!))[0]?.total ?? 0
+      : await countMedicines();
+
+    res.json({ items: rows, total, page, pageSize });
   } catch (err) {
     if (isMissingTable(err)) { sendDbSetupError(res); return; }
     throw err;
@@ -130,10 +172,8 @@ router.get("/medicine-master", async (req: Request, res: Response): Promise<void
 
 router.get("/medicine-master/stats", async (_req, res) => {
   try {
-    const [row] = await db
-      .select({ total: sql<number>`cast(count(*) as int)` })
-      .from(medicineMasterTable);
-    res.json(row);
+    const total = await countMedicines();
+    res.json({ total });
   } catch (err) {
     if (isMissingTable(err)) { sendDbSetupError(res); return; }
     throw err;
@@ -178,47 +218,48 @@ router.delete("/medicine-master/:id", async (req: Request, res: Response): Promi
 });
 
 router.post("/medicine-master/upload", uploadMiddleware, async (req: Request, res: Response): Promise<void> => {
-  if (!req.file) { res.status(400).json({ error: "file_required" }); return; }
+  await withRequestTenant(req, async () => {
+    if (!req.file) { res.status(400).json({ error: "file_required" }); return; }
 
-  try {
-    const rows = parseSpreadsheet(req.file.buffer, req.file.originalname);
-    if (rows.length === 0) {
-      res.status(400).json({
-        error: "no_valid_rows",
-        hint: "Use columns: Material, Material description, BUn (first row = headers)",
-      });
-      return;
-    }
+    try {
+      const parsed = dedupeRows(parseSpreadsheet(req.file.buffer, req.file.originalname));
+      if (parsed.length === 0) {
+        res.status(400).json({
+          error: "no_valid_rows",
+          hint: "Use columns: Material, Material description, BUn (first row = headers)",
+        });
+        return;
+      }
 
-    let inserted = 0;
-    let updated = 0;
-    let skipped = 0;
+      const before = await countMedicines();
+      let skipped = 0;
 
-    for (const r of rows) {
-      const existing = await db.select({ id: medicineMasterTable.id }).from(medicineMasterTable).where(eq(medicineMasterTable.material, r.material));
-      if (existing.length > 0) {
-        await db.update(medicineMasterTable).set({
-          materialDescription: r.materialDescription,
-          bun: r.bun,
-          updatedAt: new Date(),
-        }).where(eq(medicineMasterTable.id, existing[0]!.id));
-        updated++;
-      } else {
+      for (let i = 0; i < parsed.length; i += BATCH_SIZE) {
+        const batch = parsed.slice(i, i + BATCH_SIZE);
         try {
-          await db.insert(medicineMasterTable).values(r);
-          inserted++;
+          await upsertBatch(batch);
         } catch {
-          skipped++;
+          skipped += batch.length;
         }
       }
-    }
 
-    res.json({ inserted, updated, skipped, total: rows.length });
-  } catch (err) {
-    if (isMissingTable(err)) { sendDbSetupError(res); return; }
-    const msg = err instanceof Error ? err.message : "parse_failed";
-    res.status(400).json({ error: "upload_parse_failed", message: msg });
-  }
+      const after = await countMedicines();
+      const inserted = Math.max(0, after - before);
+      const updated = Math.max(0, parsed.length - inserted - skipped);
+
+      res.json({
+        inserted,
+        updated,
+        skipped,
+        total: parsed.length,
+        inDb: after,
+      });
+    } catch (err) {
+      if (isMissingTable(err)) { sendDbSetupError(res); return; }
+      const msg = err instanceof Error ? err.message : "parse_failed";
+      res.status(400).json({ error: "upload_parse_failed", message: msg });
+    }
+  });
 });
 
 export default router;
