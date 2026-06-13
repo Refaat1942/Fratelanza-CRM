@@ -32,6 +32,14 @@ import {
   SPECIALIZATION_PRESETS,
   isSpecializationKey,
 } from "@workspace/db";
+import {
+  fmtDateDisplay,
+  fmtDateInput,
+  parseDateField,
+  addDaysYmd,
+  todayYmd,
+  toDateOnlyString,
+} from "./dates.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,17 +62,22 @@ function fmtMoney(n: number | string | null | undefined): string {
   return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function fmtDate(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  if (isNaN(date.getTime())) return "—";
-  return date.toISOString().slice(0, 10);
+function parseBillingAmount(raw: string | undefined): number {
+  const n = Number(String(raw ?? "").trim() || 0);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
 }
 
-function addDaysISO(base: Date, days: number): string {
-  const d = new Date(base);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
+function parseFeaturesFromBody(
+  body: Record<string, string | string[] | undefined>,
+): Record<FeatureKey, boolean> {
+  const features = {} as Record<FeatureKey, boolean>;
+  for (const k of FEATURE_KEYS) {
+    const raw = body[`feature_${k}`];
+    if (raw === "on") features[k] = true;
+    else if (Array.isArray(raw)) features[k] = raw.includes("on");
+    else features[k] = false;
+  }
+  return features;
 }
 
 function applyTrialDefaults(body: Record<string, string | string[] | undefined>): {
@@ -78,16 +91,21 @@ function applyTrialDefaults(body: Record<string, string | string[] | undefined>)
   let subscription_end = String(body.subscription_end || "").trim() || null;
   let next_billing_date = String(body.next_billing_date || "").trim() || null;
   if (payment_status === "trial" && !subscription_end) {
-    const today = new Date();
-    subscription_start = subscription_start || fmtDate(today);
-    subscription_end = addDaysISO(today, 14);
+    const today = todayYmd();
+    subscription_start = subscription_start || today;
+    subscription_end = addDaysYmd(today, 14);
     if (!next_billing_date) next_billing_date = subscription_end;
   }
   return { subscription_start, subscription_end, next_billing_date, payment_status };
 }
 
 function daysBetween(a: Date, b: Date): number {
-  return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
+  const aYmd = toDateOnlyString(a);
+  const bYmd = toDateOnlyString(b);
+  if (!aYmd || !bYmd) return 0;
+  const ad = new Date(`${aYmd}T12:00:00`);
+  const bd = new Date(`${bYmd}T12:00:00`);
+  return Math.round((bd.getTime() - ad.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function generatePassword(): string {
@@ -164,7 +182,8 @@ async function main() {
     res.locals.currentPath = req.path;
     res.locals.flash = req.session.flash;
     res.locals.fmtMoney = fmtMoney;
-    res.locals.fmtDate = fmtDate;
+    res.locals.fmtDate = fmtDateDisplay;
+    res.locals.fmtDateInput = fmtDateInput;
     req.session.flash = undefined;
     next();
   });
@@ -291,8 +310,8 @@ async function main() {
 
   // ----- New customer form -----
   app.get("/customers/new", requireAuth, (_req, res) => {
-    const today = new Date();
-    const trialEnd = addDaysISO(today, 14);
+    const today = todayYmd();
+    const trialEnd = addDaysYmd(today, 14);
     res.render("customers/form", {
       mode: "new",
       customer: {
@@ -306,7 +325,7 @@ async function main() {
         plan_name: "",
         billing_amount: "",
         billing_cycle: "monthly",
-        subscription_start: fmtDate(today),
+        subscription_start: today,
         subscription_end: trialEnd,
         next_billing_date: trialEnd,
         payment_status: "trial",
@@ -335,18 +354,17 @@ async function main() {
     const contact_email = String(body.contact_email || "").trim();
     const contact_phone = String(body.contact_phone || "").trim();
     const plan_name = String(body.plan_name || "").trim();
-    const billing_amount = Number(body.billing_amount || 0);
+    const billing_amount = parseBillingAmount(String(body.billing_amount ?? ""));
     const billing_cycle = String(body.billing_cycle || "monthly");
     const trialDefaults = applyTrialDefaults(body);
-    const subscription_start = trialDefaults.subscription_start;
-    const subscription_end = trialDefaults.subscription_end;
-    const next_billing_date = trialDefaults.next_billing_date;
+    let subscription_start = parseDateField(String(body.subscription_start ?? "")) ?? trialDefaults.subscription_start;
+    let subscription_end = parseDateField(String(body.subscription_end ?? "")) ?? trialDefaults.subscription_end;
+    let next_billing_date = parseDateField(String(body.next_billing_date ?? "")) ?? trialDefaults.next_billing_date;
     const payment_status = trialDefaults.payment_status;
     const specializationRaw = String(body.specialization || "general").trim();
     const specialization = isSpecializationKey(specializationRaw) ? specializationRaw : "general";
 
-    const features = {} as Record<FeatureKey, boolean>;
-    for (const k of FEATURE_KEYS) features[k] = body[`feature_${k}`] === "on";
+    const features = parseFeaturesFromBody(body);
 
     const errors: string[] = [];
     if (!name) errors.push("Name is required.");
@@ -515,45 +533,103 @@ async function main() {
 
   app.post("/customers/:id/edit", requireAuth, async (req, res): Promise<void> => {
     const id = Number(req.params.id);
-    const body = req.body as Record<string, string | undefined>;
+    if (!Number.isFinite(id)) {
+      res.status(400).send("Invalid customer id");
+      return;
+    }
+
+    const { rows: existingRows } = await pool.query("SELECT * FROM admin_customers WHERE id = $1", [id]);
+    const existing = existingRows[0];
+    if (!existing) {
+      res.status(404).send("Customer not found");
+      return;
+    }
+
+    const body = req.body as Record<string, string | string[] | undefined>;
     const name = String(body.name || "").trim();
     const notes = String(body.notes || "").trim();
     const contact_name = String(body.contact_name || "").trim();
     const contact_email = String(body.contact_email || "").trim();
     const contact_phone = String(body.contact_phone || "").trim();
     const plan_name = String(body.plan_name || "").trim();
-    const billing_amount = Number(body.billing_amount || 0);
+    const billing_amount = parseBillingAmount(String(body.billing_amount ?? ""));
     const billing_cycle = String(body.billing_cycle || "monthly");
-    const subscription_start = String(body.subscription_start || "").trim() || null;
-    const subscription_end = String(body.subscription_end || "").trim() || null;
-    const next_billing_date = String(body.next_billing_date || "").trim() || null;
+    const subscription_start = parseDateField(String(body.subscription_start ?? ""));
+    const subscription_end = parseDateField(String(body.subscription_end ?? ""));
+    const next_billing_date = parseDateField(String(body.next_billing_date ?? ""));
     const payment_status = String(body.payment_status || "trial");
     const specializationRaw = String(body.specialization || "general").trim();
     const specialization = isSpecializationKey(specializationRaw) ? specializationRaw : "general";
-    const features = {} as Record<FeatureKey, boolean>;
-    for (const k of FEATURE_KEYS) features[k] = body[`feature_${k}`] === "on";
+    const features = parseFeaturesFromBody(body);
+
+    const formCustomer = {
+      ...existing,
+      name,
+      notes: notes || null,
+      contact_name: contact_name || null,
+      contact_email: contact_email || null,
+      contact_phone: contact_phone || null,
+      plan_name: plan_name || null,
+      billing_amount,
+      billing_cycle,
+      subscription_start,
+      subscription_end,
+      next_billing_date,
+      payment_status,
+      specialization,
+    };
+
+    const renderFormError = (error: string) => {
+      res.status(400).render("customers/form", {
+        mode: "edit",
+        customer: formCustomer,
+        features,
+        featureLabels: FEATURE_LABELS,
+        featureKeys: FEATURE_KEYS,
+        featureGroups: FEATURE_GROUPS,
+        billingCycles: BILLING_CYCLES,
+        paymentStatuses: PAYMENT_STATUSES,
+        specializationKeys: SPECIALIZATION_KEYS,
+        specializationLabels: SPECIALIZATION_LABELS,
+        specializationPresets: SPECIALIZATION_PRESETS,
+        error,
+      });
+    };
 
     if (!name) {
-      res.status(400).send("Name is required");
+      renderFormError("Customer name is required.");
       return;
     }
-    await pool.query(
-      `UPDATE admin_customers SET
-         name=$1, features=$2::jsonb, notes=$3,
-         contact_name=$4, contact_email=$5, contact_phone=$6,
-         plan_name=$7, billing_amount=$8, billing_cycle=$9,
-         subscription_start=$10, subscription_end=$11, next_billing_date=$12, payment_status=$13,
-         specialization=$14, updated_at=NOW()
-       WHERE id=$15`,
-      [
-        name, JSON.stringify(features), notes || null,
-        contact_name || null, contact_email || null, contact_phone || null,
-        plan_name || null, billing_amount, billing_cycle,
-        subscription_start, subscription_end, next_billing_date, payment_status,
-        specialization,
-        id,
-      ],
-    );
+
+    try {
+      const updated = await pool.query(
+        `UPDATE admin_customers SET
+           name=$1, features=$2::jsonb, notes=$3,
+           contact_name=$4, contact_email=$5, contact_phone=$6,
+           plan_name=$7, billing_amount=$8, billing_cycle=$9,
+           subscription_start=$10, subscription_end=$11, next_billing_date=$12, payment_status=$13,
+           specialization=$14, updated_at=NOW()
+         WHERE id=$15
+         RETURNING id`,
+        [
+          name, JSON.stringify(features), notes || null,
+          contact_name || null, contact_email || null, contact_phone || null,
+          plan_name || null, billing_amount, billing_cycle,
+          subscription_start, subscription_end, next_billing_date, payment_status,
+          specialization,
+          id,
+        ],
+      );
+      if (!updated.rowCount) {
+        renderFormError("Save failed — customer record was not updated.");
+        return;
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Database error while saving.";
+      renderFormError(msg);
+      return;
+    }
+
     req.session.flash = { type: "success", message: "Customer updated." };
     res.redirect(`/customers/${id}`);
   });
@@ -596,7 +672,7 @@ async function main() {
          payment_status='paid',
          updated_at=NOW()
        WHERE id=$3`,
-      [payment_date, fmtDate(newNext), id],
+      [payment_date, toDateOnlyString(newNext), id],
     );
     req.session.flash = { type: "success", message: `Payment of ${fmtMoney(amount)} EGP recorded.` };
     res.redirect(`/customers/${id}`);
@@ -844,10 +920,10 @@ async function main() {
       cs.addRow({
         ...c,
         mrr: monthlyEquivalent(Number(c.billing_amount || 0), (c.billing_cycle || "monthly") as BillingCycle),
-        subscription_start: fmtDate(c.subscription_start),
-        subscription_end: fmtDate(c.subscription_end),
-        next_billing_date: fmtDate(c.next_billing_date),
-        last_payment_date: fmtDate(c.last_payment_date),
+        subscription_start: fmtDateDisplay(c.subscription_start),
+        subscription_end: fmtDateDisplay(c.subscription_end),
+        next_billing_date: fmtDateDisplay(c.next_billing_date),
+        last_payment_date: fmtDateDisplay(c.last_payment_date),
         created_at: c.created_at ? new Date(c.created_at).toISOString().slice(0, 19).replace("T", " ") : "",
       });
     }
@@ -868,7 +944,7 @@ async function main() {
     for (const p of payments) {
       ps.addRow({
         ...p,
-        payment_date: fmtDate(p.payment_date),
+        payment_date: fmtDateDisplay(p.payment_date),
         created_at: p.created_at ? new Date(p.created_at).toISOString().slice(0, 19).replace("T", " ") : "",
       });
     }
@@ -960,7 +1036,10 @@ async function main() {
     pool.query("UPDATE admin_customers SET last_seen_at = NOW() WHERE id=$1", [rows[0].id])
       .catch((err) => console.warn(`[admin] heartbeat update failed for ${sub}:`, err.message));
     const { id: _id, ...payload } = rows[0];
-    res.json(payload);
+    res.json({
+      ...payload,
+      subscription_end: toDateOnlyString(payload.subscription_end),
+    });
   });
 
   app.get("/healthz", (_req, res) => res.json({ ok: true }));

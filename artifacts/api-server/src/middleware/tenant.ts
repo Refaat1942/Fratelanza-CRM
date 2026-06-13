@@ -38,7 +38,10 @@ type LookupResult =
 function isSubscriptionExpired(paymentStatus: string | undefined, subscriptionEnd: string | null | undefined): boolean {
   if (!subscriptionEnd || !paymentStatus) return false;
   if (!["trial", "due", "overdue"].includes(paymentStatus)) return false;
-  const end = new Date(`${subscriptionEnd}T23:59:59`);
+  const m = String(subscriptionEnd).match(/^(\d{4}-\d{2}-\d{2})/);
+  const ymd = m?.[1];
+  if (!ymd) return false;
+  const end = new Date(`${ymd}T23:59:59`);
   if (isNaN(end.getTime())) return false;
   return end < new Date();
 }

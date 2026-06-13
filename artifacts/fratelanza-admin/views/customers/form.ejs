@@ -94,15 +94,15 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="block text-sm font-medium mb-1">Subscription start</label>
-          <input type="date" name="subscription_start" value="<%= fmtDate(customer.subscription_start) !== '—' ? fmtDate(customer.subscription_start) : '' %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <input type="date" name="subscription_start" value="<%= fmtDateInput(customer.subscription_start) %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Subscription end</label>
-          <input type="date" name="subscription_end" value="<%= fmtDate(customer.subscription_end) !== '—' ? fmtDate(customer.subscription_end) : '' %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <input type="date" name="subscription_end" value="<%= fmtDateInput(customer.subscription_end) %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">Next billing date</label>
-          <input type="date" name="next_billing_date" value="<%= fmtDate(customer.next_billing_date) !== '—' ? fmtDate(customer.next_billing_date) : '' %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <input type="date" name="next_billing_date" value="<%= fmtDateInput(customer.next_billing_date) %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
         </div>
       </div>
     </div>
