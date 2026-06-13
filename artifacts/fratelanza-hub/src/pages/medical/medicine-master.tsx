@@ -45,7 +45,15 @@ export default function MedicineMasterPage() {
     mutationFn: async (file: File) => {
       const fd = new FormData();
       fd.append("file", file);
-      return apiFetch<{ inserted: number; updated: number; skipped: number; total: number }>(
+      return apiFetch<{
+        inserted: number;
+        updated: number;
+        skipped: number;
+        total: number;
+        inDb?: number;
+        dbName?: string;
+        postgresDatabase?: string;
+      }>(
         "/medicine-master/upload",
         { method: "POST", body: fd },
       );
@@ -53,9 +61,11 @@ export default function MedicineMasterPage() {
     onSuccess: (r) => {
       qc.invalidateQueries({ queryKey: ["medicine-master"] });
       qc.invalidateQueries({ queryKey: ["medicine-master-stats"] });
+      const variant = r.inDb === 0 && r.total > 0 ? "destructive" as const : "default" as const;
       toast({
         title: t("Upload complete", "اكتمل الرفع"),
-        description: `${r.inserted} ${t("new", "جديد")}, ${r.updated} ${t("updated", "محدّث")}`,
+        description: `${r.inserted} ${t("new", "جديد")}, ${r.updated} ${t("updated", "محدّث")}${r.inDb != null ? ` · ${r.inDb} ${t("in database", "في القاعدة")}` : ""}`,
+        variant,
       });
     },
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
