@@ -80,7 +80,9 @@ services:
 
   # -------------------- Admin app --------------------
   admin-app:
-    build: ./artifacts/fratelanza-admin
+    build:
+      context: .
+      dockerfile: artifacts/fratelanza-admin/Dockerfile
     restart: unless-stopped
     ports:
       # Loopback only — nginx on the host fronts this.
