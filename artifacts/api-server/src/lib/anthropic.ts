@@ -29,4 +29,4 @@ export function createAnthropicClient(): Anthropic {
 }
 
 export const ANTHROPIC_CONFIGURED_MESSAGE =
-  "Prescription OCR needs an Anthropic API key. Add ANTHROPIC_API_KEY to .env on the VPS, then run: docker compose -p fratelanza up -d --build app";
+  "AI patient summary is optional and needs ANTHROPIC_API_KEY in .env. Prescription photo scan works without any API key.";

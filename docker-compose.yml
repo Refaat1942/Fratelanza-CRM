@@ -49,9 +49,8 @@ services:
       ADMIN_API_URL: http://admin-app:5050
       ADMIN_API_KEY: ${ADMIN_API_KEY}
       TENANT_DB_URL_TEMPLATE: postgresql://fratelanza:${POSTGRES_PASSWORD}@db:5432/{db}
-      # Prescription OCR + AI patient summary (Anthropic). Get a key at console.anthropic.com
+      # Optional — AI patient summary only (prescription scan uses free local OCR)
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      # Optional — only if using Replit AI Integrations or a custom proxy:
       AI_INTEGRATIONS_ANTHROPIC_API_KEY: ${AI_INTEGRATIONS_ANTHROPIC_API_KEY:-}
       AI_INTEGRATIONS_ANTHROPIC_BASE_URL: ${AI_INTEGRATIONS_ANTHROPIC_BASE_URL:-}
       ANTHROPIC_API_BASE_URL: ${ANTHROPIC_API_BASE_URL:-}

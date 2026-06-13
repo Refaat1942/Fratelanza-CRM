@@ -74,7 +74,7 @@ export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
   medical_patient_qr: { en: "Patient QR & public history", ar: "رمز QR والسجل العام" },
   medical_patient_documents: { en: "Patient document uploads", ar: "رفع مستندات المرضى" },
   medical_ai_summary: { en: "AI patient summary", ar: "ملخص المريض بالذكاء الاصطناعي" },
-  medical_prescription_ocr: { en: "Prescription photo OCR", ar: "مسح الوصفة بالصورة (OCR)" },
+  medical_prescription_ocr: { en: "Prescription photo scan", ar: "مسح الوصفة بالصورة" },
 };
 
 export const FEATURE_GROUPS: { id: string; en: string; ar: string; keys: FeatureKey[] }[] = [
