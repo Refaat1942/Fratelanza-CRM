@@ -1,6 +1,13 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, ne } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  getCurrentTenant,
+  filterPermissionsForTenant,
+  normalizePermissionList,
+  ROLE_PERMISSION_PRESETS,
+} from "@workspace/db";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -12,6 +19,12 @@ function requireAdmin(req: Request, res: Response): boolean {
     return false;
   }
   return true;
+}
+
+function sanitizePermissions(raw: unknown): string[] {
+  const tenant = getCurrentTenant();
+  const normalized = normalizePermissionList(raw);
+  return filterPermissionsForTenant(normalized, tenant?.features ?? null);
 }
 
 router.get("/users", async (req: Request, res: Response): Promise<void> => {
@@ -36,7 +49,7 @@ const createSchema = z.object({
   password: z.string().min(4),
   displayName: z.string().optional(),
   role: z.enum(ROLE_VALUES).default("user"),
-  permissions: z.array(z.string()).default([]),
+  permissions: z.array(z.string()).optional(),
   branchId: z.number().int().nullable().optional(),
 });
 
@@ -44,7 +57,9 @@ router.post("/users", async (req: Request, res: Response): Promise<void> => {
   if (!requireAdmin(req, res)) return;
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data", details: parsed.error.flatten() }); return; }
-  const { username, password, displayName, role, permissions, branchId } = parsed.data;
+  const { username, password, displayName, role, branchId } = parsed.data;
+  const preset = ROLE_PERMISSION_PRESETS[role] ?? ROLE_PERMISSION_PRESETS.user!;
+  const permissions = sanitizePermissions(parsed.data.permissions ?? preset);
   const existing = await db.select().from(usersTable).where(eq(usersTable.username, username));
   if (existing.length > 0) { res.status(409).json({ error: "Username already exists" }); return; }
   const passwordHash = await bcrypt.hash(password, 10);
@@ -71,10 +86,12 @@ router.patch("/users/:id", async (req: Request, res: Response): Promise<void> =>
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
-  const updates: Record<string, any> = { updatedAt: new Date() };
+  const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (parsed.data.displayName !== undefined) updates.displayName = parsed.data.displayName;
   if (parsed.data.role !== undefined) updates.role = parsed.data.role;
-  if (parsed.data.permissions !== undefined) updates.permissions = JSON.stringify(parsed.data.permissions);
+  if (parsed.data.permissions !== undefined) {
+    updates.permissions = JSON.stringify(sanitizePermissions(parsed.data.permissions));
+  }
   if (parsed.data.password) updates.passwordHash = await bcrypt.hash(parsed.data.password, 10);
   if (parsed.data.isActive !== undefined) updates.isActive = parsed.data.isActive;
   if (parsed.data.branchId !== undefined) updates.branchId = parsed.data.branchId;

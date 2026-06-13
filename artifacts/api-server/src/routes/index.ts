@@ -28,7 +28,6 @@ import tenantSettingsRouter from "./tenantSettings";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
 import { onlyForPaths } from "../middleware/pathGate";
-import { MEDICAL_API_PREFIXES } from "./medical/pathPrefixes";
 
 const router: IRouter = Router();
 
@@ -72,9 +71,8 @@ router.use(onlyForPaths("/reports", requireFeature("reports"), requirePermission
 router.use(reportsRouter);
 router.use(onlyForPaths("/invoices", requireFeature("invoicing"), requirePermission("invoicing")));
 router.use(invoicesRouter);
-router.use(onlyForPaths(MEDICAL_API_PREFIXES, requirePermission("medical")));
 router.use(medicalRouter);
-router.use(onlyForPaths("/clinic-staff", requireFeature("clinic_staff"), requirePermission("medical")));
+router.use(onlyForPaths("/clinic-staff", requireFeature("clinic_staff"), requirePermission("clinic_staff")));
 router.use(clinicStaffRouter);
 // router.use(onlyForPaths("/dental", requireFeature("dental"), requirePermission("medical")));
 // router.use(dentalRouter);

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider, useAuth } from "@/components/AuthProvider";
+import { userHasPermission } from "@/lib/userPermissions";
 import { FeaturesProvider, useFeatures } from "@/components/FeaturesProvider";
 import { BrandingProvider } from "@/components/BrandingProvider";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -67,7 +68,7 @@ function FeatureGate({
   // User-level: non-admins need the permission in their assigned list.
   // `permission` defaults to `feature` but can be overridden (e.g. dental shares medical permission).
   const permKey = permission ?? feature;
-  if (user && user.role !== "admin" && !(user.permissions || []).includes(permKey)) {
+  if (user && user.role !== "admin" && !userHasPermission(user.permissions, permKey)) {
     return <NotFound />;
   }
   return <>{children}</>;
@@ -94,17 +95,17 @@ function AppRouter() {
               <Route path="/suppliers"><FeatureGate feature="suppliers"><Suppliers /></FeatureGate></Route>
               <Route path="/purchase-orders"><FeatureGate feature="purchase_orders"><PurchaseOrders /></FeatureGate></Route>
               <Route path="/invoices"><FeatureGate feature="invoicing"><Invoices /></FeatureGate></Route>
-              <Route path="/medical/patients"><FeatureGate feature="medical_patients" permission="medical"><Patients /></FeatureGate></Route>
-              <Route path="/medical/appointments"><FeatureGate feature="medical_appointments" permission="medical"><Appointments /></FeatureGate></Route>
-              <Route path="/medical/visits"><FeatureGate feature="medical_visits" permission="medical"><Visits /></FeatureGate></Route>
-              <Route path="/medical/materials"><FeatureGate feature="medical_materials" permission="medical"><MedicalMaterials /></FeatureGate></Route>
-              <Route path="/medical/prescriptions"><FeatureGate feature="medical_prescriptions" permission="medical"><Prescriptions /></FeatureGate></Route>
-              <Route path="/medical/medicine-master"><FeatureGate feature="medical_medicine_master" permission="medical"><MedicineMaster /></FeatureGate></Route>
-              <Route path="/medical/doctor-templates"><FeatureGate feature="medical_rx_templates" permission="medical"><DoctorTemplates /></FeatureGate></Route>
-              <Route path="/medical/invoices"><FeatureGate feature="medical_invoices" permission="medical"><MedicalInvoices /></FeatureGate></Route>
-              <Route path="/medical/reports"><FeatureGate feature="medical_reports" permission="medical"><MedicalReports /></FeatureGate></Route>
-              <Route path="/medical/doctor-availability"><FeatureGate feature="medical_doctor_availability" permission="medical"><DoctorAvailability /></FeatureGate></Route>
-              <Route path="/medical/clinic-staff"><FeatureGate feature="clinic_staff" permission="medical"><ClinicStaff /></FeatureGate></Route>
+              <Route path="/medical/patients"><FeatureGate feature="medical_patients" permission="medical_patients"><Patients /></FeatureGate></Route>
+              <Route path="/medical/appointments"><FeatureGate feature="medical_appointments" permission="medical_appointments"><Appointments /></FeatureGate></Route>
+              <Route path="/medical/visits"><FeatureGate feature="medical_visits" permission="medical_visits"><Visits /></FeatureGate></Route>
+              <Route path="/medical/materials"><FeatureGate feature="medical_materials" permission="medical_materials"><MedicalMaterials /></FeatureGate></Route>
+              <Route path="/medical/prescriptions"><FeatureGate feature="medical_prescriptions" permission="medical_prescriptions"><Prescriptions /></FeatureGate></Route>
+              <Route path="/medical/medicine-master"><FeatureGate feature="medical_medicine_master" permission="medical_medicine_master"><MedicineMaster /></FeatureGate></Route>
+              <Route path="/medical/doctor-templates"><FeatureGate feature="medical_rx_templates" permission="medical_rx_templates"><DoctorTemplates /></FeatureGate></Route>
+              <Route path="/medical/invoices"><FeatureGate feature="medical_invoices" permission="medical_invoices"><MedicalInvoices /></FeatureGate></Route>
+              <Route path="/medical/reports"><FeatureGate feature="medical_reports" permission="medical_reports"><MedicalReports /></FeatureGate></Route>
+              <Route path="/medical/doctor-availability"><FeatureGate feature="medical_doctor_availability" permission="medical_doctor_availability"><DoctorAvailability /></FeatureGate></Route>
+              <Route path="/medical/clinic-staff"><FeatureGate feature="clinic_staff" permission="clinic_staff"><ClinicStaff /></FeatureGate></Route>
               <Route path="/branches"><FeatureGate feature="branches"><Branches /></FeatureGate></Route>
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
