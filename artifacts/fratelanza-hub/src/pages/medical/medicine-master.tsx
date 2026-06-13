@@ -26,9 +26,10 @@ export default function MedicineMasterPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
 
-  const { data: items = [], isLoading } = useQuery<Medicine[]>({
+  const { data: items = [], isLoading, isError, error: loadError } = useQuery<Medicine[]>({
     queryKey: ["medicine-master", search],
     queryFn: () => apiFetch(`/medicine-master${search ? `?search=${encodeURIComponent(search)}` : ""}`),
+    retry: false,
   });
   const { data: stats } = useQuery<{ total: number }>({
     queryKey: ["medicine-master-stats"],
@@ -52,7 +53,15 @@ export default function MedicineMasterPage() {
         description: `${r.inserted} ${t("new", "جديد")}, ${r.updated} ${t("updated", "محدّث")}`,
       });
     },
-    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+    onError: (e: Error) => {
+      const msg = e.message.includes("medicine_master_table_missing")
+        ? t(
+          "Database not ready — on the server run: ./deploy/migrate-tenants.sh deploy/migrations/011-medical-extensions.sql",
+          "قاعدة البيانات غير جاهزة — على السيرفر نفّذ: ./deploy/migrate-tenants.sh deploy/migrations/011-medical-extensions.sql",
+        )
+        : e.message;
+      toast({ title: msg, variant: "destructive" });
+    },
   });
 
   const deleteMut = useMutation({
@@ -91,6 +100,17 @@ export default function MedicineMasterPage() {
       />
 
       <KpiCard icon={<Pill size={18} />} tone="primary" label={t("Total medicines", "إجمالي الأدوية")} value={stats?.total ?? 0} />
+
+      {isError && (
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 text-destructive px-4 py-3 text-sm">
+          {loadError?.message?.includes("medicine_master_table_missing")
+            ? t(
+              "Medicine Master table is missing on this clinic database. Ask your admin to run migration 011 on the VPS, then try again.",
+              "جدول سجل الأدوية غير موجود على قاعدة بيانات العيادة. اطلب من المسؤول تشغيل migration 011 على السيرفر ثم أعد المحاولة.",
+            )
+            : (loadError?.message || t("Could not load medicines", "تعذر تحميل الأدوية"))}
+        </div>
+      )}
 
       <Input
         placeholder={t("Search material or description", "بحث بالمادة أو الوصف")}
