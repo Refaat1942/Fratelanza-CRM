@@ -1,8 +1,8 @@
 import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import multer from "multer";
-import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { ANTHROPIC_CONFIGURED_MESSAGE, createAnthropicClient, isAnthropicConfigured } from "../../lib/anthropic";
 
 const router: IRouter = Router();
 
@@ -17,11 +17,6 @@ const upload = multer({
     }
     cb(null, true);
   },
-});
-
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
 });
 
 const ocrLimiter = rateLimit({
@@ -58,8 +53,8 @@ function mediaType(mime: string): "image/jpeg" | "image/png" | "image/gif" | "im
 }
 
 router.post("/prescriptions/ocr-scan", ocrLimiter, upload.single("image"), async (req, res): Promise<void> => {
-  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || !process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL) {
-    res.status(503).json({ error: "ai_not_configured", message: "AI integration is not configured on this server." });
+  if (!isAnthropicConfigured()) {
+    res.status(503).json({ error: "ai_not_configured", message: ANTHROPIC_CONFIGURED_MESSAGE });
     return;
   }
   if (!req.file) {
@@ -99,6 +94,7 @@ Rules:
     : "Extract all medicines from this prescription photo into JSON per the required schema.";
 
   try {
+    const anthropic = createAnthropicClient();
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4096,
