@@ -31,7 +31,7 @@ export function FeaturesProvider({ children }: { children: React.ReactNode }) {
       });
       if (res.status === 403) {
         const body = await res.json().catch(() => ({}));
-        if (body?.error === "tenant_blocked") {
+        if (body?.error === "tenant_blocked" || body?.error === "trial_expired") {
           setState({ features: {}, tenant: null, blocked: true, loading: false });
           return;
         }

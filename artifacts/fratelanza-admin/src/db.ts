@@ -8,65 +8,18 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-export const FEATURE_KEYS = [
-  "tasks",
-  "crm",
-  "finance",
-  "team",
-  "products",
-  "suppliers",
-  "purchase_orders",
-  "invoicing",
-  "rentals",
-  "reports",
-  "notifications",
-  "medical",
-  "clinic_staff",
-  "branches",
-] as const;
-
-export type FeatureKey = (typeof FEATURE_KEYS)[number];
-
-// Feature groups for admin UI — lets the operator enable/disable a whole section
-// (e.g. all Medical features) with one click instead of toggling each individually.
-// Storage in admin_customers.features is still per-key; this is presentation only.
-export const FEATURE_GROUPS: { id: string; en: string; ar: string; keys: FeatureKey[] }[] = [
-  {
-    id: "general",
-    en: "General",
-    ar: "عام",
-    keys: ["tasks", "crm", "finance", "team", "products", "suppliers", "purchase_orders", "invoicing", "rentals", "reports", "notifications", "branches"],
-  },
-  {
-    id: "medical",
-    en: "Medical / Clinic",
-    ar: "العيادة الطبية",
-    keys: ["medical", "clinic_staff"],
-  },
-];
-
-export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
-  tasks: { en: "Tasks", ar: "المهام" },
-  crm: { en: "CRM / Clients", ar: "إدارة العملاء" },
-  finance: { en: "Finance", ar: "المالية" },
-  team: { en: "Team / HR", ar: "الموظفين" },
-  products: { en: "Products / Inventory", ar: "المنتجات" },
-  suppliers: { en: "Suppliers", ar: "الموردين" },
-  purchase_orders: { en: "Purchase Orders", ar: "أوامر الشراء" },
-  invoicing: { en: "Invoicing", ar: "الفواتير" },
-  rentals: { en: "Rentals", ar: "الإيجارات" },
-  reports: { en: "Reports", ar: "التقارير" },
-  notifications: { en: "Notifications", ar: "الإشعارات" },
-  medical: { en: "Medical core (Patients · Visits · Invoices)", ar: "النظام الطبي (المرضى · الزيارات · الفواتير)" },
-  clinic_staff: { en: "Clinic Staff (doctors / nurses)", ar: "طاقم العيادة (أطباء / تمريض)" },
-  branches: { en: "Multi-branch", ar: "تعدد الفروع" },
-};
-
-export function defaultFeatures(): Record<FeatureKey, boolean> {
-  const o = {} as Record<FeatureKey, boolean>;
-  for (const k of FEATURE_KEYS) o[k] = true;
-  return o;
-}
+export {
+  FEATURE_KEYS,
+  FEATURE_LABELS,
+  FEATURE_GROUPS,
+  MEDICAL_FEATURE_KEYS,
+  GENERAL_FEATURE_KEYS,
+  defaultFeatures,
+  normalizeCustomerFeatures,
+  resolveAllFeatures,
+  isFeatureEnabled,
+  type FeatureKey,
+} from "@workspace/db";
 
 export const BILLING_CYCLES = ["monthly", "quarterly", "yearly", "lifetime"] as const;
 export type BillingCycle = (typeof BILLING_CYCLES)[number];
@@ -140,19 +93,13 @@ export async function seedAdmin(username: string, passwordHash: string) {
   }
 }
 
-/**
- * Build a connection string for a given tenant DB name using the same
- * TENANT_DB_URL_TEMPLATE the CRM uses. Falls back to deriving from DATABASE_URL.
- */
 export function tenantConnectionString(dbName: string): string {
   const tmpl = process.env.TENANT_DB_URL_TEMPLATE;
   if (tmpl && tmpl.includes("{db}")) return tmpl.replace("{db}", dbName);
-  // Derive from DATABASE_URL by swapping the path
   const base = process.env.DATABASE_URL!;
   return base.replace(/\/[^/?]+(\?|$)/, `/${dbName}$1`);
 }
 
-/** Short-lived pool for one-shot tenant operations (password reset, monitoring). */
 export async function withTenantPool<T>(
   dbName: string,
   fn: (p: pg.Pool) => Promise<T>,
@@ -165,20 +112,17 @@ export async function withTenantPool<T>(
   }
 }
 
-/** Advance a date by the billing cycle. */
 export function advanceBillingDate(from: Date, cycle: BillingCycle): Date {
   const d = new Date(from);
   if (cycle === "monthly") d.setMonth(d.getMonth() + 1);
   else if (cycle === "quarterly") d.setMonth(d.getMonth() + 3);
   else if (cycle === "yearly") d.setFullYear(d.getFullYear() + 1);
-  // lifetime: no advance
   return d;
 }
 
-/** Monthly recurring revenue contribution for a cycle. */
 export function monthlyEquivalent(amount: number, cycle: BillingCycle): number {
   if (cycle === "monthly") return amount;
   if (cycle === "quarterly") return amount / 3;
   if (cycle === "yearly") return amount / 12;
-  return 0; // lifetime doesn't recur
+  return 0;
 }

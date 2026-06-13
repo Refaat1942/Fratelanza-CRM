@@ -16,6 +16,7 @@ import {
   FEATURE_LABELS,
   FEATURE_GROUPS,
   defaultFeatures,
+  normalizeCustomerFeatures,
   BILLING_CYCLES,
   PAYMENT_STATUSES,
   withTenantPool,
@@ -455,7 +456,7 @@ async function main() {
        FROM admin_payments WHERE customer_id=$1 ORDER BY payment_date DESC, id DESC LIMIT 50`,
       [id],
     );
-    const features = { ...defaultFeatures(), ...(customer.features || {}) };
+    const features = normalizeCustomerFeatures(customer.features as Record<string, boolean> | undefined);
     const today = new Date();
     const daysUntilBilling = customer.next_billing_date
       ? daysBetween(today, new Date(customer.next_billing_date))
@@ -477,6 +478,7 @@ async function main() {
       customer,
       features,
       featureLabels: FEATURE_LABELS,
+      featureGroups: FEATURE_GROUPS,
       payments: payments.rows,
       daysUntilBilling,
       daysUntilEnd,
@@ -494,7 +496,7 @@ async function main() {
       res.status(404).send("Customer not found");
       return;
     }
-    const features = { ...defaultFeatures(), ...(customer.features || {}) };
+    const features = normalizeCustomerFeatures(customer.features as Record<string, boolean> | undefined);
     res.render("customers/form", {
       mode: "edit",
       customer,

@@ -42,4 +42,5 @@ export const pool: pg.Pool = new Proxy({} as pg.Pool, {
 
 export * from "./schema/index.js";
 export * from "./specializations.js";
+export * from "./features.js";
 export { tenantAls, getCurrentTenant, createTenantBinding, type TenantContext, type TenantBinding } from "./tenant.js";

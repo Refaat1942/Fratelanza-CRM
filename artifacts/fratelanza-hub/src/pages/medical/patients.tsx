@@ -27,6 +27,7 @@ import { EmptyState } from "@/components/ui-ext/empty-state";
 import { SectionCard } from "@/components/ui-ext/section-card";
 import { BranchSelect } from "@/components/BranchSelect";
 import { useAuth } from "@/components/AuthProvider";
+import { useFeatures } from "@/components/FeaturesProvider";
 
 type Patient = {
   id: number;
@@ -70,6 +71,10 @@ export default function Patients() {
   const isAr = language === "ar";
   const lf = useLangField();
   const { user } = useAuth();
+  const { features } = useFeatures();
+  const qrEnabled = features.medical_patient_qr !== false;
+  const docsEnabled = features.medical_patient_documents !== false;
+  const aiEnabled = features.medical_ai_summary !== false;
   const qc = useQueryClient();
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
@@ -286,7 +291,7 @@ export default function Patients() {
 
         <BranchSelect value={form.branchId} onChange={id => setForm({ ...form, branchId: id })} />
 
-        {editing && (
+        {editing && qrEnabled && (
           <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
             <Label className="text-xs font-semibold flex items-center gap-1.5">
               <QrCode size={13} />
@@ -422,19 +427,25 @@ export default function Patients() {
                       </div>
                     )}
                     <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      {docsEnabled && (
                       <Button variant="outline" size="sm" className="h-7 px-2" title={t("Documents", "المستندات")}
                         onClick={() => setDocsFor(p)} data-testid={`btn-docs-patient-${p.id}`}>
                         <FileText size={13} />
                       </Button>
+                      )}
+                      {qrEnabled && (
                       <Button variant="outline" size="sm" className="h-7 px-2" title={t("QR code", "رمز QR")}
                         onClick={() => setQrFor(p)} data-testid={`btn-qr-patient-${p.id}`}>
                         <QrCode size={13} />
                       </Button>
+                      )}
+                      {aiEnabled && (
                       <Button variant="outline" size="sm" className="h-7 px-2 text-violet-700 hover:bg-violet-50 hover:text-violet-800 border-violet-200"
                         onClick={() => setAiSummaryFor(p)}
                         title={t("AI Summary", "ملخص ذكاء اصطناعي")} data-testid={`btn-ai-summary-${p.id}`}>
                         <Sparkles size={13} />
                       </Button>
+                      )}
                       {p.phone && (
                         <Button variant="outline" size="sm" className="h-7 px-2 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 border-emerald-200"
                           onClick={() => openWhatsApp(p.phone!, isAr ? `السلام عليكم ${p.firstNameAr || p.firstName}،` : `Hello ${p.firstName},`)}

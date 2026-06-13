@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { requireFeature } from "../../middleware/feature";
 import patientsRouter from "./patients";
 import appointmentsRouter from "./appointments";
 import visitsRouter from "./visits";
@@ -14,25 +15,23 @@ import doctorAvailabilityRouter from "./doctor-availability";
 import aiSummaryRouter from "./ai-summary";
 import patientDocumentsRouter from "./patient-documents";
 import prescriptionOcrRouter from "./prescription-ocr";
-// Phase F2: Procedures module removed from UI; backend route also unmounted.
-// Catalog table `medical_procedures` is retained in the DB for data preservation.
 
 const router: IRouter = Router();
 
-router.use(patientsRouter);
-router.use(appointmentsRouter);
-router.use(visitsRouter);
-router.use(medicalInvoicesRouter);
-router.use(reportsRouter);
-router.use(materialsRouter);
-router.use(prescriptionsRouter);
-router.use(medicineMasterRouter);
-router.use(doctorTemplatesRouter);
-router.use(diagnosesMasterRouter);
-router.use(alertsRouter);
-router.use(doctorAvailabilityRouter);
-router.use(aiSummaryRouter);
-router.use(patientDocumentsRouter);
-router.use(prescriptionOcrRouter);
+router.use(requireFeature("medical_patients"), patientsRouter);
+router.use(requireFeature("medical_appointments"), appointmentsRouter);
+router.use(requireFeature("medical_visits"), visitsRouter);
+router.use(requireFeature("medical_invoices"), medicalInvoicesRouter);
+router.use(requireFeature("medical_reports"), reportsRouter);
+router.use(requireFeature("medical_materials"), materialsRouter);
+router.use(requireFeature("medical_prescriptions"), prescriptionsRouter);
+router.use(requireFeature("medical_medicine_master"), medicineMasterRouter);
+router.use(requireFeature("medical_rx_templates"), doctorTemplatesRouter);
+router.use(requireFeature("medical_visits"), diagnosesMasterRouter);
+router.use(requireFeature("medical_patients"), alertsRouter);
+router.use(requireFeature("medical_doctor_availability"), doctorAvailabilityRouter);
+router.use(requireFeature("medical_ai_summary"), aiSummaryRouter);
+router.use(requireFeature("medical_patient_documents"), patientDocumentsRouter);
+router.use(requireFeature("medical_prescription_ocr"), prescriptionOcrRouter);
 
 export default router;

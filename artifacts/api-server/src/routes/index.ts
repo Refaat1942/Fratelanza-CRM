@@ -53,7 +53,7 @@ router.use(requireFeature("purchase_orders"), requirePermission("purchase_orders
 router.use(requireFeature("rentals"), requirePermission("rentals"), rentalsRouter);
 router.use(requireFeature("reports"), requirePermission("reports"), reportsRouter);
 router.use(requireFeature("invoicing"), requirePermission("invoicing"), invoicesRouter);
-router.use(requireFeature("medical"), requirePermission("medical"), medicalRouter);
+router.use(requirePermission("medical"), medicalRouter);
 router.use(requireFeature("clinic_staff"), requirePermission("medical"), clinicStaffRouter);
 // router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
 // router.use(requireFeature("medical"), requirePermission("medical"), treatmentPlansRouter);

@@ -48,6 +48,11 @@ type NavGroup = {
   subgroups?: NavSubgroup[];
 };
 
+const GENERAL_NAV_KEYS = [
+  "tasks", "crm", "finance", "team", "products", "suppliers", "purchase_orders",
+  "invoicing", "rentals", "reports", "branches",
+] as const;
+
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "general",
@@ -73,16 +78,16 @@ const NAV_GROUPS: NavGroup[] = [
     labelEn: "Medical",
     labelAr: "العيادة الطبية",
     items: [
-      { href: "/medical/patients", key: "medical", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
-      { href: "/medical/appointments", key: "medical", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
-      { href: "/medical/visits", key: "medical", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
-      { href: "/medical/prescriptions", key: "medical", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
-      { href: "/medical/medicine-master", key: "medical", icon: Pill, labelEn: "Medicine Master", labelAr: "سجل الأدوية" },
-      { href: "/medical/doctor-templates", key: "medical", icon: FileText, labelEn: "Rx Templates", labelAr: "قوالب الوصفات" },
-      { href: "/medical/materials", key: "medical", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
-      { href: "/medical/invoices", key: "medical", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
-      { href: "/medical/reports", key: "medical", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
-      { href: "/medical/doctor-availability", key: "medical", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
+      { href: "/medical/patients", key: "medical", featureKey: "medical_patients", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
+      { href: "/medical/appointments", key: "medical", featureKey: "medical_appointments", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
+      { href: "/medical/visits", key: "medical", featureKey: "medical_visits", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
+      { href: "/medical/prescriptions", key: "medical", featureKey: "medical_prescriptions", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
+      { href: "/medical/medicine-master", key: "medical", featureKey: "medical_medicine_master", icon: Pill, labelEn: "Medicine Master", labelAr: "سجل الأدوية" },
+      { href: "/medical/doctor-templates", key: "medical", featureKey: "medical_rx_templates", icon: FileText, labelEn: "Rx Templates", labelAr: "قوالب الوصفات" },
+      { href: "/medical/materials", key: "medical", featureKey: "medical_materials", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
+      { href: "/medical/invoices", key: "medical", featureKey: "medical_invoices", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
+      { href: "/medical/reports", key: "medical", featureKey: "medical_reports", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
+      { href: "/medical/doctor-availability", key: "medical", featureKey: "medical_doctor_availability", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
       { href: "/medical/clinic-staff", key: "medical", featureKey: "clinic_staff", icon: Stethoscope, labelEn: "Clinic Staff", labelAr: "طاقم العيادة" },
     ],
   },
@@ -148,8 +153,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Auto-defaults: if tenant only has medical (no tasks/crm/finance enabled),
   // default to medical; otherwise default to general. Auto-switches if the
   // current route belongs to the other workspace (so a direct URL keeps working).
-  const hasGeneralFeatures = features["tasks"] !== false || features["crm"] !== false || features["finance"] !== false;
-  const hasMedicalFeatures = features["medical"] !== false || features["dental"] !== false;
+  const hasGeneralFeatures = GENERAL_NAV_KEYS.some(k => features[k] !== false);
+  const hasMedicalFeatures = Object.entries(features).some(
+    ([k, v]) => (k.startsWith("medical_") || k === "clinic_staff") && v !== false,
+  );
   const [workspace, setWorkspaceState] = useState<"general" | "medical">(() => {
     try {
       const stored = localStorage.getItem("workspace");

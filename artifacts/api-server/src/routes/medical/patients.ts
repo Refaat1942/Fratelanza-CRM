@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq, or, ilike, sql, desc, isNull } from "drizzle-orm";
-import { db, patientsTable, activityTable } from "@workspace/db";
+import { db, patientsTable, activityTable, getCurrentTenant, isFeatureEnabled } from "@workspace/db";
 import { branchWhere } from "../../lib/branchScope";
 import { z } from "zod";
 import crypto from "node:crypto";
@@ -10,6 +10,15 @@ function newQrToken(): string {
 }
 
 const router: IRouter = Router();
+
+function qrFeatureDisabled(res: import("express").Response): boolean {
+  const tenant = getCurrentTenant();
+  if (tenant && !isFeatureEnabled(tenant.features, "medical_patient_qr")) {
+    res.status(403).json({ error: "feature_disabled", feature: "medical_patient_qr" });
+    return true;
+  }
+  return false;
+}
 
 const PatientInput = z.object({
   firstName: z.string().min(1),
@@ -112,6 +121,7 @@ router.patch("/patients/:id", async (req, res): Promise<void> => {
 
 /** Ensure every patient has a QR token (backfill for records created before this feature). */
 router.post("/patients/backfill-qr", async (_req, res): Promise<void> => {
+  if (qrFeatureDisabled(res)) return;
   const missing = await db.select({ id: patientsTable.id }).from(patientsTable).where(isNull(patientsTable.qrToken));
   for (const p of missing) {
     await db.update(patientsTable).set({ qrToken: newQrToken() }).where(eq(patientsTable.id, p.id));
@@ -120,6 +130,7 @@ router.post("/patients/backfill-qr", async (_req, res): Promise<void> => {
 });
 
 router.post("/patients/:id/regenerate-qr", async (req, res): Promise<void> => {
+  if (qrFeatureDisabled(res)) return;
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [patient] = await db

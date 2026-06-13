@@ -7,12 +7,19 @@ import {
   prescriptionsTable,
   medicalAppointmentsTable,
   employeesTable,
+  getCurrentTenant,
+  isFeatureEnabled,
 } from "@workspace/db";
 
 const router: IRouter = Router();
 
 /** Public read-only patient history — accessed via QR scan (no auth). */
 router.get("/public/patient/:token", async (req, res): Promise<void> => {
+  const tenant = getCurrentTenant();
+  if (tenant && !isFeatureEnabled(tenant.features, "medical_patient_qr")) {
+    res.status(403).json({ error: "feature_disabled", feature: "medical_patient_qr" });
+    return;
+  }
   const token = String(req.params.token || "").trim();
   if (!token || token.length < 16) {
     res.status(400).json({ error: "invalid_token" });

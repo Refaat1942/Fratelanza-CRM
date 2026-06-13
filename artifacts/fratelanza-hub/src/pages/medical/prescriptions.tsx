@@ -16,6 +16,7 @@ import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
 import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer, Camera } from "lucide-react";
 import { useBranding } from "@/components/BrandingProvider";
+import { useFeatures } from "@/components/FeaturesProvider";
 import { MedicinePicker } from "@/components/medical/MedicinePicker";
 import { PrescriptionOcrDialog } from "@/components/medical/PrescriptionOcrDialog";
 
@@ -200,6 +201,8 @@ export default function PrescriptionsPage() {
   const confirmDelete = useDeleteConfirm();
   const qc = useQueryClient();
   const { branding } = useBranding();
+  const { features } = useFeatures();
+  const ocrEnabled = features.medical_prescription_ocr !== false;
   const { data: rxHeader } = useQuery<RxHeader>({
     queryKey: ["settings-branding-full"],
     queryFn: () => apiFetch("/settings/branding"),
@@ -304,10 +307,12 @@ export default function PrescriptionsPage() {
         description={t("Medicines prescribed per visit", "الأدوية الموصوفة لكل زيارة")}
         actions={
           <div className="flex gap-2">
+            {ocrEnabled && (
             <Button variant="outline" onClick={() => setOcrOpen(true)}>
               <Camera size={16} className="me-1.5" />
               {t("Scan Rx", "مسح وصفة")}
             </Button>
+            )}
             <Button onClick={() => setOpen(true)} data-testid="button-new-prescription">
               <Plus size={16} className="me-1.5" />
               {t("New Prescription", "وصفة جديدة")}
