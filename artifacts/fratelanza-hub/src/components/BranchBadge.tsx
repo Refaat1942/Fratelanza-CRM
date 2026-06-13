@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "./LanguageProvider";
+import { useFeatures } from "./FeaturesProvider";
 import { apiFetch } from "@/lib/api";
 import { Building2 } from "lucide-react";
 
@@ -12,12 +13,15 @@ type Branch = { id: number; name: string; nameAr?: string | null; isActive: bool
  */
 export function BranchBadge({ branchId }: { branchId: number | null | undefined }) {
   const { language } = useLanguage();
+  const { features } = useFeatures();
   const isAr = language === "ar";
+  const branchesEnabled = features["branches"] !== false;
 
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["branches"],
     queryFn: () => apiFetch("/branches"),
     staleTime: 5 * 60 * 1000,
+    enabled: branchesEnabled,
   });
 
   if (branchId == null) return null;

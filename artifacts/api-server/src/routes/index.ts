@@ -27,6 +27,8 @@ import branchesRouter from "./branches";
 import tenantSettingsRouter from "./tenantSettings";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
+import { onlyForPaths } from "../middleware/pathGate";
+import { MEDICAL_API_PREFIXES } from "./medical/pathPrefixes";
 
 const router: IRouter = Router();
 
@@ -36,26 +38,47 @@ router.use(authRouter);
 router.use(meRouter);
 router.use(tenantSettingsRouter);
 router.use(usersRouter);
-router.use(requireFeature("branches"), branchesRouter);
+
+// Feature/permission gates must be path-scoped. `router.use(requireFeature(X), subRouter)`
+// runs the gate on *every* later request when subRouter is mounted at `/`, which blocked
+// medical uploads with "Feature disabled: branches" when branches was turned off.
+router.use(onlyForPaths("/branches", requireFeature("branches")));
+router.use(branchesRouter);
 router.use(dashboardRouter);
-router.use(requireFeature("notifications"), notificationsRouter);
+router.use(onlyForPaths("/notifications", requireFeature("notifications")));
+router.use(notificationsRouter);
 
 // Per-module gates: tenant feature toggle (admin can disable per-customer) +
 // per-user permission check (manager assigns module access to employees).
-router.use(requireFeature("tasks"), requirePermission("tasks"), tasksRouter);
-router.use(requireFeature("crm"), requirePermission("crm"), clientsRouter);
-router.use(requireFeature("finance"), requirePermission("finance"), transactionsRouter);
-router.use(requireFeature("team"), requirePermission("team"), employeesRouter);
-router.use(requireFeature("products"), requirePermission("products"), productsRouter);
-router.use(requireFeature("products"), requirePermission("products"), stockMovementsRouter);
-router.use(requireFeature("suppliers"), requirePermission("suppliers"), suppliersRouter);
-router.use(requireFeature("purchase_orders"), requirePermission("purchase_orders"), purchaseOrdersRouter);
-router.use(requireFeature("rentals"), requirePermission("rentals"), rentalsRouter);
-router.use(requireFeature("reports"), requirePermission("reports"), reportsRouter);
-router.use(requireFeature("invoicing"), requirePermission("invoicing"), invoicesRouter);
-router.use(requirePermission("medical"), medicalRouter);
-router.use(requireFeature("clinic_staff"), requirePermission("medical"), clinicStaffRouter);
-// router.use(requireFeature("dental"), requirePermission("medical"), dentalRouter);
-// router.use(requireFeature("medical"), requirePermission("medical"), treatmentPlansRouter);
+router.use(onlyForPaths("/tasks", requireFeature("tasks"), requirePermission("tasks")));
+router.use(tasksRouter);
+router.use(onlyForPaths("/clients", requireFeature("crm"), requirePermission("crm")));
+router.use(clientsRouter);
+router.use(onlyForPaths("/transactions", requireFeature("finance"), requirePermission("finance")));
+router.use(transactionsRouter);
+router.use(onlyForPaths("/employees", requireFeature("team"), requirePermission("team")));
+router.use(employeesRouter);
+router.use(onlyForPaths("/products", requireFeature("products"), requirePermission("products")));
+router.use(productsRouter);
+router.use(onlyForPaths("/stock-movements", requireFeature("products"), requirePermission("products")));
+router.use(stockMovementsRouter);
+router.use(onlyForPaths("/suppliers", requireFeature("suppliers"), requirePermission("suppliers")));
+router.use(suppliersRouter);
+router.use(onlyForPaths("/purchase-orders", requireFeature("purchase_orders"), requirePermission("purchase_orders")));
+router.use(purchaseOrdersRouter);
+router.use(onlyForPaths("/rentals", requireFeature("rentals"), requirePermission("rentals")));
+router.use(rentalsRouter);
+router.use(onlyForPaths("/reports", requireFeature("reports"), requirePermission("reports")));
+router.use(reportsRouter);
+router.use(onlyForPaths("/invoices", requireFeature("invoicing"), requirePermission("invoicing")));
+router.use(invoicesRouter);
+router.use(onlyForPaths(MEDICAL_API_PREFIXES, requirePermission("medical")));
+router.use(medicalRouter);
+router.use(onlyForPaths("/clinic-staff", requireFeature("clinic_staff"), requirePermission("medical")));
+router.use(clinicStaffRouter);
+// router.use(onlyForPaths("/dental", requireFeature("dental"), requirePermission("medical")));
+// router.use(dentalRouter);
+// router.use(onlyForPaths("/treatment-plans", requireFeature("medical"), requirePermission("medical")));
+// router.use(treatmentPlansRouter);
 
 export default router;
