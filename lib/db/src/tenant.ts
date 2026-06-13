@@ -10,6 +10,8 @@ export type TenantContext = {
   dbName: string;
   features: Record<string, boolean>;
   status: "active" | "blocked";
+  paymentStatus?: string;
+  subscriptionEnd?: string | null;
 };
 
 export type TenantBinding = {

@@ -13,9 +13,9 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
   }
   if (res.status === 403) {
     const body = await res.clone().json().catch(() => ({} as any));
-    if (body?.error === "tenant_blocked") {
+    if (body?.error === "tenant_blocked" || body?.error === "trial_expired") {
       window.dispatchEvent(new CustomEvent("tenant-blocked"));
-      throw new Error("Subscription paused");
+      throw new Error(body?.error === "trial_expired" ? "Trial ended" : "Subscription paused");
     }
     if (body?.error === "feature_disabled") {
       throw new Error(`Feature disabled: ${body.feature}`);

@@ -3,17 +3,21 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/ui-ext/page-header";
 import { KpiCard } from "@/components/ui-ext/kpi-card";
 import { EmptyState } from "@/components/ui-ext/empty-state";
-import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer } from "lucide-react";
+import { Pill, Plus, Trash2, FileText, Calendar, Activity, Printer, Camera } from "lucide-react";
 import { useBranding } from "@/components/BrandingProvider";
 import { MedicinePicker } from "@/components/medical/MedicinePicker";
+import { PrescriptionOcrDialog } from "@/components/medical/PrescriptionOcrDialog";
 
 type Prescription = {
   id: number;
@@ -25,6 +29,8 @@ type Prescription = {
   durationDays: number | null;
   instructions: string | null;
   instructionsAr: string | null;
+  notes: string | null;
+  notesAr: string | null;
   createdAt: string;
   patientId: number | null;
   visitDate: string | null;
@@ -191,6 +197,7 @@ export default function PrescriptionsPage() {
   const { t, language } = useLanguage();
   const isAr = language === "ar";
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
   const qc = useQueryClient();
   const { branding } = useBranding();
   const { data: rxHeader } = useQuery<RxHeader>({
@@ -198,12 +205,15 @@ export default function PrescriptionsPage() {
     queryFn: () => apiFetch("/settings/branding"),
   });
   const [open, setOpen] = useState(false);
+  const [ocrOpen, setOcrOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [createMedicineIfMissing, setCreateMedicineIfMissing] = useState(true);
   const [form, setForm] = useState<{
     visitId: string; medicineId: number | null; medicineName: string; medicineNameAr: string;
     dosage: string; frequency: string; durationDays: string;
     instructions: string; instructionsAr: string;
-  }>({ visitId: "", medicineId: null, medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+    notes: string; notesAr: string;
+  }>({ visitId: "", medicineId: null, medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "", notes: "", notesAr: "" });
 
   const { data: prescriptions = [], isLoading } = useQuery<Prescription[]>({
     queryKey: ["prescriptions"],
@@ -243,7 +253,7 @@ export default function PrescriptionsPage() {
       qc.invalidateQueries({ queryKey: ["prescriptions"] });
       qc.invalidateQueries({ queryKey: ["prescriptions-stats"] });
       setOpen(false);
-      setForm({ visitId: "", medicineId: null, medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "" });
+      setForm({ visitId: "", medicineId: null, medicineName: "", medicineNameAr: "", dosage: "", frequency: "", durationDays: "", instructions: "", instructionsAr: "", notes: "", notesAr: "" });
       toast({ title: t("Prescription added", "تم إضافة الوصفة") });
     },
     onError: (err: any) => toast({ title: err?.message || t("Failed", "فشل"), variant: "destructive" }),
@@ -272,6 +282,9 @@ export default function PrescriptionsPage() {
     if (form.durationDays.trim()) body.durationDays = Number(form.durationDays);
     if (form.instructions.trim()) body.instructions = form.instructions.trim();
     if (form.instructionsAr.trim()) body.instructionsAr = form.instructionsAr.trim();
+    if (form.notes.trim()) body.notes = form.notes.trim();
+    if (form.notesAr.trim()) body.notesAr = form.notesAr.trim();
+    if (!form.medicineId && createMedicineIfMissing) body.createMedicineIfMissing = true;
     createMutation.mutate(body);
   };
 
@@ -290,10 +303,16 @@ export default function PrescriptionsPage() {
         title={t("Prescriptions", "الوصفات الطبية")}
         description={t("Medicines prescribed per visit", "الأدوية الموصوفة لكل زيارة")}
         actions={
-          <Button onClick={() => setOpen(true)} data-testid="button-new-prescription">
-            <Plus size={16} className="me-1.5" />
-            {t("New Prescription", "وصفة جديدة")}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setOcrOpen(true)}>
+              <Camera size={16} className="me-1.5" />
+              {t("Scan Rx", "مسح وصفة")}
+            </Button>
+            <Button onClick={() => setOpen(true)} data-testid="button-new-prescription">
+              <Plus size={16} className="me-1.5" />
+              {t("New Prescription", "وصفة جديدة")}
+            </Button>
+          </div>
         }
       />
 
@@ -352,7 +371,12 @@ export default function PrescriptionsPage() {
                     )}
                     {(p.instructions || p.instructionsAr) && (
                       <div className="text-foreground/80 mt-1.5 p-2 bg-muted/40 rounded text-xs">
-                        {isAr ? (p.instructionsAr || p.instructions) : p.instructions}
+                        <b>{t("Instructions", "التعليمات")}:</b> {isAr ? (p.instructionsAr || p.instructions) : p.instructions}
+                      </div>
+                    )}
+                    {(p.notes || p.notesAr) && (
+                      <div className="text-foreground/80 mt-1.5 p-2 bg-violet-50 border border-violet-100 rounded text-xs">
+                        <b>{t("Notes", "ملاحظات")}:</b> {isAr ? (p.notesAr || p.notes) : p.notes}
                       </div>
                     )}
                   </div>
@@ -373,7 +397,10 @@ export default function PrescriptionsPage() {
                   </Button>
                   <Button
                     variant="ghost" size="icon" className="h-8 w-8 text-destructive"
-                    onClick={() => { if (confirm(t("Delete prescription?", "حذف الوصفة؟"))) deleteMutation.mutate(p.id); }}
+                    onClick={() => confirmDelete({
+                      title: t("Delete prescription?", "حذف الوصفة؟"),
+                      onConfirm: async () => deleteMutation.mutate(p.id),
+                    })}
                     data-testid={`button-delete-prescription-${p.id}`}
                   >
                     <Trash2 size={15} />
@@ -450,6 +477,27 @@ export default function PrescriptionsPage() {
               />
             </div>
 
+            <div className="space-y-1.5">
+              <Label className="text-xs">{t("Clinical notes", "ملاحظات سريرية")}</Label>
+              <Textarea
+                rows={2}
+                value={isAr ? form.notesAr : form.notes}
+                onChange={e => isAr ? setForm({ ...form, notesAr: e.target.value }) : setForm({ ...form, notes: e.target.value })}
+                placeholder={t("Internal notes (not printed on Rx)", "ملاحظات داخلية (لا تُطبع على الوصفة)")}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="create-med"
+                checked={createMedicineIfMissing}
+                onCheckedChange={v => setCreateMedicineIfMissing(v === true)}
+              />
+              <Label htmlFor="create-med" className="text-xs font-normal">
+                {t("Add medicine to master if not found", "إضافة الدواء للسجل إن لم يوجد")}
+              </Label>
+            </div>
+
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("Cancel", "إلغاء")}</Button>
               <Button type="submit" disabled={createMutation.isPending || !form.visitId}>
@@ -459,6 +507,20 @@ export default function PrescriptionsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <PrescriptionOcrDialog
+        open={ocrOpen}
+        onOpenChange={setOcrOpen}
+        visitId={form.visitId}
+        onVisitIdChange={v => setForm({ ...form, visitId: v })}
+        visits={visits}
+        patientLabel={(patientId) => patientLabel(patients.find(p => p.id === patientId))}
+        onImported={() => {
+          qc.invalidateQueries({ queryKey: ["prescriptions"] });
+          qc.invalidateQueries({ queryKey: ["prescriptions-stats"] });
+          qc.invalidateQueries({ queryKey: ["medicine-master"] });
+        }}
+      />
     </div>
   );
 }

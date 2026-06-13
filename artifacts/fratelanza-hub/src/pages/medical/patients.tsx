@@ -13,9 +13,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, User, Phone, Mail, Trash2, Edit2, Users, UserPlus, MessageCircle,
-  IdCard, AlertTriangle, Stethoscope, Search, Sparkles, QrCode,
+  IdCard, AlertTriangle, Stethoscope, Search, Sparkles, QrCode, FileText, StickyNote,
 } from "lucide-react";
 import { PatientQrDialog } from "@/components/medical/PatientQrDialog";
+import { PatientDocumentsDialog } from "@/components/medical/PatientDocumentsDialog";
 import { AiSummaryDialog } from "@/components/medical/AiSummaryDialog";
 import { openWhatsApp } from "@/lib/whatsapp";
 import { useToast } from "@/hooks/use-toast";
@@ -79,6 +80,7 @@ export default function Patients() {
   const [form, setForm] = useState<Patient>(EMPTY);
   const [aiSummaryFor, setAiSummaryFor] = useState<Patient | null>(null);
   const [qrFor, setQrFor] = useState<Patient | null>(null);
+  const [docsFor, setDocsFor] = useState<Patient | null>(null);
 
   const { data: stats } = useQuery<Stats>({
     queryKey: ["patients-stats"],
@@ -283,6 +285,25 @@ export default function Patients() {
         </div>
 
         <BranchSelect value={form.branchId} onChange={id => setForm({ ...form, branchId: id })} />
+
+        {editing && (
+          <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+            <Label className="text-xs font-semibold flex items-center gap-1.5">
+              <QrCode size={13} />
+              {t("Patient QR & history link", "رمز QR ورابط السجل")}
+            </Label>
+            {form.qrToken ? (
+              <p className="text-[11px] text-muted-foreground break-all" dir="ltr">
+                {`${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/p/${form.qrToken}`}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{t("QR will be generated on save or from the card.", "يُنشأ الرمز عند الحفظ أو من بطاقة المريض.")}</p>
+            )}
+            <Button type="button" variant="outline" size="sm" onClick={() => setQrFor(editing)}>
+              {t("View QR code", "عرض رمز QR")}
+            </Button>
+          </div>
+        )}
       </div>
       <DialogFooter>
         <Button type="submit" disabled={createMut.isPending || updateMut.isPending}>
@@ -392,7 +413,19 @@ export default function Patients() {
                         <span className="text-[11px] leading-relaxed"><b>{t("Allergies", "حساسية")}:</b> {p.allergies}</span>
                       </div>
                     )}
+                    {(isAr ? p.notesAr : p.notes) && (
+                      <div className="flex items-start gap-1.5 text-muted-foreground bg-muted/40 border border-border rounded p-2 mt-2">
+                        <StickyNote size={13} className="shrink-0 mt-0.5"/>
+                        <span className="text-[11px] leading-relaxed line-clamp-3">
+                          <b>{t("Notes", "ملاحظات")}:</b> {isAr ? (p.notesAr || p.notes) : p.notes}
+                        </span>
+                      </div>
+                    )}
                     <div className="pt-3 mt-2 border-t border-card-border flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <Button variant="outline" size="sm" className="h-7 px-2" title={t("Documents", "المستندات")}
+                        onClick={() => setDocsFor(p)} data-testid={`btn-docs-patient-${p.id}`}>
+                        <FileText size={13} />
+                      </Button>
                       <Button variant="outline" size="sm" className="h-7 px-2" title={t("QR code", "رمز QR")}
                         onClick={() => setQrFor(p)} data-testid={`btn-qr-patient-${p.id}`}>
                         <QrCode size={13} />
@@ -433,8 +466,25 @@ export default function Patients() {
         open={qrFor !== null}
         onOpenChange={v => { if (!v) setQrFor(null); }}
         patientName={qrFor ? fullName(qrFor) : ""}
+        patientId={qrFor?.id}
         qrToken={qrFor?.qrToken}
+        onTokenChange={token => {
+          if (qrFor) {
+            setQrFor({ ...qrFor, qrToken: token });
+            if (editing?.id === qrFor.id) setForm(f => ({ ...f, qrToken: token }));
+          }
+          invalidate();
+        }}
       />
+
+      {docsFor && (
+        <PatientDocumentsDialog
+          open={docsFor !== null}
+          onOpenChange={v => { if (!v) setDocsFor(null); }}
+          patientId={docsFor.id}
+          patientName={fullName(docsFor)}
+        />
+      )}
 
       {aiSummaryFor && (
         <AiSummaryDialog

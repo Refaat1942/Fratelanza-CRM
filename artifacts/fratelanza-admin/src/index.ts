@@ -60,6 +60,31 @@ function fmtDate(d: Date | string | null | undefined): string {
   return date.toISOString().slice(0, 10);
 }
 
+function addDaysISO(base: Date, days: number): string {
+  const d = new Date(base);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function applyTrialDefaults(body: Record<string, string | string[] | undefined>): {
+  subscription_start: string | null;
+  subscription_end: string | null;
+  next_billing_date: string | null;
+  payment_status: string;
+} {
+  const payment_status = String(body.payment_status || "trial");
+  let subscription_start = String(body.subscription_start || "").trim() || null;
+  let subscription_end = String(body.subscription_end || "").trim() || null;
+  let next_billing_date = String(body.next_billing_date || "").trim() || null;
+  if (payment_status === "trial" && !subscription_end) {
+    const today = new Date();
+    subscription_start = subscription_start || fmtDate(today);
+    subscription_end = addDaysISO(today, 14);
+    if (!next_billing_date) next_billing_date = subscription_end;
+  }
+  return { subscription_start, subscription_end, next_billing_date, payment_status };
+}
+
 function daysBetween(a: Date, b: Date): number {
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
@@ -265,6 +290,8 @@ async function main() {
 
   // ----- New customer form -----
   app.get("/customers/new", requireAuth, (_req, res) => {
+    const today = new Date();
+    const trialEnd = addDaysISO(today, 14);
     res.render("customers/form", {
       mode: "new",
       customer: {
@@ -278,9 +305,9 @@ async function main() {
         plan_name: "",
         billing_amount: "",
         billing_cycle: "monthly",
-        subscription_start: "",
-        subscription_end: "",
-        next_billing_date: "",
+        subscription_start: fmtDate(today),
+        subscription_end: trialEnd,
+        next_billing_date: trialEnd,
         payment_status: "trial",
         specialization: "general",
       },
@@ -309,10 +336,11 @@ async function main() {
     const plan_name = String(body.plan_name || "").trim();
     const billing_amount = Number(body.billing_amount || 0);
     const billing_cycle = String(body.billing_cycle || "monthly");
-    const subscription_start = String(body.subscription_start || "").trim() || null;
-    const subscription_end = String(body.subscription_end || "").trim() || null;
-    const next_billing_date = String(body.next_billing_date || "").trim() || null;
-    const payment_status = String(body.payment_status || "trial");
+    const trialDefaults = applyTrialDefaults(body);
+    const subscription_start = trialDefaults.subscription_start;
+    const subscription_end = trialDefaults.subscription_end;
+    const next_billing_date = trialDefaults.next_billing_date;
+    const payment_status = trialDefaults.payment_status;
     const specializationRaw = String(body.specialization || "general").trim();
     const specialization = isSpecializationKey(specializationRaw) ? specializationRaw : "general";
 
@@ -917,7 +945,8 @@ async function main() {
     }
     const sub = req.params.subdomain.toLowerCase();
     const { rows } = await pool.query(
-      "SELECT id, name, subdomain, db_name, status, features FROM admin_customers WHERE subdomain=$1",
+      `SELECT id, name, subdomain, db_name, status, features, payment_status, subscription_end
+       FROM admin_customers WHERE subdomain=$1`,
       [sub],
     );
     if (!rows[0]) {

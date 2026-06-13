@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { useLanguage } from "@/components/LanguageProvider";
 import { useToast } from "@/hooks/use-toast";
+import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +59,7 @@ export default function ClinicStaffPage() {
   const { t, language } = useLanguage();
   const isAr = language === "ar";
   const { toast } = useToast();
+  const confirmDelete = useDeleteConfirm();
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Staff | null>(null);
@@ -196,7 +198,10 @@ export default function ClinicStaffPage() {
                   </Button>
                   <Button
                     variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                    onClick={() => { if (confirm(t("Delete this staff member?", "حذف هذا الموظف؟"))) deleteMutation.mutate(s.id); }}
+                    onClick={() => confirmDelete({
+                      title: t("Delete this staff member?", "حذف هذا الموظف؟"),
+                      onConfirm: async () => deleteMutation.mutate(s.id),
+                    })}
                   >
                     <Trash2 size={13} />
                   </Button>

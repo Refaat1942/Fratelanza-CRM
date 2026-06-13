@@ -102,10 +102,27 @@ export const prescriptionsTable = pgTable("prescriptions", {
   durationDays: integer("duration_days"),
   instructions: text("instructions"),
   instructionsAr: text("instructions_ar"),
+  notes: text("notes"),
+  notesAr: text("notes_ar"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type Prescription = typeof prescriptionsTable.$inferSelect;
+
+// =============== Patient documents ===============
+export const patientDocumentsTable = pgTable("patient_documents", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id").notNull(),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  mimeType: text("mime_type"),
+  fileSize: integer("file_size"),
+  notes: text("notes"),
+  uploadedBy: integer("uploaded_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PatientDocument = typeof patientDocumentsTable.$inferSelect;
 
 // =============== Medical Invoices ===============
 export const medicalInvoicesTable = pgTable("medical_invoices", {

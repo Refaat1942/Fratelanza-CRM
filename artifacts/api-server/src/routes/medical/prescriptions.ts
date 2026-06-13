@@ -22,6 +22,9 @@ const PrescriptionInput = z.object({
   durationDays: z.number().int().positive().nullable().optional(),
   instructions: z.string().nullable().optional(),
   instructionsAr: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  notesAr: z.string().nullable().optional(),
+  createMedicineIfMissing: z.boolean().optional(),
 });
 
 // List — joins visit + patient for display. Optional ?patient=&visit= filters.
@@ -45,6 +48,8 @@ router.get("/prescriptions", async (req: Request, res: Response): Promise<void> 
       durationDays: prescriptionsTable.durationDays,
       instructions: prescriptionsTable.instructions,
       instructionsAr: prescriptionsTable.instructionsAr,
+      notes: prescriptionsTable.notes,
+      notesAr: prescriptionsTable.notesAr,
       createdAt: prescriptionsTable.createdAt,
       patientId: visitsTable.patientId,
       visitDate: visitsTable.visitDate,
@@ -74,6 +79,32 @@ router.post("/prescriptions", async (req: Request, res: Response): Promise<void>
   if (!v) { res.status(400).json({ error: "visit_not_found" }); return; }
 
   let data = { ...parsed.data };
+  delete (data as { createMedicineIfMissing?: boolean }).createMedicineIfMissing;
+
+  if (!data.medicineId && parsed.data.createMedicineIfMissing) {
+    const material = parsed.data.medicineName.trim().slice(0, 64).replace(/\s+/g, "_").toUpperCase() || `MED_${Date.now()}`;
+    const [existing] = await db
+      .select({ id: medicineMasterTable.id })
+      .from(medicineMasterTable)
+      .where(eq(medicineMasterTable.materialDescription, parsed.data.medicineName.trim()))
+      .limit(1);
+    if (existing) {
+      data.medicineId = existing.id;
+    } else {
+      try {
+        const [created] = await db.insert(medicineMasterTable).values({
+          material,
+          materialDescription: parsed.data.medicineName.trim(),
+          bun: parsed.data.dosage?.trim() || null,
+          active: 1,
+        }).returning();
+        data.medicineId = created.id;
+      } catch {
+        // Unique collision on material code — still save prescription without link.
+      }
+    }
+  }
+
   if (data.medicineId) {
     const [med] = await db.select().from(medicineMasterTable).where(eq(medicineMasterTable.id, data.medicineId));
     if (med) {

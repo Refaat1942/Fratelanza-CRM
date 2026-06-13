@@ -35,6 +35,14 @@ type LookupResult =
   | { kind: "not_found" }
   | { kind: "error" };
 
+function isSubscriptionExpired(paymentStatus: string | undefined, subscriptionEnd: string | null | undefined): boolean {
+  if (!subscriptionEnd || !paymentStatus) return false;
+  if (!["trial", "due", "overdue"].includes(paymentStatus)) return false;
+  const end = new Date(`${subscriptionEnd}T23:59:59`);
+  if (isNaN(end.getTime())) return false;
+  return end < new Date();
+}
+
 async function fetchTenant(subdomain: string): Promise<LookupResult> {
   if (!ADMIN_API_URL) return { kind: "error" };
   try {
@@ -48,14 +56,21 @@ async function fetchTenant(subdomain: string): Promise<LookupResult> {
       db_name: string;
       status: string;
       features: Record<string, boolean> | null;
+      payment_status?: string;
+      subscription_end?: string | null;
     };
+    const paymentStatus = json.payment_status ?? undefined;
+    const subscriptionEnd = json.subscription_end ?? null;
+    const trialExpired = isSubscriptionExpired(paymentStatus, subscriptionEnd);
     return {
       kind: "ok",
       ctx: {
         subdomain: json.subdomain,
         dbName: json.db_name,
-        status: json.status === "blocked" ? "blocked" : "active",
+        status: json.status === "blocked" || trialExpired ? "blocked" : "active",
         features: json.features || {},
+        paymentStatus,
+        subscriptionEnd,
       },
     };
   } catch {
@@ -102,7 +117,13 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
       }
       const ctx = result.ctx;
       if (ctx.status === "blocked") {
-        res.status(403).json({ error: "tenant_blocked", message: "Subscription paused. Please contact your provider to restore access." });
+        const trialExpired = isSubscriptionExpired(ctx.paymentStatus, ctx.subscriptionEnd);
+        res.status(403).json({
+          error: trialExpired ? "trial_expired" : "tenant_blocked",
+          message: trialExpired
+            ? "Your 14-day trial has ended. Please contact your provider to subscribe and restore access."
+            : "Subscription paused. Please contact your provider to restore access.",
+        });
         return;
       }
       // Fresh binding per request — never share the binding object across requests.

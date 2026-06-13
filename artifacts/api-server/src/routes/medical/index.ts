@@ -12,6 +12,8 @@ import diagnosesMasterRouter from "./diagnoses-master";
 import alertsRouter from "./alerts";
 import doctorAvailabilityRouter from "./doctor-availability";
 import aiSummaryRouter from "./ai-summary";
+import patientDocumentsRouter from "./patient-documents";
+import prescriptionOcrRouter from "./prescription-ocr";
 // Phase F2: Procedures module removed from UI; backend route also unmounted.
 // Catalog table `medical_procedures` is retained in the DB for data preservation.
 
@@ -30,5 +32,7 @@ router.use(diagnosesMasterRouter);
 router.use(alertsRouter);
 router.use(doctorAvailabilityRouter);
 router.use(aiSummaryRouter);
+router.use(patientDocumentsRouter);
+router.use(prescriptionOcrRouter);
 
 export default router;
