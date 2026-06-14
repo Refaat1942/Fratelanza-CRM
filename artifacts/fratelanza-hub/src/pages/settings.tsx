@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../components/LanguageProvider";
 import { useAuth } from "@/components/AuthProvider";
+import { useFeatures } from "@/components/FeaturesProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -42,33 +43,18 @@ const ROLE_OPTIONS = [
   { value: "user",         labelEn: "User",         labelAr: "مستخدم" },
 ];
 
-const ROLE_PRESETS: Record<string, string[]> = {
-  admin:        ["dashboard","tasks","crm","finance","team","products","suppliers","purchase_orders","rentals","reports","notifications","medical","invoicing"],
-  manager:      ["dashboard","tasks","crm","finance","team","products","suppliers","purchase_orders","rentals","reports","notifications","medical","invoicing"],
-  doctor:       ["dashboard","medical","notifications"],
-  receptionist: ["dashboard","tasks","crm","medical","notifications"],
-  accountant:   ["dashboard","finance","invoicing","reports","notifications"],
-  assistant:    ["dashboard","medical","notifications"],
-  user:         ["dashboard"],
-};
-
-const ALL_MODULES = [
-  { key: "dashboard", labelEn: "Dashboard", labelAr: "لوحة القيادة" },
-  { key: "tasks", labelEn: "Tasks", labelAr: "المهام" },
-  { key: "crm", labelEn: "Clients", labelAr: "العملاء" },
-  { key: "finance", labelEn: "Finance", labelAr: "المالية" },
-  { key: "team", labelEn: "Team", labelAr: "الفريق" },
-  { key: "products", labelEn: "Products", labelAr: "المنتجات" },
-  { key: "suppliers", labelEn: "Suppliers", labelAr: "الموردون" },
-  { key: "purchase_orders", labelEn: "Purchase Orders", labelAr: "أوامر الشراء" },
-  { key: "rentals", labelEn: "Rentals", labelAr: "الإيجارات" },
-  { key: "reports", labelEn: "Reports", labelAr: "التقارير" },
-  { key: "notifications", labelEn: "Notifications", labelAr: "الإشعارات" },
-];
+import {
+  assignablePermissionGroups,
+  allAssignableKeys,
+  labelForPermission,
+  ROLE_PERMISSION_PRESETS,
+  expandLegacyPermissions,
+} from "@/lib/userPermissions";
 
 export default function Settings() {
   const { t, isRtl } = useLanguage();
   const { user: me } = useAuth();
+  const { features } = useFeatures();
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirmDelete = useDeleteConfirm();
@@ -80,10 +66,11 @@ export default function Settings() {
   const [createForm, setCreateForm] = useState<{username:string;password:string;displayName:string;role:string;branchId:number|null}>({ username: "", password: "", displayName: "", role: "user", branchId: null });
   const [editForm, setEditForm] = useState<{displayName:string;role:string;password:string;branchId:number|null}>({ displayName: "", role: "user", password: "", branchId: null });
 
+  const branchesEnabled = features["branches"] !== false;
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["branches"],
     queryFn: () => apiFetch("/branches"),
-    enabled: me?.role === "admin",
+    enabled: me?.role === "admin" && branchesEnabled,
   });
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 
@@ -93,8 +80,19 @@ export default function Settings() {
     enabled: me?.role === "admin",
   });
 
+  const permGroups = assignablePermissionGroups(features);
+  const allPermKeys = allAssignableKeys(features);
+
   const createUser = useMutation({
-    mutationFn: (data: any) => apiFetch("/users", { method: "POST", body: JSON.stringify({ ...data, permissions: ROLE_PRESETS[data.role] ?? [] }) }),
+    mutationFn: (data: typeof createForm) => {
+      const preset = ROLE_PERMISSION_PRESETS[data.role] ?? ROLE_PERMISSION_PRESETS.user!;
+      const allowed = new Set(allPermKeys);
+      const permissions = preset.filter((p) => allowed.has(p));
+      return apiFetch("/users", {
+        method: "POST",
+        body: JSON.stringify({ ...data, permissions }),
+      });
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["users"] }); setCreateOpen(false); setCreateForm({ username: "", password: "", displayName: "", role: "user", branchId: null }); toast({ title: t("User created", "تم إنشاء المستخدم") }); },
     onError: (e: any) => toast({ title: e.message || t("Error", "خطأ"), variant: "destructive" }),
   });
@@ -130,7 +128,12 @@ export default function Settings() {
 
   const openPerms = (u: AppUser) => {
     setPermUser(u);
-    try { setSelectedPerms(JSON.parse(u.permissions) as string[]); } catch { setSelectedPerms([]); }
+    try {
+      const parsed = expandLegacyPermissions(JSON.parse(u.permissions) as string[]);
+      setSelectedPerms(parsed.filter((p) => allPermKeys.includes(p)));
+    } catch {
+      setSelectedPerms([]);
+    }
   };
 
   const togglePerm = (key: string) => {
@@ -313,22 +316,32 @@ export default function Settings() {
             <DialogTitle>{t("Access Permissions", "صلاحيات الوصول")}</DialogTitle>
             <p className="text-sm text-muted-foreground">{permUser?.displayName || permUser?.username}</p>
           </DialogHeader>
-          <div className="py-4 space-y-2">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-muted-foreground">{t("Select which pages this user can access", "اختر الصفحات التي يمكن لهذا المستخدم الوصول إليها")}</span>
+          <div className="py-4 space-y-4 max-h-[60vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{t("Only modules enabled for your clinic are listed", "تظهر فقط الوحدات المفعّلة لعيادتك")}</span>
               <button type="button" className="text-xs text-primary underline"
-                onClick={() => setSelectedPerms(selectedPerms.length === ALL_MODULES.length ? [] : ALL_MODULES.map(m => m.key))}>
-                {selectedPerms.length === ALL_MODULES.length ? t("Deselect all", "إلغاء الكل") : t("Select all", "تحديد الكل")}
+                onClick={() => setSelectedPerms(selectedPerms.length === allPermKeys.length ? ["dashboard"] : [...allPermKeys])}>
+                {selectedPerms.length >= allPermKeys.length ? t("Deselect all", "إلغاء الكل") : t("Select all", "تحديد الكل")}
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              {ALL_MODULES.map(mod => (
-                <label key={mod.key} className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors ${selectedPerms.includes(mod.key) ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}>
-                  <input type="checkbox" className="accent-primary" checked={selectedPerms.includes(mod.key)} onChange={() => togglePerm(mod.key)} />
-                  <span className="text-sm font-medium">{isRtl ? mod.labelAr : mod.labelEn}</span>
-                </label>
-              ))}
-            </div>
+            {permGroups.map((group) => (
+              <div key={group.id} className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  {isRtl ? group.ar : group.en}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {group.keys.map((key) => (
+                    <label
+                      key={key}
+                      className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors ${selectedPerms.includes(key) ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                    >
+                      <input type="checkbox" className="accent-primary" checked={selectedPerms.includes(key)} onChange={() => togglePerm(key)} />
+                      <span className="text-sm font-medium">{labelForPermission(key, isRtl)}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPermUser(null)}>{t("Cancel", "إلغاء")}</Button>

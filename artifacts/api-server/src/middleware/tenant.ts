@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { tenantAls, createTenantBinding, type TenantContext } from "@workspace/db";
+import { freezeTenantOnRequest } from "../lib/tenantContext";
 
 const ADMIN_API_URL = process.env.ADMIN_API_URL;
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY;
@@ -96,11 +97,17 @@ async function resolveTenant(subdomain: string): Promise<LookupResult> {
   return result;
 }
 
+function requestHostname(req: Request): string {
+  const forwarded = req.header("x-forwarded-host");
+  if (forwarded) return forwarded.split(",")[0]!.trim().toLowerCase();
+  return (req.hostname || "").toLowerCase();
+}
+
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction): void {
   const headerOverride = ALLOW_TENANT_HEADER
     ? (req.header("x-tenant-subdomain") || "").toLowerCase().trim()
     : "";
-  const subdomain = headerOverride || extractSubdomain(req.hostname);
+  const subdomain = headerOverride || extractSubdomain(requestHostname(req));
 
   // No subdomain → single-tenant mode (dev / direct IP). Use default DB.
   if (!subdomain || !ADMIN_API_URL) {
@@ -131,6 +138,7 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
       }
       // Fresh binding per request — never share the binding object across requests.
       const binding = createTenantBinding(ctx);
+      freezeTenantOnRequest(req, binding);
       tenantAls.run(binding, () => next());
     })
     .catch((err) => {

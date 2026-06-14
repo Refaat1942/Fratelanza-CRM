@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { userHasPermission } from "@/lib/userPermissions";
 
 type NavItem = {
   href: string;
@@ -53,6 +54,8 @@ const GENERAL_NAV_KEYS = [
   "invoicing", "rentals", "reports", "branches",
 ] as const;
 
+const FINANCE_NAV_KEYS = ["finance", "invoicing", "medical_invoices", "reports"] as const;
+
 const NAV_GROUPS: NavGroup[] = [
   {
     id: "general",
@@ -62,15 +65,27 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/", key: "dashboard", icon: LayoutDashboard, labelEn: "Dashboard", labelAr: "لوحة القيادة" },
       { href: "/tasks", key: "tasks", icon: CheckSquare, labelEn: "Tasks", labelAr: "المهام" },
       { href: "/crm", key: "crm", icon: Users, labelEn: "Clients", labelAr: "العملاء" },
-      { href: "/finance", key: "finance", icon: CreditCard, labelEn: "Finance", labelAr: "المالية" },
       { href: "/team", key: "team", icon: UserSquare2, labelEn: "Team", labelAr: "الفريق" },
       { href: "/products", key: "products", icon: Package, labelEn: "Products", labelAr: "المنتجات" },
       { href: "/suppliers", key: "suppliers", icon: Truck, labelEn: "Suppliers", labelAr: "الموردون" },
       { href: "/purchase-orders", key: "purchase_orders", icon: FileText, labelEn: "Purchase Orders", labelAr: "أوامر الشراء" },
-      { href: "/invoices", key: "invoicing", icon: Receipt, labelEn: "Invoices", labelAr: "الفواتير" },
       { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
-      { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
       { href: "/branches", key: "branches", icon: Building2, labelEn: "Branches", labelAr: "الفروع" },
+    ],
+    subgroups: [
+      {
+        id: "finance",
+        labelEn: "Finance & billing",
+        labelAr: "المالية والفواتير",
+        icon: Wallet,
+        items: [
+          { href: "/finance", key: "finance", icon: CreditCard, labelEn: "Income & expenses", labelAr: "إيرادات ومصروفات" },
+          { href: "/invoices", key: "invoicing", icon: Receipt, labelEn: "Sales invoices", labelAr: "فواتير المبيعات" },
+          { href: "/medical/invoices", key: "medical_invoices", featureKey: "medical_invoices", icon: Wallet, labelEn: "Medical invoices", labelAr: "الفواتير الطبية" },
+          { href: "/medical/reports", key: "medical_reports", featureKey: "medical_reports", icon: LineChart, labelEn: "Medical reports", labelAr: "تقارير العيادة" },
+          { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
+        ],
+      },
     ],
   },
   {
@@ -78,17 +93,15 @@ const NAV_GROUPS: NavGroup[] = [
     labelEn: "Medical",
     labelAr: "العيادة الطبية",
     items: [
-      { href: "/medical/patients", key: "medical", featureKey: "medical_patients", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
-      { href: "/medical/appointments", key: "medical", featureKey: "medical_appointments", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
-      { href: "/medical/visits", key: "medical", featureKey: "medical_visits", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
-      { href: "/medical/prescriptions", key: "medical", featureKey: "medical_prescriptions", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
-      { href: "/medical/medicine-master", key: "medical", featureKey: "medical_medicine_master", icon: Pill, labelEn: "Medicine Master", labelAr: "سجل الأدوية" },
-      { href: "/medical/doctor-templates", key: "medical", featureKey: "medical_rx_templates", icon: FileText, labelEn: "Rx Templates", labelAr: "قوالب الوصفات" },
-      { href: "/medical/materials", key: "medical", featureKey: "medical_materials", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
-      { href: "/medical/invoices", key: "medical", featureKey: "medical_invoices", icon: Wallet, labelEn: "Medical Invoices", labelAr: "الفواتير الطبية" },
-      { href: "/medical/reports", key: "medical", featureKey: "medical_reports", icon: LineChart, labelEn: "Medical Reports", labelAr: "تقارير العيادة" },
-      { href: "/medical/doctor-availability", key: "medical", featureKey: "medical_doctor_availability", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
-      { href: "/medical/clinic-staff", key: "medical", featureKey: "clinic_staff", icon: Stethoscope, labelEn: "Clinic Staff", labelAr: "طاقم العيادة" },
+      { href: "/medical/patients", key: "medical_patients", icon: Users, labelEn: "Patients", labelAr: "المرضى" },
+      { href: "/medical/appointments", key: "medical_appointments", icon: CalendarClock, labelEn: "Appointments", labelAr: "المواعيد" },
+      { href: "/medical/visits", key: "medical_visits", icon: ClipboardList, labelEn: "Visits", labelAr: "الزيارات" },
+      { href: "/medical/prescriptions", key: "medical_prescriptions", icon: Pill, labelEn: "Prescriptions", labelAr: "الوصفات الطبية" },
+      { href: "/medical/medicine-master", key: "medical_medicine_master", icon: Pill, labelEn: "Medicine Master", labelAr: "سجل الأدوية" },
+      { href: "/medical/doctor-templates", key: "medical_rx_templates", icon: FileText, labelEn: "Rx Templates", labelAr: "قوالب الوصفات" },
+      { href: "/medical/materials", key: "medical_materials", icon: Package, labelEn: "Materials Inventory", labelAr: "مخزون المستلزمات" },
+      { href: "/medical/doctor-availability", key: "medical_doctor_availability", icon: CalendarClock, labelEn: "Doctor Hours", labelAr: "ساعات الأطباء" },
+      { href: "/medical/clinic-staff", key: "clinic_staff", icon: Stethoscope, labelEn: "Clinic Staff", labelAr: "طاقم العيادة" },
     ],
   },
 ];
@@ -153,7 +166,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Auto-defaults: if tenant only has medical (no tasks/crm/finance enabled),
   // default to medical; otherwise default to general. Auto-switches if the
   // current route belongs to the other workspace (so a direct URL keeps working).
-  const hasGeneralFeatures = GENERAL_NAV_KEYS.some(k => features[k] !== false);
+  const hasGeneralFeatures = GENERAL_NAV_KEYS.some(k => features[k] !== false)
+    || FINANCE_NAV_KEYS.some(k => features[k] !== false);
   const hasMedicalFeatures = Object.entries(features).some(
     ([k, v]) => (k.startsWith("medical_") || k === "clinic_staff") && v !== false,
   );
@@ -190,7 +204,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const canSee = (item: NavItem) => {
     const featKey = item.featureKey ?? item.key;
     if (item.key !== "dashboard" && features[featKey] === false) return false;
-    return isAdmin || userPerms.includes(item.key);
+    return isAdmin || userHasPermission(userPerms, item.key);
   };
 
   // Auto-expand dental sub-group if current route is inside it
@@ -281,15 +295,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const showNotifications = isAdmin || userPerms.includes("notifications");
+  const showNotifications = isAdmin || userHasPermission(userPerms, "notifications");
   const showSettings = isAdmin;
 
   const renderGroup = (group: NavGroup, onNavClick?: () => void) => {
     const visibleItems = group.items.filter(canSee);
-    const visibleSubgroups = (group.subgroups ?? []).filter(sg => {
-      if (sg.featureKey && features[sg.featureKey] === false) return false;
-      return sg.items.some(canSee);
-    });
+    const visibleSubgroups = (group.subgroups ?? []).filter(sg => sg.items.some(canSee));
     if (visibleItems.length === 0 && visibleSubgroups.length === 0) return null;
     return (
       <div key={group.id} className="space-y-0.5">

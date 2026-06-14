@@ -1,12 +1,17 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import {
+  db,
+  usersTable,
+  ALL_ASSIGNABLE_PERMISSION_KEYS,
+  normalizePermissionList,
+} from "@workspace/db";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
 
 const router: IRouter = Router();
 
-const ALL_PERMISSIONS = ["dashboard","tasks","crm","finance","team","products","rentals","suppliers","purchase_orders","invoicing","reports","notifications","settings"];
+const ALL_PERMISSIONS = [...ALL_ASSIGNABLE_PERMISSION_KEYS];
 
 // Default seed password — used to detect first-login + force a change.
 const DEFAULT_ADMIN_PASSWORD = "admin123";
@@ -67,7 +72,9 @@ router.post("/auth/login", loginLimiter, async (req: Request, res: Response): Pr
   const mustChangePassword =
     user.username === "admin" && password === DEFAULT_ADMIN_PASSWORD;
 
-  const permissions: string[] = user.role === "admin" ? ALL_PERMISSIONS : (JSON.parse(user.permissions || "[]") as string[]);
+  const permissions: string[] = user.role === "admin"
+    ? ALL_PERMISSIONS
+    : normalizePermissionList(JSON.parse(user.permissions || "[]"));
   (req.session as any).userId = user.id;
   (req.session as any).username = user.username;
   (req.session as any).role = user.role;
