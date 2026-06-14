@@ -20,11 +20,13 @@ export async function apiFetch<T>(path: string, options?: RequestInit): Promise<
     if (body?.error === "feature_disabled") {
       throw new Error(`Feature disabled: ${body.feature}`);
     }
+    if (body?.error === "ai_not_configured") {
+      throw new Error(body?.message || "AI is not configured on this server.");
+    }
   }
   if (!res.ok) {
-    // Try to surface the real server error message instead of a generic "API error 500".
     const detail = await res.clone().json().catch(() => null) as any;
-    const msg = detail?.error || detail?.message || (typeof detail?.details === "string" ? detail.details : null);
+    const msg = detail?.message || detail?.error || (typeof detail?.details === "string" ? detail.details : null);
     throw new Error(msg ? `${msg} (${res.status})` : `API error ${res.status}`);
   }
   if (res.status === 204) return undefined as T;

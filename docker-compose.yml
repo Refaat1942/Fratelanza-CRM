@@ -49,6 +49,11 @@ services:
       ADMIN_API_URL: http://admin-app:5050
       ADMIN_API_KEY: ${ADMIN_API_KEY}
       TENANT_DB_URL_TEMPLATE: postgresql://fratelanza:${POSTGRES_PASSWORD}@db:5432/{db}
+      # Optional — AI patient summary only (prescription scan uses free local OCR)
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_INTEGRATIONS_ANTHROPIC_API_KEY: ${AI_INTEGRATIONS_ANTHROPIC_API_KEY:-}
+      AI_INTEGRATIONS_ANTHROPIC_BASE_URL: ${AI_INTEGRATIONS_ANTHROPIC_BASE_URL:-}
+      ANTHROPIC_API_BASE_URL: ${ANTHROPIC_API_BASE_URL:-}
       # Persist user-uploaded files (rental documents, etc.) outside the
       # container so `docker compose up --build` doesn't wipe them.
       UPLOAD_DIR: /app/uploads

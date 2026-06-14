@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLanguage } from "../components/LanguageProvider";
 import { useAuth } from "@/components/AuthProvider";
+import { useFeatures } from "@/components/FeaturesProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ const ALL_MODULES = [
 export default function Settings() {
   const { t, isRtl } = useLanguage();
   const { user: me } = useAuth();
+  const { features } = useFeatures();
   const { toast } = useToast();
   const qc = useQueryClient();
   const confirmDelete = useDeleteConfirm();
@@ -80,10 +82,11 @@ export default function Settings() {
   const [createForm, setCreateForm] = useState<{username:string;password:string;displayName:string;role:string;branchId:number|null}>({ username: "", password: "", displayName: "", role: "user", branchId: null });
   const [editForm, setEditForm] = useState<{displayName:string;role:string;password:string;branchId:number|null}>({ displayName: "", role: "user", password: "", branchId: null });
 
+  const branchesEnabled = features["branches"] !== false;
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["branches"],
     queryFn: () => apiFetch("/branches"),
-    enabled: me?.role === "admin",
+    enabled: me?.role === "admin" && branchesEnabled,
   });
   const [selectedPerms, setSelectedPerms] = useState<string[]>([]);
 

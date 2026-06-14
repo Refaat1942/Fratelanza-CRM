@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLanguage } from "@/components/LanguageProvider";
+import { useFeatures } from "@/components/FeaturesProvider";
 import { apiFetch } from "@/lib/api";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,11 +19,14 @@ export function BranchSelect({
   showLabel?: boolean;
 }) {
   const { t, language } = useLanguage();
+  const { features } = useFeatures();
   const isAr = language === "ar";
+  const branchesEnabled = features["branches"] !== false;
   const { data: branches } = useQuery<Branch[]>({
     queryKey: ["branches"],
     queryFn: () => apiFetch("/branches"),
     staleTime: 5 * 60 * 1000,
+    enabled: branchesEnabled,
   });
   const active = (branches ?? []).filter(b => b.isActive);
   if (active.length === 0) return null;

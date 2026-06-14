@@ -118,7 +118,7 @@ export function PrescriptionOcrDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Camera size={18} />
-            {t("Scan prescription (OCR)", "مسح الوصفة (OCR)")}
+            {t("Scan prescription", "مسح الوصفة")}
           </DialogTitle>
         </DialogHeader>
 

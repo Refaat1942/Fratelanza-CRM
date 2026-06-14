@@ -1,7 +1,6 @@
 import { Router, type IRouter } from "express";
 import rateLimit from "express-rate-limit";
 import { eq, desc } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
 import {
   db,
   patientsTable,
@@ -9,6 +8,7 @@ import {
   prescriptionsTable,
   medicalAppointmentsTable,
 } from "@workspace/db";
+import { ANTHROPIC_CONFIGURED_MESSAGE, createAnthropicClient, isAnthropicConfigured } from "../../lib/anthropic";
 
 type PrescriptionRow = {
   id: number;
@@ -20,12 +20,6 @@ type PrescriptionRow = {
 };
 
 const router: IRouter = Router();
-
-// Single shared client. Env vars are provisioned by the Replit AI Integrations setup.
-const anthropic = new Anthropic({
-  apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-  baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-});
 
 function calcAge(dob: Date | null): number | null {
   if (!dob) return null;
@@ -51,8 +45,8 @@ router.post("/patients/:id/ai-summary", aiLimiter, async (req, res): Promise<voi
   if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const language = req.body?.language === "ar" ? "ar" : "en";
 
-  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || !process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL) {
-    res.status(503).json({ error: "ai_not_configured", message: "AI integration is not configured on this server." });
+  if (!isAnthropicConfigured()) {
+    res.status(503).json({ error: "ai_not_configured", message: ANTHROPIC_CONFIGURED_MESSAGE });
     return;
   }
 
@@ -139,6 +133,7 @@ router.post("/patients/:id/ai-summary", aiLimiter, async (req, res): Promise<voi
   const userMessage = `<chart>\n${lines.join("\n")}\n</chart>`;
 
   try {
+    const anthropic = createAnthropicClient();
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 8192,

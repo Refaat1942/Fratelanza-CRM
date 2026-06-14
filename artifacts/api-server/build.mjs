@@ -97,6 +97,7 @@ async function buildAll() {
       "zeromq",
       "zeromq-prebuilt",
       "playwright",
+      "tesseract.js",
       "puppeteer",
       "puppeteer-core",
       "electron",
