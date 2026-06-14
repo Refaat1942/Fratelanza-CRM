@@ -9,11 +9,26 @@
 
 ---
 
+## 📖 Read the lessons / اقرأ الدروس
+
+**Start here:** **[READING-GUIDE.md](./READING-GUIDE.md)**
+
+| How to read | File |
+|---|---|
+| **One file per course (easiest)** | `full-curriculum/COURSE-01-cardiovascular.md` … `COURSE-08-womens-health.md` |
+| **Everything in one file** | [FULL-CURRICULUM-ALL-LESSONS.md](./FULL-CURRICULUM-ALL-LESSONS.md) (52 lessons, ~7,200 lines) |
+| **Lesson by lesson** | `courses/XX-name/lessons/lesson-XX.md` (52 files) |
+
+---
+
 ## Platform-ready structure / هيكل جاهز للمنصة
 
 ```
 elearning-egypt-medications/
 ├── README.md                          ← You are here
+├── READING-GUIDE.md                   ← How to read all lessons
+├── FULL-CURRICULUM-ALL-LESSONS.md     ← All 52 lessons in ONE file
+├── full-curriculum/                   ← 8 files (one per course, all lessons merged)
 ├── COURSE-CATALOG.md                  ← Full course listing
 ├── LMS-INTEGRATION-GUIDE.md           ← How to upload to your e-learning site
 ├── platform/
