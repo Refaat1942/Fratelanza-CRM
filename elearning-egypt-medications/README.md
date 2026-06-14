@@ -9,6 +9,21 @@
 
 ---
 
+## 📥 Download ZIP / تحميل ملف ZIP
+
+**See [DOWNLOAD.md](./DOWNLOAD.md) for all download links.**
+
+| Package | File | Size |
+|---|---|---|
+| **Everything (recommended)** | [Egyptian-Medications-Full-Curriculum.zip](./Egyptian-Medications-Full-Curriculum.zip) | ~272 KB |
+| Course 1 only | [downloads/Course-01-cardiovascular.zip](./downloads/Course-01-cardiovascular.zip) | ~53 KB |
+| Course 2 only | [downloads/Course-02-antimicrobials.zip](./downloads/Course-02-antimicrobials.zip) | ~39 KB |
+| … Courses 3–8 | See `downloads/` folder | ~14–21 KB each |
+
+Unzip → open `READING-GUIDE.md` or `full-curriculum/COURSE-01-cardiovascular.md` to start reading.
+
+---
+
 ## 📖 Read the lessons / اقرأ الدروس
 
 **Start here:** **[READING-GUIDE.md](./READING-GUIDE.md)**
