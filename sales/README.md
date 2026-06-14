@@ -13,6 +13,18 @@ This folder contains everything a salesperson needs to sell Fratelanza Hub in Eg
 | **SALES-PITCH-AR.md** | You need ready-to-use WhatsApp messages, objection handling, and closing scripts in Arabic | محتاج رسائل واتساب جاهزة، ردود على الاعتراضات، وجمل الإغلاق بالعربي |
 | **ONBOARDING-CHECKLIST.md** | A customer just paid — follow this step-by-step to set them up | عميل دفع لتوّه — اتبع هذه الخطوات لتشغيل حسابه |
 
+## Pharmacy training / تدريب الصيدليات
+
+For pharmacy customer training, see the **`training/`** folder:
+
+| File | Use it when... |
+|---|---|
+| **training/README.md** | Index of all training materials |
+| **training/TRAINER-GUIDE.md** | You're delivering a training session |
+| **training/PHARMACY-TRAINING-PROGRAM.md** | 4-hour curriculum with timed agenda |
+| **training/QUICK-REFERENCE.md** | Print & laminate for each workstation |
+| **training/modules/** | Role-based step-by-step guides |
+
 ## Recommended sales flow / تسلسل البيع المقترح
 
 ```
