@@ -1,0 +1,190 @@
+{
+  "schema_version": "1.0.0",
+  "platform": "Egyptian Market Medications E-Learning",
+  "locale": "ar-EG",
+  "scientific_language": "en",
+  "certification": {
+    "title_en": "Egyptian Market Medications Specialist",
+    "title_ar": "أخصائي أدوية السوق المصري",
+    "lesson_pass_mark_percent": 70,
+    "final_exam_pass_mark_percent": 75,
+    "final_exam_questions": 100,
+    "cpd_hours_total": 84
+  },
+  "courses": [
+    {
+      "course_id": "EG-MED-01",
+      "slug": "01-cardiovascular",
+      "title_en": "Cardiovascular Medications in Egypt",
+      "title_ar": "أدوية القلب والأوعية الدموية في مصر",
+      "duration_hours": 12,
+      "lesson_count": 8,
+      "cpd_hours": 12,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-01-L01", "file": "lesson-01-hypertension.md", "title": "Hypertension overview & guidelines", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L02", "file": "lesson-02-ace-arb.md", "title": "ACE inhibitors & ARBs", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L03", "file": "lesson-03-ccb-beta-blockers.md", "title": "CCBs & beta-blockers", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L04", "file": "lesson-04-diuretics-combos.md", "title": "Diuretics & combination products", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L05", "file": "lesson-05-statins.md", "title": "Statins & lipid management", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L06", "file": "lesson-06-anticoagulants.md", "title": "Anticoagulants & antiplatelets", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L07", "file": "lesson-07-heart-failure.md", "title": "Heart failure & antiarrhythmics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-01-L08", "file": "lesson-08-review-cases.md", "title": "Course review & scenarios", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-02",
+      "slug": "02-antimicrobials",
+      "title_en": "Antimicrobials & Antivirals in Egypt",
+      "title_ar": "المضادات الحيوية ومضادات الفيروسات في مصر",
+      "duration_hours": 14,
+      "lesson_count": 8,
+      "cpd_hours": 14,
+      "prerequisites": ["EG-MED-01"],
+      "lessons": [
+        {"lesson_id": "EG-MED-02-L01", "file": "lesson-01-stewardship.md", "title": "Stewardship & EDA regulations", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-02-L02", "file": "lesson-02-penicillins-cephalosporins.md", "title": "Penicillins & cephalosporins", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-02-L03", "file": "lesson-03-macrolides-quinolones.md", "title": "Macrolides, FQs & tetracyclines", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-02-L04", "file": "lesson-04-aminoglycosides-antiparasitics.md", "title": "Aminoglycosides & antiparasitics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-02-L05", "file": "lesson-05-tuberculosis.md", "title": "Antituberculosis medications", "duration_minutes": 105},
+        {"lesson_id": "EG-MED-02-L06", "file": "lesson-06-antifungals.md", "title": "Antifungals", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-02-L07", "file": "lesson-07-antivirals.md", "title": "Antivirals & COVID therapeutics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-02-L08", "file": "lesson-08-resistance-stewardship.md", "title": "Resistance & stewardship", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-03",
+      "slug": "03-diabetes",
+      "title_en": "Diabetes Medications in Egypt",
+      "title_ar": "أدوية السكري في مصر",
+      "duration_hours": 10,
+      "lesson_count": 6,
+      "cpd_hours": 10,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-03-L01", "file": "lesson-01-epidemiology-targets.md", "title": "Epidemiology & targets", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-03-L02", "file": "lesson-02-metformin.md", "title": "Metformin", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-03-L03", "file": "lesson-03-sulfonylureas.md", "title": "Sulfonylureas", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-03-L04", "file": "lesson-04-dpp4-sglt2-glp1.md", "title": "DPP-4i, SGLT2i, GLP-1", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-03-L05", "file": "lesson-05-insulin.md", "title": "Insulin types & brands", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-03-L06", "file": "lesson-06-devices-monitoring.md", "title": "Devices & monitoring", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-04",
+      "slug": "04-cns-analgesics",
+      "title_en": "CNS, Analgesics & Psychotropics in Egypt",
+      "title_ar": "الجهاز العصبي والمسكنات والأدوية النفسية",
+      "duration_hours": 12,
+      "lesson_count": 8,
+      "cpd_hours": 12,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-04-L01", "file": "lesson-01-pain-ladder.md", "title": "Pain & WHO ladder", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L02", "file": "lesson-02-paracetamol-nsaids.md", "title": "Paracetamol & NSAIDs", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L03", "file": "lesson-03-opioids-tramadol.md", "title": "Opioids & tramadol", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L04", "file": "lesson-04-antidepressants.md", "title": "Antidepressants", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L05", "file": "lesson-05-anxiolytics-hypnotics.md", "title": "Anxiolytics & hypnotics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L06", "file": "lesson-06-antiepileptics.md", "title": "Antiepileptics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L07", "file": "lesson-07-antipsychotics-adhd.md", "title": "Antipsychotics & ADHD", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-04-L08", "file": "lesson-08-substance-abuse.md", "title": "Substance abuse awareness", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-05",
+      "slug": "05-gi-respiratory",
+      "title_en": "GI & Respiratory Medications in Egypt",
+      "title_ar": "أدوية الجهاز الهضمي والتنفسي",
+      "duration_hours": 10,
+      "lesson_count": 6,
+      "cpd_hours": 10,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-05-L01", "file": "lesson-01-ppi-h2.md", "title": "PPIs & H2 blockers", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-05-L02", "file": "lesson-02-antiemetics-ibs.md", "title": "Antiemetics & IBS", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-05-L03", "file": "lesson-03-antidiarrheals-probiotics.md", "title": "Antidiarrheals & probiotics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-05-L04", "file": "lesson-04-hepatoprotectants.md", "title": "Hepatoprotectants", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-05-L05", "file": "lesson-05-bronchodilators-inhalers.md", "title": "Bronchodilators & inhalers", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-05-L06", "file": "lesson-06-antihistamines-cold-flu.md", "title": "Antihistamines & cold/flu", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-06",
+      "slug": "06-otc-selfcare",
+      "title_en": "OTC & Self-Care in Egypt",
+      "title_ar": "الأدوية بدون روشتة والرعاية الذاتية",
+      "duration_hours": 8,
+      "lesson_count": 5,
+      "cpd_hours": 8,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-06-L01", "file": "lesson-01-otc-regulations.md", "title": "EDA OTC framework", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-06-L02", "file": "lesson-02-vitamins-minerals.md", "title": "Vitamins & minerals", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-06-L03", "file": "lesson-03-topical-products.md", "title": "Topical OTC products", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-06-L04", "file": "lesson-04-herbal-traditional.md", "title": "Herbal & traditional", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-06-L05", "file": "lesson-05-selfcare-scenarios.md", "title": "Self-care scenarios", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-07",
+      "slug": "07-pediatrics",
+      "title_en": "Pediatric Medications in Egypt",
+      "title_ar": "أدوية الأطفال في مصر",
+      "duration_hours": 10,
+      "lesson_count": 6,
+      "cpd_hours": 10,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-07-L01", "file": "lesson-01-dosing-formulations.md", "title": "Dosing & formulations", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-07-L02", "file": "lesson-02-antibiotics-antipyretics.md", "title": "Antibiotics & antipyretics", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-07-L03", "file": "lesson-03-respiratory-cough-cold.md", "title": "Respiratory & cough/cold", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-07-L04", "file": "lesson-04-pediatric-gi.md", "title": "Pediatric GI", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-07-L05", "file": "lesson-05-vitamins-iron.md", "title": "Vitamins & iron", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-07-L06", "file": "lesson-06-vaccination.md", "title": "Vaccination schedule", "duration_minutes": 90}
+      ]
+    },
+    {
+      "course_id": "EG-MED-08",
+      "slug": "08-womens-health",
+      "title_en": "Women's Health & Obstetric Medications",
+      "title_ar": "صحة المرأة وأدوية الحمل",
+      "duration_hours": 8,
+      "lesson_count": 5,
+      "cpd_hours": 8,
+      "prerequisites": [],
+      "lessons": [
+        {"lesson_id": "EG-MED-08-L01", "file": "lesson-01-contraceptives.md", "title": "Contraceptives", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-08-L02", "file": "lesson-02-pregnancy-safe-meds.md", "title": "Pregnancy-safe medications", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-08-L03", "file": "lesson-03-lactation.md", "title": "Lactation compatibility", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-08-L04", "file": "lesson-04-menopause-hrt.md", "title": "Menopause & HRT", "duration_minutes": 90},
+        {"lesson_id": "EG-MED-08-L05", "file": "lesson-05-fertility-prenatal.md", "title": "Fertility & prenatal vitamins", "duration_minutes": 90}
+      ]
+    }
+  ],
+  "assessments": {
+    "lesson_quizzes": {
+      "questions_per_lesson": 10,
+      "pass_mark_percent": 70,
+      "source": "embedded in each lesson markdown"
+    },
+    "final_exam": {
+      "file": "assessments/MASTER-QUIZ-BANK.md",
+      "questions": 50,
+      "pass_mark_percent": 75,
+      "time_limit_minutes": 120
+    }
+  },
+  "drug_index": {
+    "file": "drug-index/EGYPT-DRUG-INDEX.md",
+    "entries_approximate": 200
+  },
+  "major_manufacturers": [
+    {"name": "Pharco", "arabic": "فاركو"},
+    {"name": "EIPICO", "arabic": "ايبيكو"},
+    {"name": "Memphis", "arabic": "ممفيس"},
+    {"name": "Sedico", "arabic": "سيديكو"},
+    {"name": "Amoun", "arabic": "آمون"},
+    {"name": "Sigma", "arabic": "سيجما"}
+  ],
+  "last_updated": "2026-06-14"
+}
