@@ -43,6 +43,7 @@ import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import BlockedPage from "@/pages/blocked";
 import { DeleteConfirmProvider } from "@/components/DeleteConfirmProvider";
+import { useLanguage } from "@/components/LanguageProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },
@@ -65,14 +66,34 @@ function FeatureGate({
 }: { feature: string; permission?: string; children: React.ReactNode }) {
   const { features, loading } = useFeatures();
   const { user } = useAuth();
+  const { t } = useLanguage();
   if (loading) return null;
-  // Tenant-level: feature must be enabled for the workspace.
-  if (features[feature] === false) return <NotFound />;
-  // User-level: non-admins need the permission in their assigned list.
-  // `permission` defaults to `feature` but can be overridden (e.g. dental shares medical permission).
+  if (features[feature] === false) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
+        <p className="text-lg font-semibold text-foreground">{t("Module not available", "الوحدة غير متاحة")}</p>
+        <p className="text-sm text-muted-foreground max-w-md">
+          {t(
+            "This module is disabled for your workspace. Enable it in the admin panel under customer features, then refresh.",
+            "هذه الوحدة معطلة لمساحة عملك. فعّلها من لوحة الإدارة ضمن ميزات العميل، ثم حدّث الصفحة.",
+          )}
+        </p>
+      </div>
+    );
+  }
   const permKey = permission ?? feature;
   if (user && user.role !== "admin" && !(user.permissions || []).includes(permKey)) {
-    return <NotFound />;
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-2">
+        <p className="text-lg font-semibold text-foreground">{t("Access denied", "الوصول مرفوض")}</p>
+        <p className="text-sm text-muted-foreground max-w-md">
+          {t(
+            "Your account does not have permission for this module. Ask an administrator to update your permissions.",
+            "حسابك لا يملك صلاحية هذه الوحدة. اطلب من المسؤول تحديث صلاحياتك.",
+          )}
+        </p>
+      </div>
+    );
   }
   return <>{children}</>;
 }

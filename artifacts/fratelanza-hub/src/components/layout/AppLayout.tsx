@@ -294,7 +294,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const showNotifications = isAdmin || userPerms.includes("notifications");
+  const hasHrFeatures = HR_NAV_KEYS.some(k => features[k] !== false);
+
+  const showNotifications =
+    features.notifications !== false && (isAdmin || userPerms.includes("notifications"));
   const showSettings = isAdmin;
 
   const renderGroup = (group: NavGroup, onNavClick?: () => void) => {
@@ -394,7 +397,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
       <nav ref={navRef} className="flex-1 px-2.5 pb-3 overflow-y-auto">
         {NAV_GROUPS
-          .filter(g => effectiveWorkspace === "general" ? g.id !== "medical" : g.id === "medical")
+          .filter(g => {
+            // HR is cross-cutting — show in both General and Medical workspace views.
+            if (g.id === "hr") return hasHrFeatures;
+            if (effectiveWorkspace === "general") return g.id !== "medical";
+            return g.id === "medical";
+          })
           .map(g => renderGroup(g, onNavClick))}
       </nav>
 
