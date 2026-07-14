@@ -4,7 +4,8 @@ import {
   LayoutDashboard, CheckSquare, Users, CreditCard, Settings, Menu, BarChart2,
   Bell, UserSquare2, X, Package, Home as HomeIcon, LogOut, KeyRound,
   Truck, FileText, Receipt, Stethoscope, CalendarClock, ClipboardList, ListPlus,
-  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck
+  Wallet, LineChart, ChevronDown, ChevronRight, Building2, Briefcase, Pill, ClipboardCheck,
+  Clock, ScanLine,
 } from "lucide-react";
 import { useLanguage } from "../LanguageProvider";
 import { Button } from "@/components/ui/button";
@@ -49,9 +50,11 @@ type NavGroup = {
 };
 
 const GENERAL_NAV_KEYS = [
-  "tasks", "crm", "finance", "team", "products", "suppliers", "purchase_orders",
+  "tasks", "crm", "finance", "products", "suppliers", "purchase_orders",
   "invoicing", "rentals", "reports", "branches",
 ] as const;
+
+const HR_NAV_KEYS = ["team", "hr_attendance", "hr_payroll"] as const;
 
 const NAV_GROUPS: NavGroup[] = [
   {
@@ -63,7 +66,6 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/tasks", key: "tasks", icon: CheckSquare, labelEn: "Tasks", labelAr: "المهام" },
       { href: "/crm", key: "crm", icon: Users, labelEn: "Clients", labelAr: "العملاء" },
       { href: "/finance", key: "finance", icon: CreditCard, labelEn: "Finance", labelAr: "المالية" },
-      { href: "/team", key: "team", icon: UserSquare2, labelEn: "Team", labelAr: "الفريق" },
       { href: "/products", key: "products", icon: Package, labelEn: "Products", labelAr: "المنتجات" },
       { href: "/suppliers", key: "suppliers", icon: Truck, labelEn: "Suppliers", labelAr: "الموردون" },
       { href: "/purchase-orders", key: "purchase_orders", icon: FileText, labelEn: "Purchase Orders", labelAr: "أوامر الشراء" },
@@ -71,6 +73,17 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/rentals", key: "rentals", icon: HomeIcon, labelEn: "Rentals", labelAr: "الإيجارات" },
       { href: "/reports", key: "reports", icon: BarChart2, labelEn: "Reports", labelAr: "التقارير" },
       { href: "/branches", key: "branches", icon: Building2, labelEn: "Branches", labelAr: "الفروع" },
+    ],
+  },
+  {
+    id: "hr",
+    labelEn: "HR & Payroll",
+    labelAr: "الموارد البشرية",
+    items: [
+      { href: "/team", key: "team", icon: UserSquare2, labelEn: "Team", labelAr: "الفريق" },
+      { href: "/hr/clock", key: "team", featureKey: "hr_attendance", icon: ScanLine, labelEn: "Clock Kiosk", labelAr: "شاشة المسح" },
+      { href: "/hr/attendance", key: "team", featureKey: "hr_attendance", icon: Clock, labelEn: "Attendance", labelAr: "الحضور" },
+      { href: "/hr/payroll", key: "team", featureKey: "hr_payroll", icon: Wallet, labelEn: "Payroll", labelAr: "الرواتب" },
     ],
   },
   {

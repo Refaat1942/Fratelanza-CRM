@@ -17,6 +17,9 @@ export const FEATURE_KEYS = [
   "reports",
   "notifications",
   "branches",
+  // —— HR & Payroll ——
+  "hr_attendance",
+  "hr_payroll",
   // —— Medical: core modules ——
   "medical_patients",
   "medical_appointments",
@@ -60,6 +63,8 @@ export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
   reports: { en: "Reports", ar: "التقارير" },
   notifications: { en: "Notifications", ar: "الإشعارات" },
   branches: { en: "Multi-branch", ar: "تعدد الفروع" },
+  hr_attendance: { en: "Attendance & clock-in", ar: "الحضور وتسجيل الدخول" },
+  hr_payroll: { en: "Payroll", ar: "الرواتب" },
   medical_patients: { en: "Patients", ar: "المرضى" },
   medical_appointments: { en: "Appointments", ar: "المواعيد" },
   medical_visits: { en: "Visits", ar: "الزيارات" },
@@ -77,12 +82,20 @@ export const FEATURE_LABELS: Record<FeatureKey, { en: string; ar: string }> = {
   medical_prescription_ocr: { en: "Prescription photo OCR", ar: "مسح الوصفة بالصورة (OCR)" },
 };
 
+export const HR_FEATURE_KEYS: FeatureKey[] = ["team", "hr_attendance", "hr_payroll"];
+
 export const FEATURE_GROUPS: { id: string; en: string; ar: string; keys: FeatureKey[] }[] = [
   {
     id: "general",
     en: "General workspace",
     ar: "مساحة العمل العامة",
-    keys: GENERAL_FEATURE_KEYS,
+    keys: GENERAL_FEATURE_KEYS.filter((k) => !HR_FEATURE_KEYS.includes(k)),
+  },
+  {
+    id: "hr",
+    en: "HR & Payroll",
+    ar: "الموارد البشرية والرواتب",
+    keys: HR_FEATURE_KEYS,
   },
   {
     id: "medical_core",

@@ -3,8 +3,13 @@ import { eq, sql } from "drizzle-orm";
 import { db, employeesTable } from "@workspace/db";
 import { branchWhere } from "../lib/branchScope";
 import { z } from "zod";
+import crypto from "node:crypto";
 
 const router: IRouter = Router();
+
+function newClockToken(): string {
+  return crypto.randomBytes(24).toString("base64url");
+}
 
 const EmployeeInput = z.object({
   name: z.string().min(1),
@@ -17,6 +22,8 @@ const EmployeeInput = z.object({
   roleAr: z.string().optional(),
   status: z.enum(["active", "inactive", "on_leave"]).default("active"),
   salary: z.string().optional(),
+  payType: z.enum(["monthly", "hourly"]).optional(),
+  hourlyRate: z.string().optional(),
   joinDate: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -48,7 +55,11 @@ router.post("/employees", async (req, res): Promise<void> => {
     ? { branchId: rawBranchId }
     : rawBranchId === null ? { branchId: null } : {};
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const [emp] = await db.insert(employeesTable).values({ ...parsed.data, ...branchIdExtra }).returning();
+  const [emp] = await db.insert(employeesTable).values({
+    ...parsed.data,
+    ...branchIdExtra,
+    clockToken: newClockToken(),
+  }).returning();
   res.status(201).json(emp);
 });
 
