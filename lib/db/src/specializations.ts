@@ -7,6 +7,7 @@ export const SPECIALIZATION_KEYS = [
   "pediatrics",
   "cardiology",
   "dermatology",
+  "physiotherapy",
 ] as const;
 
 export type SpecializationKey = (typeof SPECIALIZATION_KEYS)[number];
@@ -19,6 +20,7 @@ export const SPECIALIZATION_LABELS: Record<SpecializationKey, { en: string; ar: 
   pediatrics: { en: "Pediatrics", ar: "أطفال" },
   cardiology: { en: "Cardiology", ar: "قلب" },
   dermatology: { en: "Dermatology", ar: "جلدية" },
+  physiotherapy: { en: "Physiotherapy", ar: "علاج طبيعي" },
 };
 
 export type DiagnosisPreset = { code: string; name: string; nameAr: string };
@@ -170,6 +172,46 @@ export const SPECIALIZATION_PRESETS: Record<SpecializationKey, SpecializationPre
       { category: "exam", name: "Skin biopsy", nameAr: "خزعة جلد" },
       { category: "procedure", name: "Cryotherapy", nameAr: "علاج بالتجميد" },
       { category: "procedure", name: "Chemical peel", nameAr: "تقشير كيميائي" },
+    ],
+  },
+  physiotherapy: {
+    diagnoses: [
+      { code: "PHY-001", name: "Mechanical low back pain", nameAr: "ألم أسفل الظهر الميكانيكي" },
+      { code: "PHY-002", name: "Cervical spondylosis", nameAr: "خشونة الفقرات العنقية" },
+      { code: "PHY-003", name: "Frozen shoulder (adhesive capsulitis)", nameAr: "الكتف المتجمد" },
+      { code: "PHY-004", name: "Knee osteoarthritis", nameAr: "خشونة الركبة" },
+      { code: "PHY-005", name: "Post-operative rehabilitation (ACL)", nameAr: "تأهيل بعد جراحة الرباط الصليبي" },
+      { code: "PHY-006", name: "Stroke rehabilitation (hemiplegia)", nameAr: "تأهيل بعد السكتة الدماغية (شلل نصفي)" },
+      { code: "PHY-007", name: "Sciatica / radiculopathy", nameAr: "عرق النسا / اعتلال جذور عصبية" },
+      { code: "PHY-008", name: "Sports injury — muscle strain", nameAr: "إصابة رياضية — شد عضلي" },
+      { code: "PHY-009", name: "Postural dysfunction", nameAr: "اختلال وضعية الجسم" },
+      { code: "PHY-010", name: "Bell's palsy (facial rehabilitation)", nameAr: "شلل الوجه النصفي (تأهيل)" },
+      { code: "PHY-011", name: "Cerebral palsy — pediatric", nameAr: "الشلل الدماغي — أطفال" },
+      { code: "PHY-012", name: "Balance & gait disorder", nameAr: "اضطراب التوازن والمشي" },
+    ],
+    features: [
+      ...COMMON_FEATURES,
+      { category: "assessment", name: "Range of motion (ROM) assessment", nameAr: "تقييم مدى الحركة" },
+      { category: "assessment", name: "Manual muscle testing (MMT)", nameAr: "اختبار قوة العضلات اليدوي" },
+      { category: "assessment", name: "Pain scale (VAS)", nameAr: "مقياس الألم" },
+      { category: "assessment", name: "Posture & gait analysis", nameAr: "تحليل الوضعية والمشي" },
+      { category: "assessment", name: "Functional independence (ADL) score", nameAr: "تقييم الأنشطة اليومية" },
+      { category: "assessment", name: "Balance assessment", nameAr: "تقييم التوازن" },
+      { category: "modality", name: "Ultrasound therapy", nameAr: "علاج بالموجات فوق الصوتية" },
+      { category: "modality", name: "TENS / electrical stimulation", nameAr: "تنبيه كهربائي للأعصاب" },
+      { category: "modality", name: "Infrared / heat therapy", nameAr: "علاج بالأشعة تحت الحمراء / الحرارة" },
+      { category: "modality", name: "Cryotherapy / cold pack", nameAr: "علاج بالتبريد / كمادات باردة" },
+      { category: "modality", name: "Laser therapy", nameAr: "علاج بالليزر" },
+      { category: "modality", name: "Shockwave therapy", nameAr: "علاج بالموجات التصادمية" },
+      { category: "modality", name: "Traction (cervical / lumbar)", nameAr: "شد فقري (عنقي / قطني)" },
+      { category: "exercise", name: "Therapeutic exercise program", nameAr: "برنامج تمارين علاجية" },
+      { category: "exercise", name: "Stretching program", nameAr: "برنامج تمارين إطالة" },
+      { category: "exercise", name: "Strengthening / resistance training", nameAr: "تمارين تقوية ومقاومة" },
+      { category: "exercise", name: "Gait training", nameAr: "تدريب المشي" },
+      { category: "exercise", name: "Balance & proprioception training", nameAr: "تدريب التوازن والإحساس العميق" },
+      { category: "manual", name: "Manual therapy / mobilization", nameAr: "العلاج اليدوي / تحريك المفاصل" },
+      { category: "manual", name: "Soft tissue massage", nameAr: "تدليك الأنسجة الرخوة" },
+      { category: "manual", name: "Myofascial release", nameAr: "تحرير اللفافة العضلية" },
     ],
   },
 };
