@@ -25,6 +25,8 @@ import clinicStaffRouter from "./clinicStaff";
 // import treatmentPlansRouter from "./treatmentPlans";
 import branchesRouter from "./branches";
 import tenantSettingsRouter from "./tenantSettings";
+import attendanceRouter, { publicClockRouter } from "./attendance";
+import payrollRouter from "./payroll";
 import { requireFeature } from "../middleware/feature";
 import { requirePermission } from "../middleware/permissions";
 
@@ -32,6 +34,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(publicPatientRouter);
+router.use(publicClockRouter);
 router.use(authRouter);
 router.use(meRouter);
 router.use(tenantSettingsRouter);
@@ -46,6 +49,8 @@ router.use(requireFeature("tasks"), requirePermission("tasks"), tasksRouter);
 router.use(requireFeature("crm"), requirePermission("crm"), clientsRouter);
 router.use(requireFeature("finance"), requirePermission("finance"), transactionsRouter);
 router.use(requireFeature("team"), requirePermission("team"), employeesRouter);
+router.use(requireFeature("hr_attendance"), requirePermission("team"), attendanceRouter);
+router.use(requireFeature("hr_payroll"), requirePermission("team"), payrollRouter);
 router.use(requireFeature("products"), requirePermission("products"), productsRouter);
 router.use(requireFeature("products"), requirePermission("products"), stockMovementsRouter);
 router.use(requireFeature("suppliers"), requirePermission("suppliers"), suppliersRouter);

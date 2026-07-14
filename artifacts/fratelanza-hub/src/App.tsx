@@ -35,6 +35,10 @@ import PublicPatientHistory from "@/pages/public/patient-history";
 import DoctorAvailability from "@/pages/medical/doctor-availability";
 import ClinicStaff from "@/pages/medical/clinic-staff";
 import Branches from "@/pages/branches";
+import AttendancePage from "@/pages/hr/attendance";
+import PayrollPage from "@/pages/hr/payroll";
+import ClockKiosk from "@/pages/hr/clock-kiosk";
+import PublicEmployeeClock from "@/pages/public/employee-clock";
 import Login from "@/pages/login";
 import NotFound from "@/pages/not-found";
 import BlockedPage from "@/pages/blocked";
@@ -78,6 +82,10 @@ function AppRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/p/:token" component={PublicPatientHistory} />
+      <Route path="/c/:token" component={PublicEmployeeClock} />
+      <Route path="/hr/clock">
+        <AuthGuard><ClockKiosk /></AuthGuard>
+      </Route>
       <Route>
         <AuthGuard>
           <AppLayout>
@@ -87,6 +95,8 @@ function AppRouter() {
               <Route path="/crm"><FeatureGate feature="crm"><CRM /></FeatureGate></Route>
               <Route path="/finance"><FeatureGate feature="finance"><Finance /></FeatureGate></Route>
               <Route path="/team"><FeatureGate feature="team"><Team /></FeatureGate></Route>
+              <Route path="/hr/attendance"><FeatureGate feature="hr_attendance" permission="team"><AttendancePage /></FeatureGate></Route>
+              <Route path="/hr/payroll"><FeatureGate feature="hr_payroll" permission="team"><PayrollPage /></FeatureGate></Route>
               <Route path="/notifications"><FeatureGate feature="notifications"><NotificationsPage /></FeatureGate></Route>
               <Route path="/reports"><FeatureGate feature="reports"><Reports /></FeatureGate></Route>
               <Route path="/products"><FeatureGate feature="products"><Products /></FeatureGate></Route>

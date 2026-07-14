@@ -10,16 +10,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Edit2, Users, UserCheck, Coffee } from "lucide-react";
+import { Plus, Trash2, Edit2, Users, UserCheck, Coffee, QrCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDeleteConfirm } from "@/components/DeleteConfirmProvider";
 import { BranchSelect } from "@/components/BranchSelect";
 import { useAuth } from "@/components/AuthProvider";
+import { EmployeeClockQrDialog } from "@/components/hr/EmployeeClockQrDialog";
+import { useFeatures } from "@/components/FeaturesProvider";
 
 type Employee = {
   id: number; name: string; nameAr?: string; email?: string; phone?: string;
   department?: string; departmentAr?: string; role?: string; roleAr?: string;
   status: string; salary?: string; joinDate?: string; notes?: string;
+  clockToken?: string | null;
   createdAt: string; updatedAt: string;
 };
 
@@ -38,8 +41,11 @@ export default function Team() {
   const { toast } = useToast();
   const confirmDelete = useDeleteConfirm();
   const { user } = useAuth();
+  const { features } = useFeatures();
+  const showClockQr = features.hr_attendance !== false;
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [qrFor, setQrFor] = useState<Employee | null>(null);
   const [selected, setSelected] = useState<Employee | null>(null);
   const [form, setForm] = useState({ ...emptyForm, branchId: user?.branchId ?? null });
 
@@ -227,6 +233,11 @@ export default function Team() {
                     {emp.email && <p className="text-xs text-muted-foreground mt-1">{emp.email}</p>}
                   </div>
                   <div className="flex gap-1 shrink-0">
+                    {showClockQr && (
+                      <Button variant="ghost" size="icon" onClick={() => setQrFor(emp)} title={t("Clock badge", "بطاقة الحضور")}>
+                        <QrCode size={15} />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" onClick={() => openEdit(emp)}><Edit2 size={15} /></Button>
                     <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => confirmDelete({ title: t("Remove this employee?", "حذف هذا الموظف؟"), onConfirm: () => deleteEmp.mutate(emp.id) })}><Trash2 size={15} /></Button>
                   </div>
@@ -251,6 +262,20 @@ export default function Team() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {qrFor && (
+        <EmployeeClockQrDialog
+          open={!!qrFor}
+          onOpenChange={(v) => { if (!v) setQrFor(null); }}
+          employeeName={isRtl ? (qrFor.nameAr || qrFor.name) : qrFor.name}
+          employeeId={qrFor.id}
+          clockToken={qrFor.clockToken}
+          onTokenChange={(token) => {
+            setQrFor({ ...qrFor, clockToken: token });
+            qc.invalidateQueries({ queryKey: ["employees"] });
+          }}
+        />
+      )}
     </div>
   );
 }
